@@ -1,0 +1,11 @@
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+dist/
+.DS_Store
+*.xcodeproj/
+*.xcworkspace/
+.vs/
+Tests/drive_model_test
+Tests/track_test
