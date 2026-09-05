@@ -69,8 +69,8 @@ fi
 
 if [[ "$VROOM_MODE" == package ]]; then
     printf '%s\n' 'Compilation et préparation de l’application Mac…'
-    "$VROOM_UAT" BuildCookRun "-project=$VROOM_PROJECT" -nop4 -unattended \
-        -platform=Mac -clientconfig=Development -build -cook -stage -pak -iostore -archive \
+    "$VROOM_UAT" BuildCookRun "-project=$VROOM_PROJECT" -nop4 -unattended -WaitForUATMutex \
+        -platform=Mac -clientconfig=Development -build -cook -stage -pak -iostore -package -archive \
         "-archivedirectory=$VROOM_ARCHIVE_DIR" -utf8output
     printf 'Package créé dans : %s\n' "$VROOM_ARCHIVE_DIR"
 else

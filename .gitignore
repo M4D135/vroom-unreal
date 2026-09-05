@@ -9,3 +9,7 @@ dist/
 .vs/
 Tests/drive_model_test
 Tests/track_test
+Build/Mac/FileOpenOrder/
+Build/Mac/*.PackageVersionCounter
+__pycache__/
+*.pyc

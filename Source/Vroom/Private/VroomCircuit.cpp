@@ -152,7 +152,7 @@ void AVroomCircuit::BuildSurface()
             if (I < Count)
             {
                 const int32 K = I * 2;
-                T.Append({K, K + 2, K + 1, K + 1, K + 2, K + 3});
+                T.Append({K, K + 1, K + 2, K + 1, K + 3, K + 2});
             }
         }
         Surface->CreateMeshSection_LinearColor(Section, V, T, Normals, UV, Colors, Tangents, false);

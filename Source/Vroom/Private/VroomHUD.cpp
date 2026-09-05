@@ -1,10 +1,12 @@
 #include "VroomGame.h"
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
+#include "Engine/Font.h"
 #include "CanvasItem.h"
 #include "Fonts/SlateFontInfo.h"
 #include "GameFramework/PlayerController.h"
 #include "Misc/Paths.h"
+#include "UObject/StrongObjectPtr.h"
 
 namespace
 {
@@ -24,12 +26,20 @@ FString LapTime(double Seconds)
 void AVroomHUD::Label(const FString& S, float X, float Y, float Size, FLinearColor Color)
 {
     if (!Canvas) return;
-    static const TSharedRef<const FCompositeFont> Font = MakeShared<FCompositeFont>(
-        FName(TEXT("Bold")), FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Bold.ttf"),
-        EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+    // Canvas requires a UFont even when supplied a Slate font description.
+    // Retain it across frames so GC cannot invalidate the runtime font provider.
+    static const TStrongObjectPtr<UFont> Font = []()
+    {
+        TStrongObjectPtr<UFont> RuntimeFont(NewObject<UFont>(GetTransientPackage()));
+        RuntimeFont->FontCacheType = EFontCacheType::Runtime;
+        RuntimeFont->GetMutableInternalCompositeFont() = FCompositeFont(FName(TEXT("Bold")),
+            FPaths::EngineContentDir() / TEXT("Slate/Fonts/Roboto-Bold.ttf"),
+            EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+        return RuntimeFont;
+    }();
     // Slate uses points at 96 DPI. Rasterize at the final pixel size, without
     // magnifying the low-resolution offline engine font atlas.
-    const FSlateFontInfo FontInfo(Font, FMath::Max(1.0f, Size * 72.0f / FontConstants::RenderDPI));
+    const FSlateFontInfo FontInfo(Font.Get(), FMath::Max(1.0f, Size * 72.0f / FontConstants::RenderDPI), FName(TEXT("Bold")));
     FCanvasTextItem Text(FVector2D(X, Y), FText::FromString(S), FontInfo, Color);
     Text.Scale = FVector2D(1.0f, 1.0f);
     Text.FontRenderInfo.bEnableShadow = false;

@@ -20,9 +20,9 @@ void AVroomGameMode::BeginPlay()
     Super::BeginPlay();
     GetWorld()->SpawnActor<AVroomCircuit>();
     auto Sun = GetWorld()->SpawnActor<ADirectionalLight>();
-    Sun->SetActorRotation(FRotator(-32,-38,0));
     auto Light = Cast<UDirectionalLightComponent>(Sun->GetLightComponent());
     Light->SetMobility(EComponentMobility::Movable);
+    Sun->SetActorRotation(FRotator(-32,-38,0));
     Light->SetIntensity(5);
     Light->SetLightColor(FLinearColor(1,.91,.77));
     Light->SetAtmosphereSunLight(true);
