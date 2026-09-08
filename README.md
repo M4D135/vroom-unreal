@@ -1,5 +1,11 @@
 # Vroom — premiers tours sous Unreal Engine 5.8
 
+## Rôle et état — 8 septembre 2026
+
+Prototype personnel de course sous Unreal Engine, inspiré du Vroom de Lankhor. Les sources de conduite, les six tracés et les outils de build Mac sont conservés pour poursuivre le développement. Les fonctionnalités et limites ci-dessous concernent la version de cette branche ; des travaux locaux plus récents peuvent exister sans avoir encore été poussés.
+
+Dépôt : [vroom-unreal](https://git.estrasse.fr/david/vroom-unreal).
+
 Prototype personnel consacré au Vroom de Lankhor de 1991 : une monoplace, six silhouettes de circuits issues des petites cartes Atari ST, une conduite jouable et un habillage 3D Unreal. L'objectif est de disposer d'une base mesurable pour retrouver progressivement le jeu d'époque. **La fidélité intégrale et le photoréalisme ne sont pas encore réalisés.**
 
 Le prototype contient une séance libre, un départ après trois secondes, douze voitures adverses, un chronomètre par tour, un meilleur tour propre, une mini-carte, deux caméras, six rapports automatiques ou manuels et un son de moteur synthétisé. Les adversaires suivent des voies prédéfinies et adaptent leur vitesse à la courbure ; ils ne reproduisent pas l'intelligence artificielle originale.
