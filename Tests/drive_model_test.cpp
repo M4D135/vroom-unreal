@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <string_view>
 
 namespace
 {
@@ -31,10 +32,65 @@ bool Finite(const Vroom::DriveState& s)
         std::isfinite(s.LateralM) && std::isfinite(s.HeadingRad) &&
         std::isfinite(s.Steering) && std::isfinite(s.Rpm) && std::isfinite(s.Elapsed);
 }
+
+double SteeringThreshold(double initial, double target, double threshold, bool rising)
+{
+    Vroom::DriveModel model;
+    model.State.Steering = initial;
+    for (int i = 1; i <= 240; ++i)
+    {
+        model.Step({0, 0, target}, 1.0 / 120, 0, 100);
+        if (rising ? model.State.Steering >= threshold : model.State.Steering <= threshold)
+            return i / 120.0;
+    }
+    return 2;
 }
 
-int main()
+struct HandlingMetrics
 {
+    double LateralRateMps, VisualHeading, ReleaseLateralDelta;
+};
+
+HandlingMetrics MeasureHandling(double speed)
+{
+    Vroom::DriveModel turn;
+    turn.State.SpeedMps = speed;
+    turn.State.Gear = speed > 60 ? 6 : 3;
+    turn.State.Rpm = speed * 5.4 * Vroom::DriveModel::GearSpeedToRpm[turn.State.Gear - 1] / 256;
+    // Let the wheel catch up, then measure the XBCMP3 lateral rate on a
+    // straight (arcade is parallel: no yaw circle).
+    Run(turn, 0.15, {0.5, 0, 1}, 0, 100);
+    const double lat1 = turn.State.LateralM;
+    Run(turn, 0.25, {0.5, 0, 1}, 0, 100);
+    const double rate = (turn.State.LateralM - lat1) / 0.25;
+    const double visual = turn.VisualHeading();
+    const double lat2 = turn.State.LateralM;
+    Run(turn, 0.3, {0.5, 0, 0}, 0, 100);
+    return {rate, visual, turn.State.LateralM - lat2};
+}
+
+void PrintHandlingBenchmark()
+{
+    std::cout << "Steering to 90%: " << SteeringThreshold(0, 1, 0.9, true) * 1000
+              << " ms; release to 10%: " << SteeringThreshold(1, 0, 0.1, false) * 1000
+              << " ms; countersteer crosses zero: " << SteeringThreshold(1, -1, 0, false) * 1000 << " ms\n";
+    for (double speed : {40.0, 80.0})
+    {
+        const auto metrics = MeasureHandling(speed);
+        std::cout << "Arcade slide at " << speed * 3.6 << " km/h: lat rate " << metrics.LateralRateMps
+                  << " m/s; visual heading " << metrics.VisualHeading
+                  << " rad; extra lateral in 300 ms after release " << metrics.ReleaseLateralDelta << " m\n";
+    }
+}
+}
+
+int main(int argc, char** argv)
+{
+    if (argc == 2 && std::string_view(argv[1]) == "--handling-benchmark")
+    {
+        PrintHandlingBenchmark();
+        return EXIT_SUCCESS;
+    }
     const Vroom::DriveInput full{1, 0, 0, false, false};
     const Vroom::DriveInput brake{0, 1, 0, false, false};
     const Vroom::DriveInput coast{};
@@ -45,6 +101,8 @@ int main()
     Check(acceleration.State.Gear >= 3, "automatic shifts through multiple original thresholds");
     Check(acceleration.State.LateralM == 0 && acceleration.State.HeadingRad == 0,
           "straight unsteered road does not drift");
+    Check(std::abs(acceleration.State.SpeedMps * 3.6 - 297.215) < 0.01,
+          "handling calibration preserves the established flat ten-second acceleration");
     std::cout << "Prototype 10 s: " << acceleration.State.SpeedMps * 3.6
               << " km/h, gear " << acceleration.State.Gear << '\n';
 
@@ -70,12 +128,81 @@ int main()
     Check(std::abs(right.State.LateralM + left.State.LateralM) < 1e-10,
           "left and right handling are symmetric");
 
+    Check(SteeringThreshold(0, 1, 0.9, true) <= 0.12,
+          "digital steering reaches 90 percent in at most 120 ms");
+    Check(SteeringThreshold(1, 0, 0.1, false) <= 0.08,
+          "release removes 90 percent of steering in at most 80 ms");
+    Check(SteeringThreshold(1, -1, 0, false) <= 0.03,
+          "countersteer cancels the old steering direction within 30 ms");
+    const auto mediumTurn = MeasureHandling(40), fastTurn = MeasureHandling(80);
+    const double expectedMedium = Vroom::DriveModel::ArcadeSteerLatMps(1, 40);
+    const double expectedFast = Vroom::DriveModel::ArcadeSteerLatMps(1, 80);
+    Check(mediumTurn.LateralRateMps > expectedMedium * 0.85 && mediumTurn.LateralRateMps < expectedMedium * 1.05,
+          "144-km/h full steering matches XBCMP3 volant*speed lateral rate");
+    Check(fastTurn.LateralRateMps > expectedFast * 0.85 && fastTurn.LateralRateMps < expectedFast * 1.05,
+          "288-km/h full steering scales with speed like XBCMP3");
+    Check(std::abs(mediumTurn.VisualHeading) < 0.22 && std::abs(fastTurn.VisualHeading) < 0.22,
+          "arcade slide on a straight is a lane change, not a rally yaw");
+    Check(std::abs(mediumTurn.ReleaseLateralDelta) < 0.8 && std::abs(fastTurn.ReleaseLateralDelta) < 1.2,
+          "releasing the wheel on a straight stops the sideways slide");
+    PrintHandlingBenchmark();
+
     Vroom::DriveModel curve;
     curve.State.SpeedMps = 30;
     curve.State.Gear = 3;
-    Run(curve, 0.5, {0.3, 0, 0}, 0.01, 100);
-    Check(curve.State.LateralM < 0 && curve.State.HeadingRad < 0,
-          "right-hand road bends away from an unsteered car to the left");
+    Run(curve, 0.5, {0.3, 0, 0}, 0.04, 100);
+    Check(curve.State.LateralM < -0.4,
+          "right-hand road washes an unsteered car to the left (XBCMP3 curve delta)");
+    Check(std::abs(curve.VelocityHeading()) < 1e-9,
+          "arcade motion stays parallel (haldco cleared, no world-straight yaw)");
+    Check(std::abs(curve.VisualHeading()) > 0.04 && std::abs(curve.VisualHeading()) < 0.35,
+          "the slide is visible as chassis slip, not as a guided rail");
+
+    Vroom::DriveModel precise;
+    precise.State.SpeedMps = 70;
+    precise.State.Gear = 6;
+    Run(precise, 0.4, {0.5, 0, 0.15}, 0, 100);
+    Check(std::abs(precise.State.LateralM) > 0.4 && std::abs(precise.State.LateralM) < 8.0,
+          "a small F1 steering input at 252 km/h places the car instead of washing out");
+    Check(!precise.Skidding, "a light steering input does not start a rally slide");
+    Vroom::DriveModel lockup;
+    lockup.State.SpeedMps = 40;
+    lockup.State.Gear = 4;
+    lockup.State.Steering = 0.5;
+    Run(lockup, 0.25, {0, 1, 0.5}, 0, 100);
+    Check(lockup.Skidding && std::abs(lockup.VelocityHeading()) < 1e-9,
+          "arcade LIMFRN screams but does not zero volant (FROTT skip is commented out)");
+    Vroom::DriveModel worn;
+    worn.TyreHealth = 200;
+    worn.ChangeTyres();
+    Check(worn.TyreHealth == 2048, "pit T restores TIRUSE to 2048");
+
+    Vroom::DriveModel straighten;
+    straighten.State.SpeedMps = 40;
+    straighten.State.Gear = 3;
+    Run(straighten, 0.4, {0.5, 0, 1}, 0, 100);
+    const double slid = straighten.State.LateralM;
+    Run(straighten, 0.35, {0.5, 0, 0}, 0, 100);
+    Check(std::abs(straighten.VelocityHeading()) < 1e-9,
+          "arcade heading stays parallel after release");
+    Check(std::abs(straighten.State.LateralM - slid) < 1.5,
+          "after release the car goes straight instead of drifting sideways");
+
+    Vroom::DriveModel coastCorner, holdCorner;
+    coastCorner.State.SpeedMps = holdCorner.State.SpeedMps = 40;
+    coastCorner.State.Gear = holdCorner.State.Gear = 3;
+    Run(coastCorner, 0.8, {0.4, 0, 0}, 0.04, 100);
+    Run(holdCorner, 0.8, {0.4, 0, 0.85}, 0.04, 100);
+    Check(coastCorner.State.LateralM < -6.0,
+          "an unsteered car runs wide of a right-hander instead of taking it alone");
+    Check(holdCorner.State.LateralM > coastCorner.State.LateralM + 2.0,
+          "holding the wheel through a bend keeps the car tighter than coasting");
+
+    Vroom::DriveModel scream;
+    scream.State.SpeedMps = 80;
+    scream.State.Gear = 6;
+    Run(scream, 0.4, {0.5, 0, 0.9}, 0.08, 100);
+    Check(scream.Skidding, "too fast for CRIVIR makes the tyres scream");
 
     Vroom::DriveModel road = acceleration, grass = acceleration;
     grass.State.LateralM = 9;
@@ -99,6 +226,19 @@ int main()
     Check(std::abs(sixtyHz.State.SpeedMps - oneTwentyHz.State.SpeedMps) < 1e-10 &&
           std::abs(sixtyHz.State.DistanceM - oneTwentyHz.State.DistanceM) < 1e-8,
           "60-Hz owner and 120-Hz owner produce the same substep trajectory");
+
+    Vroom::DriveModel manoeuvre60, manoeuvre120;
+    manoeuvre60.State.SpeedMps = manoeuvre120.State.SpeedMps = 40;
+    manoeuvre60.State.Gear = manoeuvre120.State.Gear = 3;
+    for (double steer : {1.0, -1.0, 0.0})
+    {
+        Run(manoeuvre60, 0.25, {0.5, 0, steer}, 0.004, 100, 1.0 / 60);
+        Run(manoeuvre120, 0.25, {0.5, 0, steer}, 0.004, 100, 1.0 / 120);
+    }
+    Check(std::abs(manoeuvre60.State.Steering - manoeuvre120.State.Steering) < 1e-12 &&
+          std::abs(manoeuvre60.State.HeadingRad - manoeuvre120.State.HeadingRad) < 1e-12 &&
+          std::abs(manoeuvre60.State.LateralM - manoeuvre120.State.LateralM) < 1e-10,
+          "steering, countersteering and release are identical for 60/120-Hz owners");
 
     Vroom::DriveModel manual;
     manual.Automatic = false;
@@ -133,6 +273,148 @@ int main()
             break;
     }
     Check(Finite(invalid.State), "long mixed driving stays numerically finite");
+
+    Vroom::DriveModel drift;
+    drift.State.SpeedMps = 40;
+    drift.State.Gear = 4;
+    Run(drift, 0.12, {0.6, 0.7, 0.8});
+    Check(drift.Drifting && drift.Skidding && drift.HopHeightM > 0.05,
+          "brake plus steer at speed starts a hop-drift");
+    Check(std::abs(drift.VisualHeading()) > 0.04, "a drift shows chassis slip");
+    Run(drift, 0.4, {0.6, 0.7, 0.8});
+    Check(drift.DriftCharge > 0.4, "holding a drift charges a mini-turbo");
+    const double beforeBoost = drift.State.SpeedMps;
+    Run(drift, 0.35, {0.6, 0, 0});
+    Check(!drift.Drifting && drift.BoostTier >= 1, "releasing a charged drift fires a mini-turbo");
+    Check(drift.State.SpeedMps > beforeBoost + 2.0, "mini-turbo adds speed after the slide");
+
+    const Vroom::DriveInput driftHeld{0.6, 0, 0.8, false, false, true};
+    const Vroom::DriveInput straightDriftHeld{0.6, 0, 0, false, false, true};
+    Vroom::DriveModel straightDrift;
+    straightDrift.State.SpeedMps = 40;
+    straightDrift.State.Gear = 4;
+    Run(straightDrift, 2, straightDriftHeld, 0, 100);
+    Check(!straightDrift.Drifting && straightDrift.DriftCharge == 0 && straightDrift.HopHeightM == 0,
+          "holding the drift button straight ahead does not hop or charge a turbo");
+    Run(straightDrift, 0.1, full, 0, 100);
+    Check(straightDrift.BoostTier == 0, "straight-line drift hold cannot farm a release boost");
+
+    Vroom::DriveModel chargedDrift;
+    chargedDrift.State.SpeedMps = 40;
+    chargedDrift.State.Gear = 4;
+    Run(chargedDrift, 1.1, driftHeld, 0, 100);
+    Check(chargedDrift.Drifting && chargedDrift.DriftCharge >= 1,
+          "holding a controlled drift builds the second charge tier");
+    Vroom::DriveModel strongBoost = chargedDrift;
+    strongBoost.Step(full, 1.0 / 120, 0, 100);
+    Check(strongBoost.BoostTier == 2 && strongBoost.BoostRemaining > 1,
+          "releasing a long controlled drift rewards the stronger turbo");
+    const double boostedSpeed = strongBoost.State.SpeedMps;
+    Run(strongBoost, 0.1, brake, 0, 100);
+    Check(strongBoost.BoostTier == 0 && strongBoost.BoostRemaining == 0 &&
+          strongBoost.State.SpeedMps < boostedSpeed,
+          "braking cancels the turbo and decelerates immediately");
+
+    Vroom::DriveModel shortDrift;
+    shortDrift.State.SpeedMps = 40;
+    shortDrift.State.Gear = 4;
+    Run(shortDrift, 0.4, driftHeld, 0, 100);
+    shortDrift.Step(full, 1.0 / 120, 0, 100);
+    Check(shortDrift.BoostTier == 0, "a drift below the first charge threshold cannot claim a turbo");
+
+    for (int abortReason = 0; abortReason < 4; ++abortReason)
+    {
+        Vroom::DriveModel aborted = chargedDrift;
+        Vroom::DriveInput held = driftHeld;
+        if (abortReason == 0)
+            aborted.State.LateralM = 8;
+        if (abortReason == 1)
+            aborted.State.SpeedMps = 5;
+        if (abortReason == 3)
+            held = straightDriftHeld;
+        aborted.Step(held, 1.0 / 120, 0, abortReason == 0 ? 6 : 100, 0, abortReason == 2);
+        Check(!aborted.Drifting && aborted.DriftCharge == 0 && aborted.BoostTier == 0,
+              "grass, insufficient speed, a jump or centering a held drift forfeits its charge");
+        aborted.State.LateralM = 0;
+        aborted.State.SpeedMps = 40;
+        Run(aborted, 0.1, driftHeld, 0, 100);
+        Check(!aborted.Drifting && aborted.BoostTier == 0,
+              "an aborted held drift cannot silently restart after returning to the road");
+        aborted.Step(full, 1.0 / 120, 0, 100);
+        aborted.Step(driftHeld, 1.0 / 120, 0, 100);
+        Check(aborted.Drifting && aborted.DriftCharge < 0.02,
+              "release and press after an abort starts a fresh uncharged drift");
+    }
+    Vroom::DriveModel grassRelease = chargedDrift;
+    grassRelease.State.LateralM = 8;
+    grassRelease.Step(full, 1.0 / 120, 0, 6);
+    Check(grassRelease.BoostTier == 0,
+          "releasing a charged drift on grass does not award a turbo");
+
+    Vroom::DriveModel drift30, drift60, drift120, drift240;
+    for (auto* model : {&drift30, &drift60, &drift120, &drift240})
+    {
+        model->State.SpeedMps = 40;
+        model->State.Gear = 4;
+    }
+    const Vroom::DriveInput fullLockDrift{0.6, 0, 1, false, false, true};
+    for (const auto& input : {fullLockDrift, full})
+    {
+        Run(drift30, 1, input, 0, 100, 1.0 / 30);
+        Run(drift60, 1, input, 0, 100, 1.0 / 60);
+        Run(drift120, 1, input, 0, 100, 1.0 / 120);
+        Run(drift240, 1, input, 0, 100, 1.0 / 240);
+        for (const auto* model : {&drift30, &drift60})
+            Check(std::abs(model->State.HeadingRad - drift120.State.HeadingRad) < 1e-12 &&
+                  std::abs(model->State.LateralM - drift120.State.LateralM) < 1e-10 &&
+                  std::abs(model->State.SpeedMps - drift120.State.SpeedMps) < 1e-10,
+                  "drift entry, sustained full lock and release are identical at 30/60/120 Hz");
+        Check(std::abs(drift240.State.HeadingRad - drift120.State.HeadingRad) < 0.01 &&
+              std::abs(drift240.State.LateralM - drift120.State.LateralM) < 0.15 &&
+              std::abs(drift240.State.SpeedMps - drift120.State.SpeedMps) < 0.25,
+              "240-Hz drift converges to the same trajectory and visual yaw");
+    }
+    Vroom::DriveModel smoothDrift;
+    smoothDrift.State.SpeedMps = 40;
+    smoothDrift.State.Gear = 4;
+    double largestYawStep = 0;
+    for (int i = 0; i < 240; ++i)
+    {
+        const double before = smoothDrift.VisualHeading();
+        smoothDrift.Step(i < 120 ? fullLockDrift : full, 1.0 / 120, 0, 100);
+        largestYawStep = std::max(largestYawStep, std::abs(smoothDrift.VisualHeading() - before));
+        Check(std::abs(smoothDrift.VisualHeading() - smoothDrift.State.HeadingRad) < 1e-12,
+              "rendered chassis yaw follows the simulated yaw throughout a drift");
+    }
+    Check(largestYawStep < 0.035, "drift entry and exit do not snap the cockpit yaw");
+    std::cout << "Drift entry/release maximum yaw step at 120 Hz: " << largestYawStep << " rad\n";
+    Check(std::abs(Vroom::DriveModel::ArcadeWashLatMps(80, 0.0008 + 1e-8) -
+                   Vroom::DriveModel::ArcadeWashLatMps(80, 0.0008 - 1e-8)) < 0.001,
+          "crossing the small-curvature threshold cannot step the lateral wash");
+    smoothDrift.Reset();
+    Run(smoothDrift, 0.1, full, 0, 100);
+    Check(!smoothDrift.Drifting && smoothDrift.DriftCharge == 0 && smoothDrift.BoostTier == 0 &&
+          smoothDrift.HopHeightM == 0 && smoothDrift.State.HeadingRad == 0,
+          "reset clears drift, turbo, hop and residual yaw");
+
+    Vroom::DriveModel shove;
+    Vroom::DriveModel wreckDrift;
+    wreckDrift.State.SpeedMps = 35;
+    Run(wreckDrift, .1, fullLockDrift, 0, 100);
+    Check(wreckDrift.HopHeightM > 0 && wreckDrift.Drifting, "crash regression starts during an active drift hop");
+    const double WreckDistance = wreckDrift.State.DistanceM;
+    wreckDrift.CancelArcadeEffects();
+    Check(wreckDrift.HopHeightM == 0 && !wreckDrift.Drifting && wreckDrift.DriftCharge == 0 &&
+        wreckDrift.BoostRemaining == 0 && wreckDrift.State.DistanceM == WreckDistance,
+        "a crash cancels arcade effects without teleporting or resetting the race");
+    Run(wreckDrift, .1, fullLockDrift, 0, 100);
+    Check(!wreckDrift.Drifting && wreckDrift.HopHeightM == 0, "holding drift across a crash cannot resume its old hop or charge");
+    shove.State.SpeedMps = 30;
+    shove.State.Gear = 3;
+    shove.Shove(12);
+    Run(shove, 0.2, {0.4, 0, 0}, 0, 100);
+    Check(shove.State.LateralM > 0.8, "a side bump shoves the car laterally");
+    Check(std::abs(shove.ExtraLatVel) < 12, "bump impulse decays");
 
     if (failures)
         return EXIT_FAILURE;

@@ -13,3 +13,8 @@ Build/Mac/FileOpenOrder/
 Build/Mac/*.PackageVersionCounter
 __pycache__/
 *.pyc
+# NVIDIA's optional, separately downloaded runtime and proprietary plugin.
+Plugins/DLSS/
+Plugins/StreamlineNGXCommon/
+Plugins/.vroom-nvidia.json
+Tools/vroom_smoke*.log

@@ -22,7 +22,7 @@ while [[ $# -gt 0 ]]; do
         --help|-h)
             printf '%s\n' \
                 'Usage : Tools/build_mac.command [--editor|--assets|--package] [--engine /chemin/UE_5.8]' \
-                '  --editor  Compile VroomEditor puis génère les 11 matériaux et la carte (défaut).' \
+                '  --editor  Compile VroomEditor puis génère les matériaux, textures et la carte (défaut).' \
                 '  --assets  Génère seulement les assets ; le module Editor doit être déjà compilé.' \
                 '  --package Compile, génère les assets, puis crée une application Mac Development.' \
                 '  --archive /chemin  Destination du package, défaut Saved/Packages.' \
@@ -73,6 +73,14 @@ if [[ "$VROOM_MODE" == package ]]; then
         -platform=Mac -clientconfig=Development -build -cook -stage -pak -iostore -package -archive \
         "-archivedirectory=$VROOM_ARCHIVE_DIR" -utf8output
     printf 'Package créé dans : %s\n' "$VROOM_ARCHIVE_DIR"
+    # Le raccourci Bureau cherche le binaire le plus récent : le rafraîchir
+    # après chaque package, sans copier l’.app (sinon il redevient périmé).
+    if [[ -f "$VROOM_PROJECT_DIR/Tools/play_latest.command" ]]; then
+        /bin/cp "$VROOM_PROJECT_DIR/Tools/play_latest.command" "$HOME/Desktop/Vroom.command"
+        /bin/chmod +x "$HOME/Desktop/Vroom.command"
+        /usr/bin/xattr -d com.apple.quarantine "$HOME/Desktop/Vroom.command" 2>/dev/null || true
+        printf '%s\n' 'Raccourci Bureau mis à jour : Desktop/Vroom.command (dernier build).'
+    fi
 else
-    printf '%s\n' 'Prêt. Double-cliquer Tools/run_mac.command pour jouer.'
+    printf '%s\n' 'Prêt. Double-cliquer Tools/run_mac.command ou Desktop/Vroom.command pour jouer.'
 fi

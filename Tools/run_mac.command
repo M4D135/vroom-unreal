@@ -3,7 +3,7 @@ set -euo pipefail
 
 VROOM_PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VROOM_ENGINE_DIR="${VROOM_UE_ROOT:-/Users/Shared/Epic Games/UE_5.8}"
-VROOM_EXTRA_ARGS=(-NoSplash)
+VROOM_EXTRA_ARGS=(-NoSplash -LLM)
 VROOM_WIDTH=1440
 VROOM_HEIGHT=900
 

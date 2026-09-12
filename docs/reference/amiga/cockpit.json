@@ -1,0 +1,264 @@
+{
+  "source_archive_sha256": "d8155a4fac27a14d292682a318875bfa85a318292fed14ec116d09c246b5d6c5",
+  "decoded_cockpit_sha256": "a77a7d8875277b6efc9af470d54c307b8b1a6075c23d0920c92b5c9aa768b891",
+  "palette_words": [
+    1,
+    1856,
+    1025,
+    615,
+    32,
+    800,
+    18,
+    548,
+    355,
+    1910,
+    1793,
+    819,
+    321,
+    1620,
+    565,
+    838
+  ],
+  "palette_rgb_normalized": [
+    [
+      0,
+      0,
+      36
+    ],
+    [
+      255,
+      146,
+      0
+    ],
+    [
+      146,
+      0,
+      36
+    ],
+    [
+      73,
+      219,
+      255
+    ],
+    [
+      0,
+      73,
+      0
+    ],
+    [
+      109,
+      73,
+      0
+    ],
+    [
+      0,
+      36,
+      73
+    ],
+    [
+      73,
+      73,
+      146
+    ],
+    [
+      36,
+      219,
+      109
+    ],
+    [
+      255,
+      255,
+      219
+    ],
+    [
+      255,
+      0,
+      36
+    ],
+    [
+      109,
+      109,
+      109
+    ],
+    [
+      36,
+      146,
+      36
+    ],
+    [
+      219,
+      182,
+      146
+    ],
+    [
+      73,
+      109,
+      182
+    ],
+    [
+      109,
+      146,
+      219
+    ]
+  ],
+  "palette_conversion": "round(channel_3bit * 255 / 7); encoded pixel bits reversed",
+  "alpha": "Native index0 transparent: NOT(plane0 OR plane1 OR plane2 OR plane3)",
+  "screen": {
+    "width": 320,
+    "height": 200
+  },
+  "display_rectangle": {
+    "x": 112,
+    "y": 172,
+    "width": 96,
+    "height": 28
+  },
+  "instrument_rectangles_local": {
+    "gear": {
+      "x": 32,
+      "y": 16,
+      "width": 16,
+      "height": 6
+    },
+    "speed": {
+      "x": 52,
+      "y": 16,
+      "width": 12,
+      "height": 5
+    },
+    "rpm": {
+      "x": 32,
+      "y": 25,
+      "width": 32,
+      "height": 2
+    }
+  },
+  "poses": [
+    {
+      "pose": 0,
+      "direction": "left_full",
+      "source_element": 0,
+      "steering_integer_range": [
+        -271,
+        -168
+      ],
+      "file": "cockpit_pose_00.png",
+      "texture": "/Game/DeveloperReference/T_AmigaCockpit00",
+      "sheet_rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 96,
+        "height": 28
+      },
+      "sha256": "3abf4692e6477935af0ffe6c1dd142a8087e2ffbb0359620e9e4f62efdb824a8"
+    },
+    {
+      "pose": 1,
+      "direction": "left_medium",
+      "source_element": 1,
+      "steering_integer_range": [
+        -167,
+        -56
+      ],
+      "file": "cockpit_pose_01.png",
+      "texture": "/Game/DeveloperReference/T_AmigaCockpit01",
+      "sheet_rectangle": {
+        "x": 96,
+        "y": 0,
+        "width": 96,
+        "height": 28
+      },
+      "sha256": "08546cac9d7abe4e2ca23225a9c06a1ecb361603bce8c0da968a151486385c27"
+    },
+    {
+      "pose": 2,
+      "direction": "left_small",
+      "source_element": 2,
+      "steering_integer_range": [
+        -55,
+        -8
+      ],
+      "file": "cockpit_pose_02.png",
+      "texture": "/Game/DeveloperReference/T_AmigaCockpit02",
+      "sheet_rectangle": {
+        "x": 192,
+        "y": 0,
+        "width": 96,
+        "height": 28
+      },
+      "sha256": "fdeb20193410f6cd004d6a60e70513f63d157c64438928134f4f6a63039a4073"
+    },
+    {
+      "pose": 3,
+      "direction": "neutral",
+      "source_element": 6,
+      "steering_integer_range": [
+        -7,
+        8
+      ],
+      "file": "cockpit_pose_03.png",
+      "texture": "/Game/DeveloperReference/T_AmigaCockpit03",
+      "sheet_rectangle": {
+        "x": 0,
+        "y": 28,
+        "width": 96,
+        "height": 28
+      },
+      "sha256": "433bc1b73401b687e42034f872456f13eeb99bc3eae9246532dda15e65c7ad77"
+    },
+    {
+      "pose": 4,
+      "direction": "right_small",
+      "source_element": 5,
+      "steering_integer_range": [
+        9,
+        56
+      ],
+      "file": "cockpit_pose_04.png",
+      "texture": "/Game/DeveloperReference/T_AmigaCockpit04",
+      "sheet_rectangle": {
+        "x": 96,
+        "y": 28,
+        "width": 96,
+        "height": 28
+      },
+      "sha256": "1b346410b88e8d957e0d479e76998f2ca0c129e02cd158a337fc15e17bfb1496"
+    },
+    {
+      "pose": 5,
+      "direction": "right_medium",
+      "source_element": 4,
+      "steering_integer_range": [
+        57,
+        168
+      ],
+      "file": "cockpit_pose_05.png",
+      "texture": "/Game/DeveloperReference/T_AmigaCockpit05",
+      "sheet_rectangle": {
+        "x": 192,
+        "y": 28,
+        "width": 96,
+        "height": 28
+      },
+      "sha256": "de5ad72dcf762f0c6bd634866df5536216ae0b4a97b54b2b5225dd3d9785f6de"
+    },
+    {
+      "pose": 6,
+      "direction": "right_full",
+      "source_element": 7,
+      "steering_integer_range": [
+        169,
+        271
+      ],
+      "file": "cockpit_pose_06.png",
+      "texture": "/Game/DeveloperReference/T_AmigaCockpit06",
+      "sheet_rectangle": {
+        "x": 0,
+        "y": 56,
+        "width": 96,
+        "height": 28
+      },
+      "sha256": "4a7e0d5572e666e19345102252bb10cdd834aa2b73cf7a05c5fb886b7a310870"
+    }
+  ]
+}

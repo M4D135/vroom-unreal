@@ -1,4 +1,4 @@
-# Références Vroom — 5 septembre 2026
+# Références Vroom
 
 ## État des preuves
 
@@ -45,9 +45,15 @@ Les paires `YX` de `CDRW` sont des coordonnées de la carte du tableau de bord. 
 
 ## Géométrie provisoire du prototype
 
+Le bitume mesure désormais **9,5 m de large** (`HalfWidthM = 4.75`), contre 12 m auparavant. Dans `vr2.asm:3264–3265`, les demi-largeurs de route valent 256 « pixels at line 0 » ; les collisions entre voitures emploient une largeur de 132 dans cette même base (`vr2.asm:1739–1751`). Le rapport nominal original est donc **512/132 ≈ 3,88 largeurs de voiture**. Les nouveaux meshes de concurrents mesurent 2,3984 m hors tout : le prototype passe d’environ 5,00 à 3,96 voitures de large. **9,5 m est un choix de restitution de ces proportions, pas une largeur métrique retrouvée ni une mesure validée de l’édition Amiga.**
+
+Les vibreurs, lignes et herbes suivent cette demi-largeur. Le gravier garde 1,5 m de chaque côté du bitume, dont 0,7 m couverts par le vibreur ; les 16 cases du damier couvrent exactement la largeur de piste. Les voies de grille restent à ±2,2 m. Ce rétrécissement conserve la caméra et les dimensions des voitures.
+
 `preview_points_m` reprend les pixels consécutifs distincts de la petite carte. Une mise à l'échelle uniforme fait correspondre le périmètre fermé à `CLAP`. L'origine est le premier point, le premier point n'est pas répété à la fin et la dernière arête rejoint implicitement le premier. L'altitude est fixée à zéro uniquement pour cette représentation provisoire.
 
-Au chargement, `AVroomCircuit::SelectTrack` lisse une copie de ces points par deux passes cycliques d'un noyau triangulaire à sept points, de poids `1, 2, 3, 4, 3, 2, 1` divisés par 16. Cela réduit les angles d'escalier issus des pixels de la petite carte. Les points forment ensuite une spline Unreal fermée `CurveClamped`. Une seconde mise à l'échelle uniforme ajuste la longueur mesurée de la spline à `CLAP`. Le JSON original reste inchangé. La position de départ du rendu est le début de cette spline lissée.
+Au chargement, `AVroomCircuit::SelectTrack` reconstruit une copie conduisible via `Vroom::BuildDriveablePreview` : quatre passes d’un noyau triangulaire à sept points, une passe de Chaikin, rééchantillonnage à 5 m, puis deux passes du même noyau sur ces points rapprochés et mise à l’échelle à `CLAP`. Les deux passes d'origine laissaient des sauts de cap de 10 à 15° tous les ~19 m (pixels de la mini-carte) : le virage se lisait comme une suite de lignes droites. Les points forment une spline Unreal fermée `Curve`. Une seconde mise à l'échelle uniforme ajuste la longueur mesurée de la spline à `CLAP`. La courbure physique est une table filtrée (±12 m), pas un écart de lacet à ±4 m. Le JSON original reste inchangé. La position de départ du rendu est le début de cette spline. La caméra suit `DrivingRotation` (moyenne de regard 0–12 m) plus `VisualHeading`, pas le cap de vitesse entier.
+
+Le filtre après rééchantillonnage réduit une ondulation introduite par l’interpolation linéaire de cette étape. Le banc analytique du 8 septembre 2026 reproduisant les tangentes cubiques automatiques Unreal et le regard moyen mesure en Autriche une variation maximale de lacet de **0,1625 à 0,0173 °/m²** avant/après ce filtre ; les six tracés présentent une réduction. Les points correspondants se déplacent au maximum de **1,23 à 3,41 m** selon le circuit, et la longueur finale reste celle demandée. Il s’agit d’une comparaison géométrique en double précision, sans exécution du rendu Unreal : ces résultats ne mesurent pas les images/s ni la latence caméra. Le test portable `Tests/track_preview_test.cpp` contrôle les sauts de courbure des raccords cubiques et la conservation de virages distincts.
 
 Cette opération restitue une silhouette reconnaissable, mais ne démontre ni la géométrie originale de conduite, ni le rapport d'aspect de ses pixels, ni les rayons, ni les pentes. Le lissage et la spline Unreal sont des interprétations du prototype. Les événements longitudinaux originaux et cette géométrie ne doivent pas être présentés comme une reconstruction physique validée.
 
@@ -63,6 +69,12 @@ Dans un [autre entretien direct](https://www.oldies-but-goodies.fr/index.php?id=
 
 La [fiche de préservation Lankhor.net](https://www.lankhor.net/jeux.php?jeu=32&menu=presentation) est utile pour les documents et les crédits, mais le site est une initiative de Frédéric Letellier. Ses commentaires de visiteurs ne sont pas traités comme une documentation technique d'auteur.
 
+## Référence visuelle des mains
+
+La prise a aussi été comparée au [cockpit de F1 25](https://cdn-1.motorsport.com/static/img/news/f125-steeringwheel-1-2-16x9.jpg), illustré dans la presse, et aux vues de la [présentation PC officielle EA](https://www.ea.com/games/f1/f1-25/news/f1-25-pc-features). Cela sert de repère d'orientation des poignets et d'enroulement des doigts ; aucun asset de F1 25 n'est intégré au projet.
+
+La prise sur volant circulaire a également été observée dans les captures officielles de [Automobilista 2 — Formula HiTech](https://store.steampowered.com/app/2697780/Automobilista_2__Formula_HiTech/) : dos des gants vers le pilote et pouces à l’intérieur. Cette référence concerne l’orientation anatomique, sans remplacer le cadrage et les gestes Amiga.
+
 ## Travail restant pour annoncer la fidélité
 
-Choisir l'édition ST ou Amiga avec David; identifier et vérifier un exemplaire de référence; retrouver les différences entre juillet 1991 et l'édition retenue; décoder la projection et les transitions de courbe; mesurer focale, échelle latérale et rythmes de simulation; comparer des commandes enregistrées avec le comportement original. La qualité 4K des matériaux et des modèles viendra ensuite sans modifier ces règles.
+L’édition choisie par David est **Vroom Amiga**. Il reste à identifier et vérifier l’exemplaire exact de référence; retrouver les différences entre juillet 1991 et l'édition retenue; décoder la projection et les transitions de courbe; mesurer focale, échelle latérale et rythmes de simulation; comparer des commandes enregistrées avec le comportement original. Le bandeau Canvas compact conserve les informations de course inspirées de l’Amiga, dans une présentation translucide moderne ; il remplace le grand boîtier 3D essayé auparavant. Les sons extraits et les meshes dédiés des monoplaces servent la restitution visuelle et sonore, avec des adaptations graphiques explicites. Les sept poses du cockpit Amiga guident le cadrage bas et le sens des gestes. Les mains du prototype ont désormais une prise fixe dans le repère du volant : la même rotation entraîne les gants et la jante, la main gauche montant en virage à droite et la droite en virage à gauche. L’autre main peut passer sous le cadre tout en conservant sa prise. La géométrie des doigts et l’orientation des poignets restent des adaptations 3D ; aucune correspondance pixel par pixel n’est revendiquée. Les dérapages avec poussée de sortie et l’herbe animée restent également des adaptations du prototype ; ils ne constituent pas des preuves d’une copie intégrale du jeu original.
