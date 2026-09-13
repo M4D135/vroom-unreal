@@ -1,6 +1,6 @@
-# Vroom 0.22 — prototype 3D sous Unreal Engine 5.8
+# Vroom 0.30 — prototype 3D sous Unreal Engine 5.8
 
-## Rôle et état — 8 septembre 2026
+## Rôle et état de la branche 0.30
 
 Prototype personnel de course sous Unreal Engine, inspiré du Vroom de Lankhor. Les sources de conduite, les six tracés et les outils de build Mac sont conservés pour poursuivre le développement. Les fonctionnalités et limites ci-dessous concernent la version de cette branche ; des travaux locaux plus récents peuvent exister sans avoir encore été poussés.
 
@@ -8,13 +8,18 @@ Dépôt : [vroom-unreal](https://git.estrasse.fr/david/vroom-unreal).
 
 Prototype personnel consacré au Vroom de Lankhor de 1991 : une monoplace, six silhouettes de circuits issues des petites cartes Atari ST, une conduite jouable et un habillage 3D Unreal. L'objectif est de disposer d'une base mesurable pour retrouver progressivement le jeu d'époque. **La fidélité intégrale et le photoréalisme ne sont pas encore réalisés.**
 
-Le prototype contient une séance libre, un départ après trois secondes, douze voitures adverses, un chronomètre par tour, un meilleur tour propre, une mini-carte, deux caméras et six rapports automatiques ou manuels. La vue cockpit montre un volant, des avant-bras en 3D et des gants issus du maillage Valve, avec cuir et coutures texturés. Les rétroviseurs montrent la piste derrière la voiture. Les contacts entre voitures peuvent produire un petit choc, une casse ou un saut, avec projection d'une roue pendant la casse et remise en piste après récupération. Le moteur, les crissements et les impacts utilisent la banque sonore Amiga extraite, avec une synthèse de secours si cette banque manque. Les adversaires suivent des voies prédéfinies et adaptent leur vitesse à la courbure ; ils ne reproduisent pas l'intelligence artificielle originale.
+La branche 0.30 propose **Arcade, Grand Prix avec qualification et Chrono**, douze adversaires capables de freiner derrière un véhicule et de choisir une voie de dépassement, trois difficultés et un enchaînement des six étapes. Le Grand Prix conserve un classement général des treize pilotes et désigne le champion ; les adversaires encore en course sont classés à l’arrivée du joueur selon leur avancement. Les stands imposent une immobilisation pour changer les pneus ou ravitailler. Les records par circuit/mode, les derniers tours, le delta et un fantôme enregistré donnent un objectif au Chrono.
 
+Le bandeau translucide de 84 pixels conserve les informations de course et ajoute les objectifs, le classement et les alertes. Les menus sont accessibles à la souris, au clavier et via les commandes manette prévues par Unreal. Les préférences de conduite et de son ainsi que les touches clavier peuvent être sauvegardées. Les décors reçoivent des reliefs artistiques et une végétation différenciée ; traces de pneus, fumée et sons stéréo des concurrents complètent les retours de conduite. Le cockpit rapproche les mains neutres de la composition Amiga et affine les roues du joueur. Le sens des faces des pneus et jantes est corrigé pour fermer leur surface extérieure ; les petits rétroviseurs restent bas devant les pneus. Le cadrage bas et la plage de braquage sont conservés et vérifiés dans les captures normales du package final.
+
+**Validation Mac 0.30 réussie le 13 septembre 2026** : 31 cas, 21 contrôles portables, huit profils de cadence et six tours complets. Sur le Mac Apple M5 24 Go, au réglage Performance à **70 % interne**, les moyennes atteignent 59,983 à 59,987 images/s, le P99 maximal 17,481 ms et le pic maximal 22,833 ms. La continuité passe également. Les mesures ont été réalisées sous verrouillage (`onscreen_locked`), sans essai interactif ; [les résultats et leurs empreintes](docs/VALIDATION.md) précisent ce périmètre. **La 0.30 est installée** : les lancements par `~/Applications/Vroom.app` et `~/Desktop/Vroom.command` ont tous deux confirmé la version, la vérification interne et une fermeture normale.
+
+Le [mode d'emploi](docs/PLAYER.md) décrit les commandes, les règles exactes et les sauvegardes. Les fonctionnalités annoncées ici sont celles du code de cette branche ; [VALIDATION.md](docs/VALIDATION.md) distingue les essais réellement réalisés et leurs limites. **Windows, DLSS et l'essai d'une manette physique restent à valider.**
 ## Jouer sur le Mac
 
 La version compilée et testée ici cible **Unreal Engine 5.8, Mac Apple Silicon**. Des profils **RTX 5090 sous Linux/Vulkan et Windows/DirectX 12** sont également préparés ; leurs builds et leur rendu sur le PC restent à vérifier. Voir [docs/RTX5090.md](docs/RTX5090.md). L'installation Mac utilisée se trouve dans `/Users/Shared/Epic Games/UE_5.8`. Une compilation du code nécessite Xcode avec les outils de développement et la configuration acceptée par cette installation Unreal. Les lanceurs n'installent aucun logiciel.
 
-Pour jouer au package préparé, double-cliquer **`Desktop/Vroom.command`** ou **`Tools/play_latest.command`**. Le lanceur choisit la dernière application compilée et applique le contournement du suivi mémoire UE 5.8 décrit dans [VALIDATION.md](docs/VALIDATION.md). Entrée lance la séance ; F1 à F6 choisissent le circuit.
+Pour jouer à la version installée, ouvrir **`~/Applications/Vroom.app`**, double-cliquer **`~/Desktop/Vroom.command`** ou utiliser **`Tools/play_latest.command`**. Le lanceur lit le manifeste de la version explicitement validée et vérifie son binaire. **Compiler un package ne change plus la version active.** Le choix de mode, de difficulté et de circuit précède le départ ; le menu accepte les clics, les flèches et la croix directionnelle.
 
 **`Tools/run_mac.command`** lance quant à lui le jeu dans le module Editor déjà compilé, en fenêtre **1440 × 900**, sans reconstruire les binaires. La première ouverture peut compiler des shaders.
 
@@ -38,30 +43,25 @@ Les deux scripts acceptent également la variable `VROOM_UE_ROOT`. `--help` donn
 
 ## Commandes
 
-| Commande | Action |
+| Commande initiale | Action |
 |---|---|
-| Entrée | Repartir sur le circuit sélectionné, avec décompte de trois secondes |
-| F1…F6 | Choisir Autriche, France, USA, Suède, Japon ou Royaume-Uni ; revenir au menu |
-| Flèche haut, Z ou W | Accélérer |
-| Flèche bas, S ou Espace | Freiner |
-| Flèches gauche/droite, Q/D ou A/D | Braquer |
-| Maj gauche/droite + braquage | Maintenir un dérapage à vitesse suffisante ; relâcher Maj sur la route pour déclencher le bonus chargé |
-| G | Basculer entre boîte automatique et manuelle |
-| E / X | Monter / descendre d'un rapport en boîte manuelle |
-| C | Basculer entre cockpit et caméra de poursuite |
-| M | Activer ou désactiver le braquage à la souris |
-| F10 | Alterner les champs de vision 80°, 68° et 92° |
-| P | Mettre la séance en pause ou reprendre |
-| O ou F7 | Ouvrir les options graphiques ; la course est suspendue pendant le réglage |
-| T / F près du départ, à faible vitesse | Changer les pneus / refaire le plein |
-| R | Remettre la voiture et les adversaires au départ ; la séance courante reste dans son état de marche/pause |
-| Échap | Revenir au menu |
+| Haut, Z/W ; bas, S/Espace ; gauche/droite, QD/AD | Accélérer, freiner, braquer |
+| Maj gauche/droite ou LB/RB | Déraper en braquant ; relâcher pour le bonus chargé |
+| E/X ou Y/X sur manette | Monter / descendre d'un rapport |
+| G ; C ou Back/Select | Boîte automatique/manuelle ; cockpit/poursuite |
+| M | Conduite souris : déplacement horizontal, clic gauche accélérateur, clic droit frein |
+| P, Start ou bouton central de souris | Pause / reprise |
+| O/F7 ; F8 | Graphismes ; commandes et son |
+| Entrée/A ; Échap/B | Valider au menu ; revenir |
+| T/F, à l'arrêt dans l'emplacement des stands | Pneus / essence |
+| Entrée/A ou clic gauche en conduite souris, dans l'emplacement | Service complet pneus et essence |
+| R | Recommencer la séance |
+| F1…F6 | Choisir le circuit |
+| F10 | FOV préféré, puis variantes −12°/+12° |
 
-Une manette reconnue par Unreal peut commander le volant avec son stick gauche et les pédales avec ses gâchettes droite/gauche. La détection matérielle et les éventuelles correspondances propres à chaque manette restent à essayer. Les boutons d’épaule gauche ou droite maintiennent le dérapage. Le changement de rapport, le menu et les vues utilisent les touches ci-dessus. Sur certains claviers Mac, les touches de fonction demandent la touche `fn`.
+Les touches clavier se réattribuent dans **Commandes et son** ; sensibilité, zone morte, FOV, vue, boîte, volumes et fantôme y sont enregistrés. Appliquer conserve les modifications, Annuler les abandonne. Les préférences et les records restent locaux.
 
-Dans les options, les flèches haut/bas sélectionnent une ligne et gauche/droite changent sa valeur. **Entrée applique et enregistre ; Échap annule les modifications.** Le bouton **Options graphiques** du menu principal et les commandes du panneau disposent aussi de zones cliquables ; leur validation manuelle à la souris reste à compléter. La course retrouve son état de pause précédent à la fermeture.
-
-La souris agit sur une position de volant conservée : revenir avec la souris recentre le volant ; désactiver puis réactiver M le remet à zéro. Ce mode ne reprend pas encore le contrôle complet accélération/freinage de la souris originale. Le meilleur temps est conservé pour le circuit pendant cette session et réinitialisé lorsque le circuit change. Il n'est pas enregistré sur disque. Sortir de la largeur de route ou toucher un adversaire invalide le tour pour le meilleur temps, tout en laissant le chronomètre continuer.
+Le stick gauche et les gâchettes commandent direction et pédales ; la croix directionnelle et A/B parcourent les menus. Les noms de boutons suivent la disposition Xbox. La détection et les correspondances de chaque manette nécessitent un essai matériel. Le [mode d'emploi complet](docs/PLAYER.md) détaille les trois modes, la souris, les pages de réglages, les stands et le fantôme.
 
 ## Circuits et conduite
 
@@ -74,13 +74,13 @@ La souris agit sur une position de volant conservée : revenir avec la souris re
 | F5 | Japon | 4 359 m |
 | F6 | Royaume-Uni | 4 778 m |
 
-Cet ordre suit les fichiers de sources, pas le championnat original. Le JSON conserve séparément les événements longitudinaux d'origine et les coordonnées des petites cartes. Le tracé en plan est une **prévisualisation dérivée de ces cartes**, lissée puis mise à l'échelle pour retrouver la longueur `CLAP`. Les rayons et le rapport d'aspect des pixels restent à valider ; ce lissage ne reconstitue pas les tables de projection historiques. Voir [docs/REFERENCE.md](docs/REFERENCE.md) pour les sources, l'extraction et les preuves.
+Les touches suivent l’ordre des fichiers de sources. Les modes de progression enchaînent Japon, Autriche, France, Royaume-Uni, Suède et USA ; choisir le Japon permet de commencer par la première étape. Le JSON conserve séparément les événements longitudinaux d'origine et les coordonnées des petites cartes. Le tracé en plan est une **prévisualisation dérivée de ces cartes**, lissée puis mise à l'échelle pour retrouver la longueur `CLAP`. Les rayons et le rapport d'aspect des pixels restent à valider ; ce lissage ne reconstitue pas les tables de projection historiques. Voir [docs/REFERENCE.md](docs/REFERENCE.md) pour les sources, l'extraction et les preuves.
 
 L'Autriche possède maintenant un relief issu de ses **47 événements de pente** dans les sources ST. Le profil est continu en hauteur et en pente, y compris au raccord du tour. Son calibrage métrique et sa correction de fermeture sont des adaptations : l'écart entre son point bas et son point haut atteint environ **25,90 m**, sans constituer un relevé du vrai circuit ni un dénivelé cumulé. Les cinq autres circuits restent plats, car aucun événement de relief explicite n'apparaît dans leurs fichiers de cette archive. [docs/ELEVATION.md](docs/ELEVATION.md) détaille l'intégration, les unités retrouvées et les choix de calibrage.
 
 Le moteur portable reprend les six coefficients de rapport, les seuils automatiques, une courbe de couple échantillonnée, une résistance de l'air et un freinage quadratique relevés dans le code ST. Les passages supérieurs se font vers **80, 130, 180, 230 et 270 km/h**. Le régime maximal de table est **13 312 tr/min**. Le joueur, les adversaires, les contacts et le chronomètre avancent ensemble par pas de **1/120 s**. Le rendu interpole les positions précédentes et courantes du joueur et des adversaires entre ces pas. Le temps accumulé pendant une image excessive est borné pour éviter les grands sauts ; dans ce cas, le temps de simulation peut avancer moins vite que le temps réel.
 
-La conduite reprend le déplacement latéral arcade : le volant agit sur le déport et la courbe entraîne une dérive à compenser. La caméra suit la tangente lissée de la route avec une inclinaison du châssis limitée. Les filtres de commande avancent au pas physique ; la direction et la hauteur des petits sauts sont interpolées pour l’affichage. Les calibrages restent propres au prototype. [docs/DRIVING.md](docs/DRIVING.md) détaille les équations et les limites.
+La conduite reprend le déplacement latéral arcade : le volant agit sur le déport et la courbe entraîne une dérive à compenser. La caméra suit la tangente lissée de la route avec une inclinaison du châssis limitée. Les filtres de commande avancent au pas physique ; la direction et la hauteur des petits sauts sont interpolées pour l’affichage. La rotation du châssis en glisse possède une vitesse continue et une accélération plafonnée à 160°/s² pour adoucir l'entrée et la sortie du dérapage. Les calibrages restent propres au prototype. [docs/DRIVING.md](docs/DRIVING.md) détaille les équations et les limites.
 
 Pour déraper, braquer en maintenant **Maj** ou un bouton d’épaule de manette ; frein + braquage permet aussi l’entrée en glisse. Il faut rouler à plus d’environ **44 km/h** sur la route. Un relâchement volontaire après une glisse suffisamment longue donne une courte poussée, avec deux niveaux de charge. Sortie de route, saut physique ou ralentissement annulent la charge ; le frein coupe la poussée. Ce dérapage avec bonus est une adaptation ludique, sans équivalence démontrée dans Vroom original.
 
@@ -100,19 +100,23 @@ Les options graphiques proposent quatre préréglages et des réglages séparés
 | Herbe / vent | Faible / activé | Dense / activé |
 | Synchronisation / plafond | VSync / 60 images/s | VSync / 120 images/s |
 
+Les définitions 1440 × 900 et 2560 × 1664 utilisées pour les essais Mac désignent la sortie affichée. Avec le réglage interne de 70 %, elles ne correspondent pas à un rendu natif à ces définitions.
+
 Sur UE 5.8, **TAA correspond à `r.AntiAliasingMethod=2`** ; la valeur `3` correspond à MSAA. Les choix TAA et TSR du menu utilisent les constantes du moteur. Les préréglages Élevé et Ultra activent Lumen ; le coût dépend de la machine et de la définition. Ces plafonds restent des cibles. Les profils RTX 5090 ne disposent pas encore de mesures sur le PC pour cette version.
 
-Le ciel fixe est capturé sans recapture permanente. L’exposition est fixe et le flou de mouvement est désactivé par défaut. En plein écran fenêtré, la définition de sortie suit celle du bureau ; une sortie 4K ne garantit pas une cadence donnée.
+L’atmosphère et les teintes du décor varient avec le circuit, sans recapture permanente du ciel. L’exposition est fixe et le flou de mouvement est désactivé par défaut. En plein écran fenêtré, la définition de sortie suit celle du bureau ; une sortie 4K ne garantit pas une cadence donnée.
 
 Le cockpit et les bras sont de vrais volumes 3D. Les gants utilisent le modèle de main gauche OpenXR de **Valve Corporation**, sous sa licence jointe : **3 028 sommets et 4 899 triangles par main**, la droite étant obtenue par symétrie. La prise des doigts est calculée une fois sur les articulations du modèle. Les deux gants sont ensuite des composants distincts, dont la prise est fixée dans le repère du volant : sa rotation déplace et oriente ensemble la jante et les mains, sans recalcul squelettique à chaque image. `M_RacingGlove` utilise deux textures de couleur et de normales ; leurs sources sont en **4K**, avec une taille maximale de **2 048 pixels dans le package Mac**. Elles apportent le grain du cuir, les renforts et les coutures. [docs/ASSETS.md](docs/ASSETS.md) précise la préparation et l'attribution.
 
-Les mains tiennent la jante pendant le braquage, avec les dos des gants orientés vers le pilote et les pouces à l’intérieur. Le cadrage conserve le volant bas de la référence Amiga : **la main gauche monte dans un virage à droite, et la droite dans un virage à gauche**, tandis que l’autre peut passer sous le cadre. Les manches suivent les poignets. Les sept dessins Amiga guident la composition ; ils ne pilotent plus le placement des mains par interpolation de coordonnées d’écran. Cette prise 3D constitue une adaptation, sans correspondance pixel par pixel revendiquée. Les onze composants du cockpit et les rétroviseurs partagent le clignotement après remise en piste. [docs/COCKPIT_AMIGA.md](docs/COCKPIT_AMIGA.md) décrit ce placement et ses limites de validation ; [docs/AMIGA_ART.md](docs/AMIGA_ART.md) documente les dessins extraits.
+Les mains partagent la prise et la rotation de la jante pendant le braquage. La préparation réduit leur échelle à 1,05 et règle l’inclinaison locale des poignets à 80° pour rapprocher le neutre des sprites Amiga ; les valeurs proviennent de `driving_grip` dans `Content/Data/gloves.json`. Un ajustement local de 150 sommets maintient le dégagement autour de la jante. Les vues normales neutre, droite et gauche du package final ont été contrôlées, en complément des tests géométriques. Le cadrage conserve le volant bas de la référence Amiga : **la main gauche monte dans un virage à droite, et la droite dans un virage à gauche**, tandis que l’autre peut passer sous le cadre. Les manches suivent les poignets. Les sept dessins Amiga guident la composition ; ils ne pilotent plus le placement des mains par interpolation de coordonnées d’écran. Cette prise 3D constitue une adaptation, sans correspondance pixel par pixel revendiquée. Les onze composants du cockpit et les rétroviseurs partagent le clignotement après remise en piste. [docs/COCKPIT_AMIGA.md](docs/COCKPIT_AMIGA.md) décrit ce placement et ses limites de validation ; [docs/AMIGA_ART.md](docs/AMIGA_ART.md) documente les dessins extraits.
 
-Le bandeau de course est une interface **Canvas moderne, compacte et translucide**, avec contours arrondis, fond bleu nuit et accents cyan. Il conserve les informations inspirées de l’original : carte du circuit, trois voyants, Grand Prix, score, stage, tour, 27 repères de dépassement et jauge d’essence. Sa hauteur de référence est **112 pixels sur une fenêtre de 900 pixels de haut**, soit environ 12,4 %, avec une marge supérieure. Le grand boîtier 3D de 34 % n’est plus affiché. Les chronos et le retour de dérapage restent séparés ; les règles originales ne sont pas toutes reproduites.
+Le bandeau de course est une interface **Canvas moderne, compacte et translucide**, avec contours arrondis, fond bleu nuit et accents cyan. Il conserve les informations inspirées de l’original : carte du circuit, trois voyants, Grand Prix, score, stage, tour, 27 repères de dépassement et jauge d’essence. Sa hauteur de référence est **84 pixels sur une fenêtre de 900 pixels de haut**, soit environ 9,3 %, avec une marge supérieure. Les objectifs, le classement, les alertes pneus/essence et les indications de service complètent cette information. Le grand boîtier 3D de 34 % n’est plus affiché. Les chronos et le retour de dérapage restent séparés ; les règles originales ne sont pas toutes reproduites.
+
+Les matériaux de la scène et les primitives du HUD sont préparés sous l'écran **PRÉPARATION DU CIRCUIT**, chrono arrêté. Les lignes épaisses Canvas utilisent des quadrilatères en triangles et un état graphique statique pour éviter de recréer leurs configurations de rendu à chaque image. [PERFORMANCE.md](docs/PERFORMANCE.md) conserve le diagnostic et les mesures après correction.
 
 Les abords comprennent quatre publicités rétro en 2048 × 512, des panneaux séparés sur poteaux et jambes de force, douze stands détaillés et trois portiques métalliques. Le portique de signalisation se trouve devant la grille ; ses cinq colonnes de feux s'allument progressivement pendant le décompte et s'éteignent au départ. La ligne chronométrée conserve son origine. Les publicités sont des créations typographiques du prototype. Les poteaux, troncs, murs et structures ont des volumes de collision ; l’herbe, les feuillages, les peintures au sol et les images publicitaires sont exclus. Une sortie de piste ralentit progressivement. Un choc contre le décor peut casser les pneus et impose un retour lent sur le bitume, commandes bloquées, puis une reprise à l’arrêt. Les règles et leurs adaptations sont décrites dans [docs/COLLISIONS.md](docs/COLLISIONS.md).
 
-Les accotements portent des touffes d’herbe 3D à brins masqués, dont les pointes ondulent sous le vent. Le menu permet de couper l’herbe ou de choisir trois densités ; les distances de visibilité sont respectivement 30, 45 et 60 m. Les touffes sont instanciées et le vent est calculé par le matériau, sans déplacer les instances sur le CPU à chaque image. Les monoplaces utilisent désormais des meshes dédiés : nez effilé, pontons, cockpit ouvert, casque, suspensions, ailerons profilés et roues détaillées. `Tools/bootstrap_car_assets.py` génère **3 182 triangles par concurrent** ; les douze adversaires restent répartis dans quatre groupes instanciés, avec six livrées. Les arbres et bâtiments restent largement fondés sur des primitives, et la mini-carte reste en cache. Ce travail améliore les formes sans établir un rendu photoréaliste ni une copie exacte des voitures originales.
+Les accotements portent des touffes d’herbe 3D à brins masqués, dont les pointes ondulent sous le vent. Le menu permet de couper l’herbe ou de choisir trois densités ; les distances de visibilité sont respectivement 30, 45 et 60 m. Les touffes sont instanciées et le vent est calculé par le matériau, sans déplacer les instances sur le CPU à chaque image. Les monoplaces utilisent désormais des meshes dédiés : nez effilé, pontons, cockpit ouvert, casque, suspensions, ailerons profilés et roues détaillées. `Tools/bootstrap_car_assets.py` génère **3 182 triangles par concurrent** ; les douze adversaires restent répartis dans quatre groupes instanciés, avec six livrées. Les roues du joueur utilisent 40 segments, les supports de rétroviseurs rejoignent la coque hors du passage des pneus et le pourtour du cockpit reçoit carbone, rembourrage et fixations métalliques. Les arbres disposent de plusieurs silhouettes, les terrains et horizons reçoivent des profils artistiques propres aux circuits ; les bâtiments restent stylisés. La mini-carte reste en cache et masque les adversaires en solo. Ce travail améliore les formes sans établir un rendu photoréaliste ni une copie exacte des voitures originales.
 
 [docs/PERFORMANCE.md](docs/PERFORMANCE.md) et [docs/VALIDATION.md](docs/VALIDATION.md) consignent les mesures Mac datées, le build testé et leurs limites. Les anciennes mesures ne valident pas automatiquement un nouveau package ou un autre réglage graphique.
 
@@ -124,7 +128,7 @@ Tools/run_mac.command -ResX=3840 -ResY=2160
 
 Le menu prend en charge **NVIDIA DLSS 4.5 optionnel sur Windows**, avec le plugin compatible UE 5.8 : il détecte sa disponibilité et n’active que les modes pris en charge (DLAA, Qualité, Équilibré, Performance). Sans plugin utilisable, le rendu natif reste disponible. **DLSS n’est pas disponible sur ce Mac**, et aucune génération d’images ni DLSS 5 n’est activée. Les profils NVIDIA et leur installation sont détaillés dans [docs/RTX5090.md](docs/RTX5090.md).
 
-Le son utilise la banque `Content/Data/amiga_sound.bin` : moteur rééchantillonné selon le régime, crissement en glisse et impacts, mélangés en mono à 48 kHz. Une synthèse de secours prend le relais si la banque manque. Les moteurs adverses n’ont pas encore de son distinct.
+Le son utilise la banque `Content/Data/amiga_sound.bin` : moteur rééchantillonné selon le régime, crissement en glisse et impacts, mélangés en mono à 48 kHz. Une synthèse de secours prend le relais si la banque manque. Une couche stéréo ajoute les moteurs adverses, leur position gauche/droite, un décalage de hauteur lié au rapprochement, le bruit de surface et des retours de rapports et de charge de dérapage. Les volumes général, moteur et effets sont séparés. Les pneus laissent des traces temporaires et de la fumée selon la qualité des effets.
 
 
 ## Reconstruire et vérifier
@@ -139,14 +143,17 @@ Tools/build_mac.command --package
 
 `--editor` compile le module Editor et prépare les assets ; c'est le défaut. `--assets` ne recompile pas le C++, mais demande un module déjà utilisable. `--package` effectue ces deux étapes puis appelle `BuildCookRun` pour compiler, cuire, préparer et archiver une application **Mac Development** dans `Saved/Packages`. `--archive /chemin` change cette destination. Un package créé est un résultat local de développement ; ces commandes n'ajoutent pas de signature ou de notarisation de distribution. La carte, les matériaux, le mesh des touffes d’herbe et les données sous `Content/Data` sont inclus par la configuration de packaging.
 
-Tests portables (six suites C++17 strictes, 17 tests Python et audit des monoplaces), puis vérification du package Mac :
+Tests portables, puis vérification du package Mac et installation explicite :
 
 ```sh
 python3 Tools/test_portable.py
-python3 Tools/verify_mac.py --profile
+python3 Tools/verify_mac.py --profile --soak
+python3 Tools/install_mac.py --validation "Saved/Validation/v0.30.0/DOSSIER-DE-LA-SERIE/results.json"
 ```
 
-La seconde commande contrôle les poses du cockpit, l’interface, les voitures et quatre scénarios de collision, puis mesure deux parcours affichés et leur cadence. Les sorties sont conservées dans `Saved/Validation`. `--editor` limite la vérification aux poses du cockpit dans le module Editor déjà compilé.
+Remplacer le chemin de `results.json` par celui annoncé par le vérificateur. La vérification contrôle cockpit, interface, voitures, menus, persistance, service au stand et quatre scénarios de collision. Elle mesure deux définitions et, avec `--soak`, les six circuits pendant au moins deux minutes chacun, avec des seuils de cadence et de continuité du mouvement. Les rapports restent dans `Saved/Validation`. `--editor` limite les captures au module Editor et ne constitue pas une validation installable.
+
+L’installateur exige la série réussie complète et les empreintes du binaire et des données du package. Il conserve les versions sous `~/Library/Application Support/Vroom/Releases/`, écrit le manifeste `active.json` et prépare le lanceur stable `~/Applications/Vroom.app` ainsi que le raccourci du Bureau. Les builds seuls ne remplacent plus ce manifeste. Ces opérations locales ne constituent pas une signature ou une notarisation de distribution.
 
 La suite de conduite contrôle accélération, freinage jusqu'à l'arrêt, rapports, symétrie du volant, sens d'un virage, hors-piste, borne de vitesse, comportement à 60/120 Hz et entrées non finies. La suite de contacts contrôle notamment les seuils de vitesse relative, la réponse unique, le balayage entre états, les petits chocs, la casse centrale, le saut, l'atterrissage, la remise en piste et la protection temporaire. Leur réussite vérifie la cohérence des modèles, sans constituer une comparaison avec Vroom exécuté sur ST ou Amiga.
 
@@ -163,4 +170,4 @@ Tools/run_mac.command -VroomAutoDemo -VroomChaseCamera \
 
 ## Suite du travail
 
-L'édition de référence choisie est **Vroom Amiga**. Il reste à enregistrer des séquences de conduite reproductibles dans l'original, valider les courbes et le calibrage du relief en espace de conduite, puis comparer les commandes, temps, vitesses et trajectoires. La suite comprend l'affinement de la voiture et du cockpit, des décors crédibles, le son, les règles de course, pneus/carburant/moteur, les stands et la véritable intelligence artificielle. L'usage demandé est personnel ; aucune distribution ni vente n'est préparée.
+L'édition de référence choisie est **Vroom Amiga**. Il reste à enregistrer des séquences de conduite reproductibles dans l'original, valider les courbes et le calibrage du relief en espace de conduite, puis comparer les commandes, temps, vitesses et trajectoires. Les règles de course, le comportement réactif des adversaires, les stands et les nouveaux décors restent des adaptations à comparer à l’original. La suite concerne notamment le calibrage de la difficulté, la fidélité des trajectoires, la présentation, les périphériques matériels et les validations Windows/NVIDIA. L'usage demandé est personnel ; aucune distribution ni vente n'est préparée.

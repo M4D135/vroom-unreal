@@ -280,8 +280,10 @@ int main(int argc, char** argv)
     Run(drift, 0.12, {0.6, 0.7, 0.8});
     Check(drift.Drifting && drift.Skidding && drift.HopHeightM > 0.05,
           "brake plus steer at speed starts a hop-drift");
-    Check(std::abs(drift.VisualHeading()) > 0.04, "a drift shows chassis slip");
-    Run(drift, 0.4, {0.6, 0.7, 0.8});
+    Run(drift, 0.18, {0.6, 0.7, 0.8});
+    Check(std::abs(drift.VisualHeading()) > 0.04,
+          "a drift shows a readable chassis angle within 0.30 seconds while retaining yaw inertia");
+    Run(drift, 0.22, {0.6, 0.7, 0.8});
     Check(drift.DriftCharge > 0.4, "holding a drift charges a mini-turbo");
     const double beforeBoost = drift.State.SpeedMps;
     Run(drift, 0.35, {0.6, 0, 0});
@@ -388,6 +390,85 @@ int main(int argc, char** argv)
     }
     Check(largestYawStep < 0.035, "drift entry and exit do not snap the cockpit yaw");
     std::cout << "Drift entry/release maximum yaw step at 120 Hz: " << largestYawStep << " rad\n";
+    // The France soak exposed acceleration spikes from brake-triggered drift,
+    // despite small per-frame yaw steps and perfect frame cadence. Exercise the
+    // actual model, including rapid releases/countersteer, at each owner rate.
+    std::array<double, 4> responseAngles{}, settledAngles{};
+    std::array<Vroom::DriveState, 4> mixedFinalStates{};
+    int cadenceIndex = 0;
+    for (int cadence : {30, 60, 120, 240})
+    {
+        Vroom::DriveModel probe;
+        probe.Automatic = false;
+        probe.State.Gear = 4;
+        probe.State.SpeedMps = 40;
+        const double dt = 1.0 / cadence;
+        double previousYaw = 0, previousRate = 0, maxAcceleration = 0, maxAngle = 0;
+        double maxSettledRebound = 0, settledStart = 0;
+        for (int frame = 0; frame < cadence * 10; ++frame)
+        {
+            // Wide run-off lets repeated full-lock turns stay on the road;
+            // speed, tyres and lateral position follow the actual drive model.
+            Vroom::DriveInput held{0.6, 0, 1, false, false, true};
+            if (frame >= cadence * 3 && frame < cadence * 5) held.Steer = -1;
+            if (frame >= cadence * 5 && frame < cadence * 7) held = {0.6, 0, 0};
+            if (frame >= cadence * 7)
+            {
+                held.Drift = false;
+                held.Steer = ((frame / (cadence / 10)) % 2) ? -0.8 : 0.8;
+                held.Brake = ((frame / (cadence / 10)) % 2) ? 0 : 0.6;
+            }
+            probe.Step(held, dt, 0, 100);
+            const double yaw = probe.VisualHeading();
+            const double rate = (yaw - previousYaw) / dt;
+            maxAcceleration = std::max(maxAcceleration, std::abs(rate - previousRate) / dt);
+            maxAngle = std::max(maxAngle, std::abs(yaw));
+            if (frame + 1 == cadence * 3 / 10) responseAngles[cadenceIndex] = yaw;
+            if (frame + 1 == cadence * 2) settledStart = yaw;
+            if (frame >= cadence * 2 && frame < cadence * 3)
+                maxSettledRebound = std::max(maxSettledRebound, settledStart - yaw);
+            if (frame + 1 == cadence * 3) settledAngles[cadenceIndex] = yaw;
+            previousYaw = yaw;
+            previousRate = rate;
+        }
+        Check(maxAcceleration <= Vroom::DriveModel::MaxChassisSlipAcceleration + 1e-7,
+              "drift entry/release/countersteer/brake alternation keep bounded angular acceleration at every cadence");
+        Check(maxAngle < Vroom::DriveModel::DriftMaxSkidAngle,
+              "chassis brakes before its angle limits without requiring a discontinuous clamp");
+        Check(responseAngles[cadenceIndex] > 0.04,
+              "bounded chassis rotation is visibly established by 0.30 seconds at every cadence");
+        Check(maxSettledRebound < 1e-4 && settledAngles[cadenceIndex] > 0.3,
+              "sustained drift reaches its full angle without oscillation");
+        mixedFinalStates[cadenceIndex] = probe.State;
+        std::cout << "Slip at " << cadence << " Hz: acceleration "
+                  << maxAcceleration * 180 / 3.14159265358979323846 << " deg/s2; angle at 0.30s "
+                  << responseAngles[cadenceIndex] << "; settled " << settledAngles[cadenceIndex] << '\n';
+        ++cadenceIndex;
+    }
+    for (int i : {0, 1})
+    {
+        Check(std::abs(responseAngles[i] - responseAngles[2]) < 1e-12 &&
+              std::abs(settledAngles[i] - settledAngles[2]) < 1e-10,
+              "new chassis inertia is identical at 30/60/120 Hz");
+        Check(std::abs(mixedFinalStates[i].HeadingRad - mixedFinalStates[2].HeadingRad) < 1e-10 &&
+              std::abs(mixedFinalStates[i].LateralM - mixedFinalStates[2].LateralM) < 1e-9 &&
+              std::abs(mixedFinalStates[i].SpeedMps - mixedFinalStates[2].SpeedMps) < 1e-9,
+              "countersteer and alternating brake inputs preserve cadence-independent yaw and driving");
+    }
+    Check(std::abs(responseAngles[3] - responseAngles[2]) < .002 &&
+          std::abs(settledAngles[3] - settledAngles[2]) < .002,
+          "new chassis inertia converges at 240 Hz");
+    Vroom::DriveModel cancelledInertia;
+    cancelledInertia.State.SpeedMps = 40;
+    Run(cancelledInertia, .3, fullLockDrift, 0, 100);
+    const double cancelledAngle = cancelledInertia.VisualHeading();
+    cancelledInertia.CancelArcadeEffects();
+    Check(cancelledInertia.VisualHeading() == cancelledAngle,
+          "cancelling arcade effects preserves the current chassis pose");
+    cancelledInertia.State.Steering = 0;
+    cancelledInertia.Step({}, 1.0 / 120, 0, 100);
+    Check(cancelledInertia.VisualHeading() < cancelledAngle,
+          "cancelling arcade effects clears inherited angular momentum before resuming");
     Check(std::abs(Vroom::DriveModel::ArcadeWashLatMps(80, 0.0008 + 1e-8) -
                    Vroom::DriveModel::ArcadeWashLatMps(80, 0.0008 - 1e-8)) < 0.001,
           "crossing the small-curvature threshold cannot step the lateral wash");

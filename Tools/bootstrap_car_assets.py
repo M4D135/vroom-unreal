@@ -119,9 +119,8 @@ def ellipsoid(mesh, center, radii, material, longitude=14, latitude=7,
                       point(row + 1, col + 1), point(row, col + 1), material)
 
 
-def wheel(radius, width):
+def wheel(radius, width, segments=20):
     mesh = Geometry()
-    segments = 20
     profile = ((-.5 * width, .46 * radius), (-.5 * width, .84 * radius),
                (-.4 * width, radius), (.4 * width, radius),
                (.5 * width, .84 * radius), (.5 * width, .46 * radius))
@@ -130,7 +129,9 @@ def wheel(radius, width):
     for first, second in zip(rings, rings[1:]):
         for i in range(segments):
             j = (i + 1) % segments
-            mesh.quad(first[i], second[i], second[j], first[j], RUBBER)
+            # MeshDescription derives normals from cross(C-A, B-A). The
+            # opposite order culled the outside of the tyre, exposing its rim.
+            mesh.quad(first[i], first[j], second[j], second[i], RUBBER)
     for side in (-1, 1):
         y = side * width * .505
         outer = [(radius * .465 * math.cos(i * math.tau / segments), y,
@@ -142,15 +143,20 @@ def wheel(radius, width):
             j = (i + 1) % segments
             face = (outer[i], inner[i], inner[j], outer[j])
             mesh.quad(*(face if side < 0 else face[::-1]), ALLOY)
-            mesh.quad(inner[i], back[i], back[j], inner[j], ALLOY)
+            barrel = (inner[i], back[i], back[j], inner[j])
+            mesh.quad(*(barrel if side < 0 else barrel[::-1]), ALLOY)
         for spoke in range(5):
             angle = spoke * math.tau / 5
             face = []
             for r, a in ((5, angle - .26), (radius * .4, angle - .10),
                          (radius * .4, angle + .10), (5, angle + .26)):
                 face.append((r * math.cos(a), y - side * 1.5, r * math.sin(a)))
-            mesh.quad(*(face if side < 0 else face[::-1]), ALLOY)
-    rod(mesh, (0, -width * .52, 0), (0, width * .52, 0), 5.5, ALLOY, 10)
+            mesh.quad(*(face if side > 0 else face[::-1]), ALLOY)
+    # Keep the generic rod helper unchanged for the body assets. The wheel's
+    # closed hub needs outward-facing walls and caps under Unreal's winding.
+    hub = Geometry()
+    rod(hub, (0, -width * .52, 0), (0, width * .52, 0), 5.5, ALLOY, 10)
+    mesh.faces.extend((material, face[::-1]) for material, face in hub.faces)
     return mesh
 
 
@@ -221,12 +227,15 @@ def make_geometry():
         meshes[f"SM_F1Player{name}"] = player
         meshes[f"SM_F1Opponent{name}"] = opponent
     meshes["SM_F1FrontWing"] = front
-    meshes["SM_F1WheelFront"] = wheel(35, 38)
-    meshes["SM_F1WheelRear"] = wheel(38, 46)
+    # The player's close cockpit view needs a smooth tyre silhouette. Keep
+    # the shared opponent assembly at its existing distant-view budget.
+    meshes["SM_F1WheelFront"] = wheel(35, 38, segments=40)
+    meshes["SM_F1WheelRear"] = wheel(38, 46, segments=40)
+    opponent_front, opponent_rear = wheel(35, 38), wheel(38, 46)
     opponents_wheels = Geometry()
     for side in (-1, 1):
-        opponents_wheels.merge(meshes["SM_F1WheelFront"], (128, side * 91, 35))
-        opponents_wheels.merge(meshes["SM_F1WheelRear"], (-115, side * 96, 38))
+        opponents_wheels.merge(opponent_front, (128, side * 91, 35))
+        opponents_wheels.merge(opponent_rear, (-115, side * 96, 38))
     meshes["SM_F1OpponentWheels"] = opponents_wheels
     return meshes
 

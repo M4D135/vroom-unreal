@@ -313,6 +313,55 @@ public:
         return entry <= 1 && exit >= 0;
     }
 
+    // Continuous SAT for a translating oriented car against an oriented box.
+    // Inputs are expressed in the obstacle's local frame. Testing only that
+    // frame's three axes expands the rotated car to an AABB and incorrectly
+    // strikes narrow poles that are safely beside the car (notably pit bays).
+    static bool SweepOrientedObstacle(const std::array<double, 3>& previous,
+        const std::array<double, 3>& current, const std::array<double, 3>& obstacleHalf,
+        const std::array<std::array<double, 3>, 3>& carAxes, const std::array<double, 3>& carHalf,
+        double& fraction, std::array<double, 3>& normal)
+    {
+        for (int I = 0; I < 3; ++I)
+        {
+            if (!std::isfinite(previous[I]) || !std::isfinite(current[I]) || !std::isfinite(obstacleHalf[I])
+                || !std::isfinite(carHalf[I]) || obstacleHalf[I] < 0 || carHalf[I] < 0) return false;
+            for (double Value : carAxes[I]) if (!std::isfinite(Value)) return false;
+        }
+        const std::array<std::array<double, 3>, 3> boxAxes = {{{1,0,0},{0,1,0},{0,0,1}}};
+        auto Dot = [](const auto& A, const auto& B) { return A[0]*B[0] + A[1]*B[1] + A[2]*B[2]; };
+        double Entry = 0, Exit = 1, ClosestInitialFace = 1e100;
+        normal = {1,0,0};
+        auto AxisTest = [&](std::array<double, 3> Axis)
+        {
+            const double LengthSquared = Dot(Axis, Axis);
+            if (LengthSquared < 1e-16) return true; // Parallel cross product.
+            const double InvLength = 1.0 / std::sqrt(LengthSquared);
+            for (double& Value : Axis) Value *= InvLength;
+            double Radius = 0;
+            for (int I = 0; I < 3; ++I)
+                Radius += std::abs(Axis[I]) * obstacleHalf[I] + std::abs(Dot(Axis,carAxes[I])) * carHalf[I];
+            const double From = Dot(previous, Axis), To = Dot(current, Axis);
+            const double BeforeEntry = Entry;
+            if (!Slab(From, To, Radius, Entry, Exit)) return false;
+            const double Penetration = Radius - std::abs(From);
+            if (Entry > BeforeEntry || (Entry == 0 && Penetration < ClosestInitialFace))
+            {
+                if (Entry == 0) ClosestInitialFace = Penetration;
+                const double Sign = From + (To - From) * Entry >= 0 ? 1.0 : -1.0;
+                for (int I = 0; I < 3; ++I) normal[I] = Axis[I] * Sign;
+            }
+            return true;
+        };
+        for (const auto& Axis : boxAxes) if (!AxisTest(Axis)) return false;
+        for (const auto& Axis : carAxes) if (!AxisTest(Axis)) return false;
+        for (const auto& A : boxAxes)
+            for (const auto& B : carAxes)
+                if (!AxisTest({A[1]*B[2]-A[2]*B[1], A[2]*B[0]-A[0]*B[2], A[0]*B[1]-A[1]*B[0]})) return false;
+        fraction = Entry;
+        return Entry <= 1 && Exit >= 0;
+    }
+
     // World-space stand-in for tstcra/tcrcoo: nose 0.64 m (FRTCRH=64 cm) plus
     // car half-width 0.95 m against a roadside sprite/pole.
     static bool SceneryOverlap(double distanceM, double lateralM, double hazardS,

@@ -1,65 +1,135 @@
-# Validation — Vroom 0.22, 12 septembre 2026
+# Validation — Vroom 0.30
 
-## Build et portée
+## État du rapport final
 
-Unreal Engine 5.8, Mac Apple M5 avec 24 Go, cible arm64 Development. Le package 0.22 a été compilé, cuit et archivé : `Saved/Logs/vroom-package-v022.log` contient `BUILD SUCCESSFUL`, sortie AutomationTool 0, BuildCookRun terminé en 72,04 secondes. Le raccourci du Bureau choisit ce dernier package.
+**PASS — package Mac 0.30 installé et vérifié le 13 septembre 2026.** La série `Saved/Validation/v0.30.0/20260913-030921-package/results.json` est complète (`completed=true`), avec **31 cas réussis, aucun échec et toutes les sorties à zéro** : 22 scénarios fonctionnels/visuels, huit profils et une trace courte. Les six parcours longs confirment chacun un tour complet. Les mesures sont automatisées sous verrouillage (`onscreen_locked`, `interaction_verified=false`) ; elles ne constituent pas un essai interactif. L'installation a ensuite été contrôlée par deux lancements réels, depuis l'application native et le raccourci du Bureau.
 
-Les essais du package démarrent depuis `/tmp`. Les journaux et PNG sont conservés dans `Saved/Validation/v0.22.0/` ; le récapitulatif structuré est [validation-results.json](validation-results.json). Les images de contrôle utilisent `-RenderOffScreen -MetalOffscreenOnly`, combinaison vérifiée sous Mac/Metal. Elles ne mesurent pas la présentation à l'écran.
+La série finale couvre la correction des faces des roues, le précache PSO de la scène et du HUD Canvas, les lignes Canvas en quadrilatères à état statique, l'écran de préparation du circuit et l'inertie de rotation en dérapage limitée à 160°/s². Le dossier `Saved/Validation/v0.30.0/20260913-003243-package/` contient une série intermédiaire arrêtée sur un échec de cadence (`completed=false`) ; `Saved/Validation/v030/perf-diagnosis-repeat.json` décrit une répétition isolée également hors critères. Ils restent des preuves de diagnostic, sans certifier le package suivant. [PERFORMANCE.md](PERFORMANCE.md) conserve leurs mesures et la corrélation entre créations PSO lentes et pires images de la répétition.
 
-## Démarrage Mac
+La série suivante, `Saved/Validation/v0.30.0/20260913-015803-package/`, passe ses quatre profils de cadence exécutés, avec un maximum global de 23,080 ms. Elle reste **incomplète et en échec** : le tour France atteint 855,99°/s² d'accélération de lacet pour une limite de 300°/s² (`soak-track-2-camera`). Au pic, la glisse contribue 852,26°/s² et l'angle de route 3,73°/s². Le diagnostic identifie l'entrée en dérapage déclenchée par le frein automatique de 0 à 0,6 sous braquage, avec son saut programmé ; ce résultat n'établit pas une bosse de terrain. [PERFORMANCE.md](PERFORMANCE.md#diagnostic-intermédiaire--entrée-en-dérapage-en-france) détaille les mesures. La correction du modèle de conduite a été suivie d'un nouveau package et de la série finale complète. Aucun seuil n'a été assoupli et aucun profil de cet ancien binaire n'a été réutilisé pour certifier son remplaçant.
 
-Une première série a réussi onze scénarios, puis un lancement direct s’est arrêté avant le premier journal Unreal (`EXC_BAD_ACCESS`, 12 septembre à 19:15). Le rapport macOS pointe vers `FLLMTracker::PopTag`, via l’allocateur et LaunchServices. Le code UE 5.8 montre une désactivation du suivi mémoire à l’analyse de la ligne de commande, alors que des allocations Cocoa peuvent déjà avoir ouvert un scope. C’est l’explication retenue, sans modification du moteur.
+La série `20260913-024921-package` passe cinq profils (deux définitions, Autriche, France et États-Unis) avant une mesure Suède contaminée par le lancement et la compilation simultanés d'un autre projet Unreal, documentés dans [PERFORMANCE.md](PERFORMANCE.md#mesure-suède-perturbée-par-un-autre-projet-unreal). La reprise finale `030921` a réexécuté la Suède, puis le Japon, le Royaume-Uni et la trace courte. Les cinq profils réussis et les 22 cas précédents ont été conservés après vérification des empreintes identiques du package, des preuves et des mêmes critères. L'historique des rapports interrompus demeure dans le rapport final ; la mesure Suède contaminée n'a pas été transformée en réussite.
 
-Les lanceurs Mac et le vérificateur utilisent désormais `-LLM` pour conserver le suivi mémoire actif pendant le démarrage. Il s’agit du **Low Level Memory Tracker** d’Unreal, sans modèle de langage, collecte réseau, trace ou export CSV supplémentaire. Les mesures de cadence finales utilisent ce même réglage. Le lanceur livré a également réussi un démarrage natif suivi de l’arrêt automatique et de la vérification `PASS`. Un lancement direct de l’application sans le lanceur ne reçoit pas ce contournement.
+| Preuve finale | Résultat |
+|---|---|
+| Build | `Saved/Logs/vroom-stable-lines-package.log` : `BuildCookRun` 61,62 s, `ExitCode=0` |
+| Rapport / machine | Série `20260913-030921-package`, 13 septembre 2026, Mac Apple M5, 24 Go, UE 5.8 / Metal / Development |
+| Binaire et données | SHA-256 binaire ci-dessous, 28 fichiers de données identifiés dans le rapport |
+| Tests portables | **21/21 PASS**, `Saved/Validation/v030/release-portable-final.log` |
+| Scénarios et captures | **22/22 PASS**, pneus fermés et panneau graphique vérifiés dans les images normales |
+| Cadence | **8/8 PASS**, P99 maximal 17,4814 ms, pic maximal 22,8332 ms |
+| Continuité et fermeture | Six tours complets + trace courte PASS ; 31 processus sortis à zéro, dont la persistance |
+| Préparation | Canvas prête et `pending=0` dans les huit profils ; étape mesurée de 0,056 à 0,102 s ; aucun message PSO lent |
+| Installation et lancement de la version active | **PASS**, `installation-final.log` et `installed-launch-checks.json` sous `Saved/Validation/v030` ; lanceur natif et Bureau vérifiés |
 
-## Cockpit et interface
+SHA-256 du binaire mesuré : `3094777016a987055bf8f3a733db00faeaed47c71f96e372effb28108ec1bab0`. Le récapitulatif [validation-results.json](validation-results.json) et les images publiées doivent correspondre à cette série et à cette empreinte ; les captures anciennes ne certifient pas automatiquement ce package. Les huit profils détaillés et les sept traces de mouvement sont dans [PERFORMANCE.md](PERFORMANCE.md#résultats-du-package-final).
 
-La racine du cockpit reste à 62 cm, caméra inchangée. Les mains utilisent désormais une prise fixe dans le repère du volant : position et rotation suivent exactement son angle. Le gant ne glisse plus entre des coordonnées d’écran indépendantes de la jante. Les sept dessins Amiga restent des références de composition, sans pilotage direct du maillage. La main gauche monte en braquant à droite, et inversement ; la prise opposée peut sortir du cadre.
+## Procédure reproductible
 
-Les articulations proximales des quatre doigts sont adaptées à leurs longueurs (20°, 10°, 5°, 0° supplémentaires), puis leurs phalanges se referment autour de la prise. Le pouce est également fléchi. Les poignets sont inclinés vers le pilote autour de l’axe de prise, avec le dos des gants visible. Les manches suivent leurs transformations sans quantification du braquage.
+La cible Mac préparée est Unreal Engine 5.8, Apple Silicon, configuration Development. La machine de travail est un Mac Apple M5 avec 24 Go ; la machine et les réglages effectivement mesurés doivent être rappelés dans le résultat final.
 
-Les poses neutre, petit braquage, braquage moyen, plein gauche/droit et la vue rapprochée de contrôle ont été inspectées dans l’éditeur. Les mêmes poses ont été capturées dans le package final, dont le neutre a été réinspecté. Le résultat ne prétend pas reconstruire exactement l’anatomie ni les sprites : il reste des recouvrements locaux de maillages dans l’épaisseur des doigts et à la base du pouce, masqués en grande partie par la jante. La silhouette et l’appui sont contrôlés visuellement ; aucune simulation de pression de la main n’est implémentée.
+Les journaux des profils avant et après précache confirment le profil fluide suivant :
 
-Le bandeau Canvas mesure 112 pixels dans l'espace 1440 × 900. Carte, voyants, circuit, score, stage, tour, 27 repères de dépassement et essence sont présents, dans un panneau translucide. Les monoplaces possèdent 10 meshes dédiés et 5 matériaux, six livrées pour les adversaires ; l'audit donne 3 182 triangles par concurrent, répartis en quatre groupes d'instances.
-
-Le menu graphique a été contrôlé au clavier : navigation, changement d'option, annulation, application puis relancement. Le réglage d'ombres désactivé a été retrouvé après relancement ; le préréglage Performance a ensuite été rétabli et sauvegardé. L'automatisation des clics natifs a échoué côté outil : le parcours souris n'est pas validé de bout en bout.
-
-## Route et accidents
-
-La route fait 9,5 m, contre 12 m précédemment. Cette restitution de proportions correspond à 3,96 nouvelles voitures de large, à rapprocher du rapport nominal 512/132 dans les sources originales. Ce n'est pas une mesure métrique retrouvée de l'Amiga. Le damier et les accotements suivent cette largeur.
-
-Les scénarios petit contact, casse, saut sur pneu et choc contre un pilier réel vérifient chacun un seul contact. Petit choc : aucune récupération ; les trois autres : une récupération terminée, zéro erreur de visibilité. Dans le scénario décor, le choc observé arrive à 95,9 km/h, à 8,5 m du centre ; après immobilisation, le retour dure 3,37 s et la voiture reprend à 0 km/h. Les concurrents et le chronomètre continuent. Les portiques sont testés par volume 3D : les piliers sont solides, la traverse haute reste franchissable.
-
-## Tests portables
-
-Six suites C++17 compilées avec `-Wall -Wextra -Werror -pedantic -O2` : conduite, contacts, relief, tracé, cadence et dépassements. Toutes passent, ainsi que huit tests Python de relief, six de l’installateur NVIDIA et trois de l’analyseur de cadence (17 au total). L'audit géométrique des dix meshes passe.
-
-La réponse de direction mesurée atteint 90 % en 108,33 ms, revient à 10 % en 58,33 ms et traverse le neutre au contrebraquage en 25 ms. Les tests couvrent la cadence 30/60/120 Hz, la convergence à 240 Hz, la conservation de phase après retard, les dépassements et la remise en piste progressive.
-
-## Vérification reproductible du package
-
-```sh
-python3 Tools/test_portable.py --log Saved/Validation/v022/portable-tests.log
-python3 Tools/verify_mac.py --profile
+```text
+Graphics applied scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0
 ```
 
-Le second script contrôle 13 captures et scénarios, puis lance deux mesures à l’écran de 1 800 images chacune et une trace de mouvement de 25 secondes. Il exige les résolutions attendues et les compteurs de scénario. Les 120 premières images des profils sont exclues ; les lignes de métadonnées CSV ne sont pas des images. Les pics réels restent comptabilisés. Les résultats chiffrés du paquet sont inscrits ci-dessous après exécution.
+Il utilise une **résolution interne de 70 %**, TAA, ombres faibles, éclairage ambiant, reflets désactivés, végétation clairsemée et vent actif, effets moyens, flou désactivé, limite de 60 images/s et VSync active. **1440 × 900 et 2560 × 1664 désignent les fenêtres de sortie, pas un rendu interne natif à ces définitions.** Ce sont les réglages réellement chargés dans les huit profils réussis.
 
-Les **16 essais de la série finale réussissent**, avec le suivi mémoire confirmé actif dans les journaux : 13 captures/scénarios, deux profils à l’écran et une trace de mouvement. Le préréglage Performance est chargé : TAA, résolution interne 70 %, 60 i/s, VSync. Les définitions effectives sont confirmées dans les métadonnées du moteur.
+```sh
+Tools/build_mac.command --package
+python3 Tools/test_portable.py --log Saved/Validation/v030/portable-tests.log
+python3 Tools/verify_mac.py --profile --soak
+python3 Tools/install_mac.py --validation "Saved/Validation/v0.30.0/DOSSIER-DE-LA-SERIE/results.json"
+```
 
-| Fenêtre | Débit moyen | P95 | P99 | Maximum | Images > 20 ms | GPU moyen |
-|---|---:|---:|---:|---:|---:|---:|
-| 1440 × 900 | 59.99 i/s | 16.800 ms | 16.862 ms | 18.385 ms | 0/1680 | 5.865 ms |
-| 2560 × 1664 | 59.99 i/s | 16.857 ms | 16.943 ms | 20.800 ms | 1/1680 | 13.797 ms |
+Le chemin de la dernière commande est celui annoncé par le vérificateur. Un dossier daté est créé pour chaque série sous `Saved/Validation/v0.30.0/`. Les processus de jeu démarrent depuis `/tmp`, indépendamment du répertoire courant du développeur. Les journaux d'origine sont sous le conteneur utilisateur Mac, dans `Documents/VroomVerification`, puis copiés dans la série du clone avec les PNG, CSV et le JSON récapitulatif.
 
-Sources : `Profile(20260912_192356).csv`, `Profile(20260912_192428).csv`.
+Ne pas lancer de compilation, de génération de ressources ou de capture supplémentaire pendant les profils de cadence. Un build seul ne remplace pas le package actif du lanceur.
 
-La trace distincte de 25 secondes contient 1375 échantillons après préparation : aucun retour de distance, aucune valeur non finie ; variation de lacet maximale 0.571° par image. Le pic de 20,800 ms en grande définition reste comptabilisé ; il n’est pas effacé ni remplacé par une meilleure série.
+Le vérificateur contrôle l'activation des fenêtres par PID avec `Tools/activate_mac.m` et conserve le résultat `foreground` dans le rapport. Un premier essai de diagnostic a indiqué `foreground_before=1 foreground_after=1`, donc une application déjà active. Ce contrôle supplémentaire n'établit pas que l'arrière-plan ou App Nap était la cause des pics résiduels.
 
-Captures du package : [neutre](preview/cockpit-neutral.png), [braquage droit](preview/cockpit-right.png). Le champ de caméra rapproché utilisé pour inspecter les prises est uniquement une option de contrôle.
+La série intermédiaire `20260913-023133-package` a passé ses 22 scénarios, puis s'est arrêtée sur l'activation de `perf-1440` alors que macOS était verrouillé (`locked=1`, `onConsole=1`, premier plan occupé par `loginwindow`). Elle reste incomplète. Le vérificateur enregistre maintenant `display_mode=onscreen_locked` lorsque ce verrouillage est constaté, et peut poursuivre les mesures automatiques en fenêtre, avec les seuils FPS et mouvement inchangés. Les autres états sont `onscreen_active` et `onscreen_unconfirmed` ; une activation non confirmée sans verrouillage prouvé reste en échec. **La série finale utilise `onscreen_locked` et conserve `interaction_verified=false`** : les profils automatisés ne constituent pas un essai interactif, et un profil sous verrouillage ne prouve pas la présentation visible au joueur.
+
+## Scénarios du vérificateur
+
+`Tools/verify_mac.py` applique les cas suivants au package, avec `-VroomVerify` :
+
+| Cas | Ce que le programme contrôle |
+|---|---|
+| `progress-data` | Sauvegarde et relecture isolées des records, historique, échantillons du fantôme, interpolation du delta, rejet d'un format invalide et copie précédente ; le processus doit aussi se fermer normalement |
+| `menu-flow` | Rectangles des menus aux trois formats et dans les trois modes, actions réelles démarrer/pause/reprise/menu et ouvrir/fermer les graphismes, échange et rejet d'attributions de touches, bornes des préférences et annulation |
+| `pit-service` | Service complet avec accélérateur maintenu, immobilisation pendant le service, restauration des consommables, reprise et poursuite du chrono/adversaires |
+| `drift-feedback` | Scénario de glisse et présence du résultat `Drift feedback PASS`, avec capture rapprochée dans le temps du retour visuel |
+| `collision-slow`, `collision-crash`, `collision-tyre`, `collision-scenery` | Compteurs de contact, casse/saut et remise en piste, dont un choc contre un élément solide du décor |
+| Six poses cockpit | Neutre, droite, gauche, petit braquage, braquage moyen et vue rapprochée de contrôle |
+| `neutral-16x9`, `cars`, `options` | Neutre en 1600 × 900, monoplaces et panneau graphique |
+| `session-qualifying`, `session-results`, `session-arcade`, `session-pit`, `session-controls` | États préparés pour vérifier la présentation des qualifications, résultats, objectif Arcade, stands et commandes |
+
+Les états `session-*` sont synthétiques : leur présence ne prouve pas qu'une course complète a été jouée. Les auto-tests de menus passent par le code des actions et des zones, sans constituer une manipulation physique de la souris ou d'une manette.
+
+Chaque processus doit annoncer la bonne version, sortir avec le code zéro et fournir ses compteurs attendus. Un message `PASS` suivi d'un crash à la fermeture échoue donc à la vérification. Le script rejette les erreurs de compilation de matériaux qu'il reconnaît. Les captures doivent avoir les dimensions demandées.
+
+Le cas `options` ouvre le panneau par la même action que le menu, une seule fois après création effective du circuit. Le script exige `Graphics preview PASS`, émis uniquement si l'état graphique est ouvert. La revue de `options.png` doit en plus confirmer qu'il montre les lignes de qualité et les boutons Appliquer/Annuler, plutôt que le menu de départ. Les captures de jeu ne sont demandées qu'après la fin de la préparation du circuit ; ce report ne change pas le début des enregistrements CSV.
+
+Les images emploient `-RenderOffScreen -MetalOffscreenOnly`. Elles permettent d'inspecter le rendu, **sans mesurer sa présentation à l'écran**. Les profils de cadence utilisent le rendu en fenêtre, avec l'état d'activation ou de verrouillage consigné ci-dessus, et ne produisent pas de PNG pendant la mesure.
+
+## Cadence et continuité du mouvement
+
+La commande `--profile --soak` ajoute huit profils CSV : deux de 1 800 images en **1440 × 900** et **2560 × 1664**, puis six de 7 800 images en **1440 × 900**, un par circuit. Une trace distincte de 25 secondes contrôle également le mouvement. Chaque CSV commence à l'image zéro et exclut exactement ses 120 premières images ; les lignes de métadonnées ne sont pas comptées comme des images. Même si la préparation du circuit dure davantage, les images au-delà de cette exclusion restent analysées. Aucun seuil, nombre d'images ou délai d'exclusion n'a été élargi pour le correctif PSO.
+
+Le précache natif collecte les matériaux des composants procéduraux et attend la fin de compilation avant de créer leurs proxies. Le HUD prépare aussi ses primitives Canvas et ses polices sur la vraie cible de sortie, avec une synchronisation du thread RHI. L'écran « PRÉPARATION DU CIRCUIT » bloque la simulation et les entrées jusqu'à disparition des travaux natifs, des travaux des composants et de cette préparation Canvas, suivie de trois images de disponibilité. Le chrono ne progresse pas pendant cette attente et l'état de pause précédent est restauré. Vérifier ce comportement au chargement, au début/changement de course et après fermeture des graphismes, avec les messages `Canvas PSO preparation submitted/ready` dans les journaux.
+
+Chaque profil active `LogPSOHitching Verbose` afin d'identifier les ressources, passes et statuts de précache concernés par une création lente. Les messages `Circuit preparation started/ready` et leur durée accompagnent les compteurs CSV `PSO/GraphicsPSOHitch`, `PSO/GraphicsPSOHitchTime` et les attentes des threads lorsqu'ils sont présents. Ils servent au diagnostic ; aucun seuil supplémentaire de zéro création PSO n'est imposé. La réussite reste conditionnée par tous les critères de cadence et de continuité ci-dessous.
+
+Les parcours longs utilisent `-VroomTourDemo -VroomMotionTrace`. Ils exigent le marqueur d'un tour complet de chaque circuit. Cette conduite assistée ignore les contacts : elle couvre le tracé, le rendu et la continuité de caméra ; les collisions sont vérifiées séparément.
+
+Les seuils de publication proviennent de [Tools/regression_gates.py](../Tools/regression_gates.py) :
+
+| Mesure | Condition exigée |
+|---|---:|
+| Nombre de lignes d'images du CSV | Exactement 1 800 ou 7 800 selon le cas |
+| Images invalides après préparation | Aucune |
+| Cadence moyenne | Au moins 59,0 images/s |
+| 99e percentile du temps d'image | Au plus 18,0 ms |
+| Plus grande durée d'image | Au plus 33,5 ms |
+| Part d'images dépassant 20 ms | Au plus 0,5 % |
+| Trace de mouvement courte | Au moins 1 000 échantillons analysés et valides |
+| Trace de chaque parcours long | Au moins 7 000 échantillons analysés et valides |
+| Retour de distance affichée sur les parcours assistés | Aucun |
+| Plus grande variation de lacet entre deux images | Au plus 3,0° |
+| Plus grande accélération de lacet absolue | Au plus 300°/s² |
+
+Ce sont des **critères à satisfaire**, pas des mesures obtenues. Ils sont destinés au profil Mac visant 60 Hz. Une moyenne seule ne suffit pas : percentiles, maxima, excursions au-delà de 20 ms et continuité sont évalués séparément. La procédure ne relaxe pas silencieusement les seuils après un échec.
+
+La série finale analyse **49 440 images**, dont trois au-delà de 20 ms, sans donnée d'image invalide. Les moyennes vont de **59,9831 à 59,9870 images/s**. La plus grande accélération de lacet des six tours est **219,37°/s²**, sous la limite de 300°/s² ; aucune trace ne présente de donnée analysée invalide ni de recul de distance. [PERFORMANCE.md](PERFORMANCE.md#résultats-du-package-final) donne les huit lignes de résultats, les noms de CSV, les sept traces et leurs limites.
+
+## Points de contrôle visuels de la 0.30
+
+Le cockpit de référence et les ajustements de prise sont décrits dans [COCKPIT_AMIGA.md](COCKPIT_AMIGA.md). Il faut inspecter le contact des doigts avec la jante, le sens des mains et leurs transitions ; les tests numériques ne certifient pas seuls leur apparence. Les vues cockpit normales restent distinctes de `inspect-neutral`, vue technique rapprochée qui ne représente pas le cadrage de jeu. Le bandeau est haut de 84 pixels dans l'espace de référence 1440 × 900. Ses informations changent selon le mode : dépassements Arcade, positions Grand Prix, objectif de qualification et référence Chrono.
+
+Les roues montrent une enveloppe de pneu fermée, sans jante ni moyeu visibles à travers la bande de roulement dans les vues normales contrôlées. Le correctif du sens des faces passe les quatre tests de [car_wheel_surfaces_test.py](../Tests/car_wheel_surfaces_test.py) ; les captures normales neutre, droite et gauche du package final conservent les petits rétroviseurs bas devant les pneus. Le panneau `options.png` présente bien la page Graphismes avec ses réglages et Appliquer/Annuler. Les mains restent placées sur la jante et suivent son sens de rotation dans les poses contrôlées ; des images fixes ne certifient pas tous les instants d'une animation.
+
+Le résultat Grand Prix comporte un classement de treize pilotes dans un panneau de 1 060 × 570 pixels. Vérifier sa lisibilité, les points et les boutons sur les formats testés. Les aides de service doivent être réservées aux modes qui autorisent les stands. Le fantôme, les traces de pneus, la fumée, le son stéréo et les décors demandent eux aussi une observation adaptée : leur existence dans le code ne garantit pas à elle seule leur qualité perceptive.
+
+## Fermeture et lancement Mac
+
+Les lanceurs et le vérificateur passent `-LLM` afin de conserver le **Low Level Memory Tracker d'Unreal** actif pendant l'initialisation Cocoa. Ce réglage n'active aucun modèle de langage ni service réseau. Un lancement direct du binaire avec d'autres arguments n'est pas automatiquement couvert par les essais du lanceur.
+
+Une série de développement de la 0.30 a révélé une fermeture anormale après le `PASS` du test de progression : le rapport macOS identifiait la destruction tardive d'une `TSharedFuture` renvoyant un événement dans un pool déjà détruit. Le code libère maintenant la future après son attente dans `OnPreExit`. **Le scénario `progress-data` du package final réussit et sort avec le code zéro**, comme les 30 autres cas ; la validation inclut donc la fermeture du processus, pas seulement le succès du test interne.
+
+## Installation liée au rapport
+
+Le vérificateur enregistre les SHA-256 du binaire et des fichiers cuisinés, puis vérifie qu'ils n'ont pas changé pendant la série. `completed` ne devient vrai qu'après la fin de tous les contrôles demandés.
+
+`Tools/install_mac.py` refuse un rapport d'éditeur, incomplet ou en échec, ainsi qu'un package différent du rapport. Il réévalue les seuils, exige au moins huit profils, les six circuits complets, la trace finale de mouvement, les scénarios requis et leurs sorties réussies. La commande complète ci-dessus fournit les deux profils de définition et les six profils de circuit. Les empreintes des données doivent aussi correspondre.
+
+Les versions installées restent dans `~/Library/Application Support/Vroom/Releases/`. Le manifeste `active.json` désigne celle à lancer ; `~/Applications/Vroom.app` et `~/Desktop/Vroom.command` constituent les entrées stables. Les anciennes versions sont conservées. Cette installation locale n'est pas une notarisation de distribution.
+
+La version finale est installée dans **`~/Library/Application Support/Vroom/Releases/0.30.0-9dc508f3fb51/Vroom.app`**. `Saved/Validation/v030/installation-final.log` confirme la mise à jour du lanceur et du manifeste. `Saved/Validation/v030/installed-launch-checks.json` confirme les deux démarrages, natif et Bureau : lanceur sorti à zéro, `Version 0.30`, `Verification PASS` et fermeture normale `LogExit: Exiting.` dans les deux cas. Ces lancements vérifient l'installation et l'arrêt ; ils ne constituent pas une session interactive de course.
 
 ## Limites
 
-Le support NVIDIA est conditionnel au plugin officiel DLSS 4.5 pour UE5.8 sous Windows RTX. Aucun test Windows/RTX ni activation DLSS n'a été effectué sur ce Mac ; DLSS n'est pas disponible sur Metal. Il n'y a pas de DLSS 5 fictif ni de génération d'images intégrée.
+Le build Windows, le rendu RTX et l'activation du plugin DLSS restent non validés sur le matériel cible. Aucun essai Mac ne les remplace. Le DLSS n'est pas disponible sur Metal.
 
-Les graphiques restent stylisés, l'IA suit des voies prédéfinies et les règles complètes du jeu original restent inachevées. Les observations concernent les poses, les formats et les parcours effectivement testés. Elles ne garantissent pas tous les circuits, les longues sessions, le démarrage à froid ni la 4K. Les anciens chiffres de cadence ne certifient pas ce package.
+Les contrôles de menus ne prouvent pas la compatibilité matérielle d'une manette. Les parcours de deux minutes et plus ne garantissent pas des sessions de plusieurs heures, le démarrage avec tous les caches froids, les autres réglages graphiques ou la 4K. Une comparaison exécutée de bout en bout dans Vroom Amiga reste distincte de cette validation technique du remake.

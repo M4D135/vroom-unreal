@@ -16,6 +16,8 @@ param(
     [string]$ArchiveDirectory,
     [string]$EngineRoot = $env:VROOM_UE_ROOT,
     [switch]$Editor,
+    [ValidateSet('Development','Shipping')][string]$Configuration = 'Development',
+    [string]$ExpectedVersion,
     [ValidateRange(320, 16384)][int]$Width = 3840,
     [ValidateRange(200, 16384)][int]$Height = 2160,
     [switch]$Windowed,
@@ -29,6 +31,7 @@ try {
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw 'Ce lanceur demande Windows x64.' }
     $ProjectDir = (Resolve-Path -LiteralPath $ProjectDir).Path
     $LaunchArguments = @()
+    if ($Editor -and $ExpectedVersion) { throw "ExpectedVersion controle le package natif; retirer -Editor pour ce controle." }
     if ($Editor) {
         if ([string]::IsNullOrWhiteSpace($EngineRoot)) { $EngineRoot = Join-Path $env:ProgramFiles 'Epic Games\UE_5.8' }
         $EngineRoot = (Resolve-Path -LiteralPath $EngineRoot).Path
@@ -44,17 +47,24 @@ try {
         if ([string]::IsNullOrWhiteSpace($ArchiveDirectory)) { $ArchiveDirectory = Join-Path $ProjectDir 'Saved\Packages\Win64' }
         elseif (-not [IO.Path]::IsPathRooted($ArchiveDirectory)) { $ArchiveDirectory = Join-Path $ProjectDir $ArchiveDirectory }
         $ArchiveDirectory = [IO.Path]::GetFullPath($ArchiveDirectory)
-        $Candidates = @('Windows\Vroom.exe', 'WindowsNoEditor\Vroom.exe', 'Vroom.exe')
+        $NativeName = if ($Configuration -eq 'Shipping') { 'Vroom-Win64-Shipping.exe' } else { 'Vroom.exe' }
+        $Candidates = @("Windows\Vroom\Binaries\Win64\$NativeName", "WindowsNoEditor\Vroom\Binaries\Win64\$NativeName", "Vroom\Binaries\Win64\$NativeName")
         $Found = @($Candidates | ForEach-Object { Join-Path $ArchiveDirectory $_ } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
-        if ($Found.Count -eq 0) { throw "Package Windows absent dans $ArchiveDirectory. Lancer build_windows.ps1, ou utiliser -Editor." }
+        if ($Found.Count -ne 1) { throw "Binaire natif $Configuration absent ou ambigu dans $ArchiveDirectory. Lancer build_windows.ps1 ou choisir la Configuration construite." }
         $Executable = $Found[0]
+        if ($ExpectedVersion) {
+            $Manifest = Get-Content -LiteralPath (Join-Path $ArchiveDirectory 'vroom-build.json') -Raw | ConvertFrom-Json
+            if ($Manifest.version -ne $ExpectedVersion) { throw 'Le manifeste du package ne correspond pas a ExpectedVersion.' }
+            $Hash = (Get-FileHash -LiteralPath $Executable -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($Hash -ne $Manifest.executable_sha256) { throw 'Le binaire a change depuis le manifeste du package.' }
+        }
         $WorkingDirectory = Split-Path -Parent $Executable
     }
     if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) { throw "Executable absent : $Executable" }
-    $LaunchArguments += @('-d3d12', "-ResX=$Width", "-ResY=$Height", '-NoSplash')
+    $LaunchArguments += @('-d3d12', "-ResX=$Width", "-ResY=$Height", '-ForceRes', '-NoSplash')
     if ($Windowed) { $LaunchArguments += '-windowed' } else { $LaunchArguments += '-fullscreen' }
     foreach ($Argument in $GameArguments) {
-        if ($Argument -match '^-(ResX|ResY|windowed|fullscreen|d3d11|d3d12|dx11|dx12|vulkan)(=|$)') {
+        if ($Argument -match '^-(ResX|ResY|ForceRes|windowed|fullscreen|d3d11|d3d12|dx11|dx12|vulkan)(=|$)') {
             throw 'Utiliser Width/Height/Windowed pour la presentation ; ce lanceur RTX Windows impose DX12.'
         }
     }

@@ -19,13 +19,8 @@ import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CPP_TESTS = (
-    "drive_model", "contact_model", "elevation_model", "track_preview",
-    "frame_timing", "overtake",
-)
-PYTHON_TESTS = (
-    "track_elevation", "nvidia_installer", "analyze_performance",
-)
+CPP_TESTS = tuple(p.name.removesuffix('_test.cpp') for p in sorted((ROOT / 'Tests').glob('*_test.cpp')))
+PYTHON_TESTS = tuple(p.name.removesuffix('_test.py') for p in sorted((ROOT / 'Tests').glob('*_test.py')))
 CPP_FLAGS = ("-std=c++17", "-Wall", "-Wextra", "-Werror", "-pedantic", "-O2")
 
 

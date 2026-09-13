@@ -89,7 +89,7 @@ try {
         throw "Generateur absent : $Bootstrap"
     }
     if ($Mode -eq 'Package') {
-        foreach ($Asset in @('Content\Maps\Circuit.umap', 'Content\Materials\M_Asphalt.uasset', 'Content\Data\tracks.json')) {
+        foreach ($Asset in @('Content\Maps\Circuit.umap', 'Content\Materials\M_Asphalt.uasset', 'Content\Data\tracks.json', 'Content\Data\gloves.json', 'Content\Meshes\SM_EnvironmentBroadleaf.uasset', 'Content\Materials\M_EnvironmentGround.uasset')) {
             if (-not (Test-Path -LiteralPath (Join-Path $ProjectDir $Asset) -PathType Leaf)) {
                 throw "Asset absent : $Asset. Recuperer les assets versionnes ou lancer -Mode Assets."
             }
@@ -113,7 +113,28 @@ try {
             $Candidates = @('Windows\Vroom.exe', 'WindowsNoEditor\Vroom.exe', 'Vroom.exe')
             $Built = @($Candidates | ForEach-Object { Join-Path $ArchiveDirectory $_ } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
             if ($Built.Count -eq 0) { throw "UAT termine mais lanceur Vroom.exe non trouve dans $ArchiveDirectory. Examiner la sortie UAT." }
+            $NativeName = if ($Configuration -eq 'Shipping') { 'Vroom-Win64-Shipping.exe' } else { 'Vroom.exe' }
+            $NativeCandidates = @("Windows\Vroom\Binaries\Win64\$NativeName", "WindowsNoEditor\Vroom\Binaries\Win64\$NativeName", "Vroom\Binaries\Win64\$NativeName")
+            $Native = @($NativeCandidates | Where-Object { Test-Path -LiteralPath (Join-Path $ArchiveDirectory $_) -PathType Leaf })
+            if ($Native.Count -ne 1) { throw 'Le binaire natif du jeu est absent ou ambigu; aucun manifeste de validation ne sera cree.' }
+            $VersionLine = @(Select-String -LiteralPath (Join-Path $ProjectDir 'Config\DefaultGame.ini') -Pattern '^ProjectVersion=(.+)$')
+            if ($VersionLine.Count -ne 1) { throw 'ProjectVersion manquant ou ambigu.' }
+            $SourceFiles = @(foreach ($Directory in @('Source', 'Config', 'Content')) {
+                Get-ChildItem -LiteralPath (Join-Path $ProjectDir $Directory) -File -Recurse | Sort-Object FullName | ForEach-Object {
+                    @{ path = $_.FullName.Substring($ProjectDir.Length + 1).Replace('\','/'); sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
+                }
+            })
+            $Manifest = @{
+                schema_version = 1; version = $VersionLine[0].Matches[0].Groups[1].Value.Trim()
+                engine_version = "$($Version.MajorVersion).$($Version.MinorVersion).$($Version.PatchVersion)"
+                configuration = $Configuration; platform = 'Win64'; built_utc = [DateTime]::UtcNow.ToString('o')
+                executable = $Native[0].Replace('\','/')
+                executable_sha256 = (Get-FileHash -LiteralPath (Join-Path $ArchiveDirectory $Native[0]) -Algorithm SHA256).Hash.ToLowerInvariant()
+                source_files = $SourceFiles
+            }
+            $Manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $ArchiveDirectory 'vroom-build.json') -Encoding UTF8
             Write-Host "Package $Configuration cree : $($Built[0])"
+            Write-Host 'Manifeste natif et empreintes : vroom-build.json. Verification Windows reste a executer.'
         } else {
             Write-Host 'Module Editor construit. run_windows.ps1 -Editor permet de jouer sans nouveau build.'
         }

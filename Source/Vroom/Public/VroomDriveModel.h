@@ -131,6 +131,10 @@ public:
     inline static constexpr double DriftMaxSkidAngle = 0.52;
     inline static constexpr double DriftBlendInSeconds = 0.10;
     inline static constexpr double DriftBlendOutSeconds = 0.16;
+    // Chassis yaw has inertia independently of the immediate lateral controls.
+    // Keep room for the road tangent's own angular acceleration in a bend.
+    inline static constexpr double MaxChassisSlipAcceleration = 160.0 * 3.14159265358979323846 / 180.0;
+    inline static constexpr double ChassisSlipFrequency = 18.0;
 
     static double ArcadeWashLatMps(double speedMps, double curvature)
     {
@@ -142,6 +146,8 @@ public:
 
     void ChangeTyres() { TyreHealth = 2048; }
     void Refuel() { Fuel = 1; }
+    double TyreCondition() const { return std::clamp(TyreHealth / 2048.0, 0.0, 1.0); }
+    double TyreGrip() const { return .65 + .35 * TyreCondition(); }
 
     void CancelArcadeEffects()
     {
@@ -151,6 +157,7 @@ public:
         BoostRemaining = 0;
         BoostTier = 0;
         HopHeightM = HopElapsed = HopDuration = HopPeakM = 0;
+        ChassisSlipRate = 0;
         Skidding = false;
         SkidAmount = 0;
     }
@@ -160,6 +167,7 @@ public:
         State = DriveState{};
         ShiftDelay = 0;
         ChassisSlip = 0;
+        ChassisSlipRate = 0;
         VelocityHeadingRad = 0;
         TyreHealth = 2048;
         Fuel = 1;
@@ -234,6 +242,7 @@ private:
     bool PreviousShiftUp = false, PreviousShiftDown = false;
     double VelocityHeadingRad = 0;
     double ChassisSlip = 0;
+    double ChassisSlipRate = 0;
     double HopElapsed = 0;
     double HopDuration = 0;
     double HopPeakM = 0;
@@ -267,6 +276,7 @@ private:
         // Use the same bound as the integrator and renderer. A tighter bound
         // here reset the yaw on every owner tick and made drift depend on fps.
         ChassisSlip = FiniteClamp(ChassisSlip, -DriftMaxSkidAngle, DriftMaxSkidAngle, 0);
+        ChassisSlipRate = FiniteClamp(ChassisSlipRate, -3.0, 3.0, 0);
         ExtraLatVel = FiniteClamp(ExtraLatVel, -40, 40, 0);
         DriftCharge = FiniteClamp(DriftCharge, 0, 1.4, 0);
         BoostRemaining = FiniteClamp(BoostRemaining, 0, 3, 0);
@@ -310,6 +320,7 @@ private:
         const double responseTime = returning ? SteeringReturnSeconds : SteeringResponseSeconds * speedScaled;
         State.Steering += (input.Steer - State.Steering) * (1.0 - std::exp(-h / responseTime));
         const double speed = State.SpeedMps;
+        const double grip = TyreGrip();
 
         // Hop-drift on top of Vroom FROTT: hold brake+steer or Drift at speed.
         // Chassis stays arcade-parallel; the extra slide is lateral + visual yaw.
@@ -374,7 +385,7 @@ private:
         wash *= 1.0 - 0.58 * DriftBlend;
         const double fullSteerLat = std::max(std::abs(ArcadeSteerLatMps(1.0, speed)), 0.35);
         const double demanded = std::abs(wash) / fullSteerLat;
-        if (!airborne && ((vaco >= 0 && internalSpeed >= CriVirInternal[vaco]) || demanded > 0.48))
+        if (!airborne && ((vaco >= 0 && internalSpeed >= CriVirInternal[vaco] * grip) || demanded > 0.48 * grip))
         {
             Skidding = true;
             SkidAmount = std::max(SkidAmount, std::clamp((demanded - 0.35) / 0.55, 0.35, 1.0));
@@ -391,7 +402,7 @@ private:
             rollingMoment += 320.0 - 180.0 * DriftBlend;
         const double airMoment = internalSpeed * internalSpeed / (airborne ? 780.0 : 468.0);
         const double brakePedal = input.Brake * (1.0 - 0.78 * DriftBlend);
-        const double brakeMoment = std::pow(94.0 * brakePedal, 2) / 16.0;
+        const double brakeMoment = std::pow(94.0 * brakePedal, 2) / 16.0 * grip;
         const double torque = (ShiftDelay > 0 || wheelRpm >= MaxRpm) ? 0.0 : TorqueAt(State.Rpm) * input.Throttle;
         const double netMoment = torque - brakeMoment - airMoment - 10.0 - rollingMoment;
         double acceleration = (256.0 * 20.0 / (GearInertia[gear] * 5.4)) * netMoment;
@@ -414,7 +425,7 @@ private:
         State.SpeedMps = std::clamp(State.SpeedMps + acceleration * h, 0.0, 120.0);
 
         ExtraLatVel *= std::exp(-h / 0.16);
-        double steerLat = ArcadeSteerLatMps(State.Steering, State.SpeedMps);
+        double steerLat = ArcadeSteerLatMps(State.Steering, State.SpeedMps) * grip;
         if (edgeBlend > 0 && !airborne)
             steerLat *= 1.0 - 0.5 * edgeBlend;
         if (airborne)
@@ -431,9 +442,21 @@ private:
             + State.Steering * 0.05 * std::clamp(State.SpeedMps / (State.SpeedMps + 14.0), 0.0, 1.0);
         slipTarget = std::clamp(slipTarget + DriftBlend * State.Steering * DriftSlipGain,
             -DriftMaxSkidAngle, DriftMaxSkidAngle);
-        // The wheel can countersteer quickly while the chassis settles over a
-        // longer interval after a large drift angle, avoiding a camera snap.
-        ChassisSlip += (slipTarget - ChassisSlip) * (1.0 - std::exp(-h / (0.03 + 0.07 * DriftBlend)));
+        // A first-order follower changes angular velocity instantly when a
+        // brake tap starts/stops a drift. Preserve angular velocity instead.
+        // Near the target this is a critically damped second-order follower;
+        // for larger changes its acceleration and braking distance are bounded.
+        // The 25% braking margin accommodates discrete steps and target changes
+        // without clipping the final angle (which would introduce another snap).
+        const double slipError = slipTarget - ChassisSlip;
+        const double stoppingRate = 0.75 * std::sqrt(2.0 * MaxChassisSlipAcceleration * std::abs(slipError));
+        const double desiredSlipRate = std::copysign(std::min(
+            0.5 * ChassisSlipFrequency * std::abs(slipError), stoppingRate), slipError);
+        const double slipAcceleration = std::clamp(
+            2.0 * ChassisSlipFrequency * (desiredSlipRate - ChassisSlipRate),
+            -MaxChassisSlipAcceleration, MaxChassisSlipAcceleration);
+        ChassisSlip += ChassisSlipRate * h + 0.5 * slipAcceleration * h * h;
+        ChassisSlipRate += slipAcceleration * h;
         State.HeadingRad = ChassisSlip;
         State.Elapsed = std::min(1e12, State.Elapsed + h);
         ShiftDelay = std::max(0.0, ShiftDelay - h);

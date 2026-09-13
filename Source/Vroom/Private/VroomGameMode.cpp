@@ -1,5 +1,8 @@
 #include "VroomGame.h"
 #include "VroomGraphicsSettings.h"
+#include "VroomEnvironment.h"
+#include "VroomProceduralMeshComponent.h"
+#include "EngineUtils.h"
 #include "Engine/Engine.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Engine/DirectionalLight.h"
@@ -95,5 +98,18 @@ void AVroomGameMode::BeginPlay()
     PP->Settings.bOverride_VignetteIntensity = true;
     PP->Settings.VignetteIntensity = .2f;
     Vroom::Graphics::ApplySceneSettings();
+    for (TActorIterator<AVroomCircuit> It(GetWorld()); It; ++It)
+        Vroom::Environment::ApplyAtmosphere(GetWorld(), It->TrackIndex);
+    // Player components can register before saved graphics choices are applied.
+    // Collect once more with the final scene/scalability settings, so the native
+    // PSO jobs finish during circuit preparation rather than its first corner.
+    for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+    {
+        TInlineComponentArray<UPrimitiveComponent*> Primitives;
+        It->GetComponents(Primitives);
+        for (UPrimitiveComponent* Primitive : Primitives) Primitive->PrecachePSOs();
+    }
+    UE_LOG(LogTemp, Display, TEXT("VROOM: Native PSO preparation pending=%u"),
+        Vroom::Rendering::PendingPrecache(GetWorld()));
     UE_LOG(LogTemp, Display, TEXT("VROOM: World initialized"));
 }

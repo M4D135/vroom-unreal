@@ -1,6 +1,11 @@
 #include "VroomGame.h"
 #include "VroomGraphicsSettings.h"
 #include "VroomOvertake.h"
+#include "VroomPlayerSettings.h"
+#include "VroomMenuLayout.h"
+#include "VroomProgress.h"
+#include "VroomFeedbackComponent.h"
+#include "VroomProceduralMeshComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/AudioComponent.h"
@@ -17,6 +22,7 @@
 #include "Misc/Paths.h"
 #include "UnrealClient.h"
 #include "HAL/PlatformMisc.h"
+#include "HAL/PlatformTime.h"
 
 namespace
 {
@@ -104,18 +110,26 @@ AVroomCar::AVroomCar()
     EngineAudio->SetupAttachment(RootComponent);
     EngineAudio->bAutoActivate = false;
     AutoPossessPlayer = EAutoReceiveInput::Player0;
+    CreateDefaultSubobject<UVroomFeedbackComponent>(TEXT("RaceFeedback"));
 }
 
 void AVroomCar::BeginPlay()
 {
     Super::BeginPlay();
+    Vroom::Settings::Initialize();
+    Drive.Automatic = Vroom::Settings::Get().Automatic;
+    ChaseCamera = Vroom::Settings::Get().ChaseCamera;
+    TourDemo = FParse::Param(FCommandLine::Get(), TEXT("VroomTourDemo"));
     AutoDemo = FParse::Param(FCommandLine::Get(), TEXT("VroomAutoDemo"));
+    AutoDemo |= TourDemo;
+    AutoDemo |= FParse::Param(FCommandLine::Get(), TEXT("VroomDriftTest"));
     FParse::Value(FCommandLine::Get(), TEXT("VroomCollisionTest="), TestImpact);
-    AutoDemo |= !TestImpact.IsEmpty();
+    PitTest = FParse::Param(FCommandLine::Get(), TEXT("VroomPitTest"));
+    AutoDemo |= !TestImpact.IsEmpty() || PitTest;
     TickDebug = FParse::Param(FCommandLine::Get(), TEXT("VroomTickDebug"));
     MotionTrace = FParse::Param(FCommandLine::Get(), TEXT("VroomMotionTrace"));
     VerificationMode = FParse::Param(FCommandLine::Get(), TEXT("VroomVerify"));
-    ChaseCamera = FParse::Param(FCommandLine::Get(), TEXT("VroomChaseCamera"));
+    ChaseCamera = FParse::Param(FCommandLine::Get(), TEXT("VroomChaseCamera")) || (!VerificationMode && ChaseCamera);
     FParse::Value(FCommandLine::Get(), TEXT("VroomCapture="), CapturePath);
     FParse::Value(FCommandLine::Get(), TEXT("VroomCaptureAfter="), CaptureAfter);
     FParse::Value(FCommandLine::Get(), TEXT("VroomExitAfter="), ExitAfter);
@@ -197,21 +211,10 @@ void AVroomCar::BeginPlay()
     }
     PreviousDrive = Drive.State;
     PreviousVisualHeading = Drive.VisualHeading();
-    if (Circuit && FParse::Param(FCommandLine::Get(), TEXT("VroomGraphicsPreview")))
-    {
-        GraphicsPauseBefore = Circuit->Paused;
-        Vroom::Graphics::Toggle();
-        Circuit->Paused = true;
-        if (auto* PC = Cast<APlayerController>(GetController()))
-        {
-            FInputModeGameAndUI Mode;
-            Mode.SetHideCursorDuringCapture(false);
-            Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-            PC->SetInputMode(Mode);
-            PC->bShowMouseCursor = true;
-        }
-    }
     if (Circuit && Circuit->CurrentTrack()) UpdatePresentation(1);
+    FActorSpawnParameters ProgressSpawn;
+    ProgressSpawn.Owner = this;
+    GetWorld()->SpawnActor<AVroomProgressTracker>(ProgressSpawn);
     UE_LOG(LogTemp, Display, TEXT("VROOM: Player ready, demo=%d"), AutoDemo);
 }
 
@@ -228,6 +231,7 @@ void AVroomCar::ResetCar()
 {
     Drive.Reset();
     Contacts.Reset();
+    Pit = Vroom::PitStopModel{};
     PlaceOnStartingGrid();
     ResetCrashDebris();
     MirrorClock = 1.f / 15.f;
@@ -238,11 +242,272 @@ void AVroomCar::ResetCar()
     FrameTiming = {};
     InputSteering = CockpitSteering = VisualSteering = 0;
     PendingShiftUp = PendingShiftDown = false;
-    Lap = 1; LapStart = 0; LastLap = 0; LapClean = true;
+    Lap = 1; LapStart = 0; LastLap = 0; LapClean = LastLapClean = true;
     CarsPassed = 0; Score = 0; ScoreFrac = 0;
     OvertakeSides.Empty();
     MouseTarget = 0;
     if (Circuit) Circuit->RaceClock = 0;
+}
+
+void AVroomCar::SetSessionMode(Vroom::SessionMode Mode)
+{
+    const bool Changed = Session.Mode != Mode;
+    Session.Mode = Mode; Session.QualificationComplete = false;
+    Session.ResetChampionship();
+    ReturnToMenu();
+    if (Changed && Mode != Vroom::SessionMode::TimeTrial) SelectSessionTrack(Vroom::SessionModel::ChampionshipOrder[0]);
+}
+
+void AVroomCar::SetDifficulty(Vroom::RaceDifficulty Difficulty)
+{
+    Session.Difficulty = Difficulty;
+    if (Circuit) Circuit->Difficulty = Difficulty;
+}
+
+void AVroomCar::SelectSessionTrack(int32 Index)
+{
+    if (!Circuit) return;
+    ReturnToMenu();
+    Circuit->SelectTrack(FMath::Clamp(Index, 0, 5));
+    Session.SelectTrack(Circuit->TrackIndex); ResetCar(); BestLap = 0;
+    BeginCircuitPreparation();
+}
+
+void AVroomCar::ReturnToMenu()
+{
+    if (!Circuit) return;
+    Circuit->Running = false; Circuit->Paused = false;
+    Session.Phase = Vroom::SessionPhase::Menu;
+    Pit.Servicing = false;
+    if (auto* PC = Cast<APlayerController>(GetController())) PC->bShowMouseCursor = true;
+}
+
+void AVroomCar::StartSession()
+{
+    if (!Circuit) return;
+    if (Session.Phase == Vroom::SessionPhase::Menu) Session.ResetChampionship();
+    const bool AfterQualifying = Session.Mode == Vroom::SessionMode::GrandPrix
+        && Session.QualificationComplete && Session.QualifyingRun && Session.Phase == Vroom::SessionPhase::Finished;
+    ResetCar(); Circuit->SelectTrack(Session.TrackIndex);
+    Session.Begin(Circuit->LengthM(), AfterQualifying);
+    Circuit->ConfigureTraffic(!Session.Solo(), Session.Mode == Vroom::SessionMode::Arcade, Session.Difficulty);
+    Circuit->RaceFinishDistance = Session.Mode == Vroom::SessionMode::GrandPrix && !Session.QualifyingRun
+        ? Circuit->LengthM() * Session.LapTarget : 0;
+    Circuit->ReactiveTraffic = true;
+    if (Session.Solo()) { Drive.State.DistanceM = 0; Drive.State.LateralM = 0; }
+    else if (Session.Mode == Vroom::SessionMode::GrandPrix)
+    {
+        // Fixed physical grid slots, filled in qualifying order. S=0 remains
+        // the lap timing line; race distance is the same line for every car.
+        const int32 Slot = FMath::Clamp(Session.QualificationPosition - 1, 0, 12);
+        auto GridDistance = [](int32 I) { return 120.0 - (I / 2) * 16.0; };
+        Drive.State.DistanceM = GridDistance(Slot); Drive.State.LateralM = Slot % 2 ? 2.2 : -2.2;
+        int32 Rival = 0;
+        for (int32 I = 0; I < 13; ++I)
+        {
+            if (I == Slot) continue;
+            Circuit->OpponentS[Rival] = Circuit->PreviousOpponentS[Rival] = GridDistance(I);
+            Circuit->OpponentLanes[Rival] = Circuit->PreviousOpponentLanes[Rival] = I % 2 ? 2.2 : -2.2;
+            Circuit->Traffic[Rival].Distance = GridDistance(I);
+            Circuit->Traffic[Rival].Lateral = Circuit->Traffic[Rival].TargetLane = Circuit->OpponentLanes[Rival];
+            ++Rival;
+        }
+    }
+    PreviousDrive = Drive.State; PreviousVisualHeading = Drive.VisualHeading();
+    Circuit->Running = true; Circuit->Paused = false; Circuit->RaceClock = -3;
+    BeginCircuitPreparation();
+    Circuit->RenderOpponents(1);
+    if (auto* PC = Cast<APlayerController>(GetController()))
+    {
+        PC->bShowMouseCursor = false; PC->SetInputMode(FInputModeGameOnly());
+    }
+    UE_LOG(LogTemp, Display, TEXT("VROOM: Session mode=%d phase=%d track=%d difficulty=%d qualify=%d target=%d"),
+        static_cast<int32>(Session.Mode), static_cast<int32>(Session.Phase), Session.TrackIndex,
+        static_cast<int32>(Session.Difficulty), Session.QualifyingRun, Session.TargetPasses);
+}
+
+void AVroomCar::BeginCircuitPreparation()
+{
+    PreparingCircuit = true;
+    PreparationReadyFrames = 0;
+    // Quality changes may alter the passes used by an unchanged material.
+    // Recollect against current scene settings, including ordinary static meshes.
+    for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+    {
+        TInlineComponentArray<UPrimitiveComponent*> Primitives;
+        It->GetComponents(Primitives);
+        for (UPrimitiveComponent* Primitive : Primitives) Primitive->PrecachePSOs();
+    }
+}
+
+bool AVroomCar::UpdateCircuitPreparation()
+{
+    if (!PreparingCircuit || !Circuit) return false;
+    if (!PreparationHoldsPause)
+    {
+        PreparationHoldsPause = true;
+        PreparationPauseBefore = Circuit->Paused;
+        PreparationStartTime = FPlatformTime::Seconds();
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Circuit preparation started track=%d"), Circuit->TrackIndex);
+    }
+    Circuit->Paused = true;
+    PendingRenderJobs = Vroom::Rendering::PendingPrecache(GetWorld());
+    PreparationReadyFrames = PendingRenderJobs ? 0 : PreparationReadyFrames + 1;
+    // The native completion callback schedules render-state recreation. Let it
+    // reach the render thread before releasing the grid or accepting menu input.
+    const double Alpha = Circuit->Running ? FrameTiming.Alpha() : 1;
+    UpdatePresentation(Alpha);
+    Circuit->RenderOpponents(Alpha);
+    UpdateMirrors(0);
+    EngineAudio->SetVolumeMultiplier(0);
+    if (PreparationReadyFrames < 3) return true;
+    PreparingCircuit = false;
+    PreparationHoldsPause = false;
+    Circuit->Paused = PreparationPauseBefore;
+    UE_LOG(LogTemp, Display, TEXT("VROOM: Circuit preparation ready track=%d elapsed=%.3f pending=0"),
+        Circuit->TrackIndex, FPlatformTime::Seconds() - PreparationStartTime);
+    return false;
+}
+
+void AVroomCar::RestartSession()
+{
+    if (Session.Phase == Vroom::SessionPhase::Menu) { StartSession(); return; }
+    // Restarting a GP race keeps its earned grid; restarting qualifying retries
+    // the qualifying lap. Neither operation awards points twice.
+    if (Session.Mode == Vroom::SessionMode::GrandPrix && !Session.QualifyingRun && Session.QualificationComplete)
+    {
+        if (Session.Phase == Vroom::SessionPhase::Finished) Session.UndoLastRace();
+        Session.QualifyingRun = true; Session.Phase = Vroom::SessionPhase::Finished;
+    }
+    else Session.QualificationComplete = false;
+    StartSession();
+}
+
+void AVroomCar::AdvanceStage()
+{
+    if (Session.QualifyingRun && Session.QualificationComplete) { StartSession(); return; }
+    if (Session.AdvanceStage()) StartSession();
+}
+
+void AVroomCar::HandleAction(Vroom::Action What)
+{
+    using Vroom::Action;
+    switch (What)
+    {
+    case Action::Start: StartSession(); break;
+    case Action::NextStage: AdvanceStage(); break;
+    case Action::Restart: RestartSession(); break;
+    case Action::Menu: ReturnToMenu(); break;
+    case Action::Pause: if (Circuit && Circuit->Running && Session.Phase != Vroom::SessionPhase::Finished) Circuit->Paused = !Circuit->Paused; break;
+    case Action::View: ChaseCamera = !ChaseCamera; Vroom::Settings::Mutable().ChaseCamera = ChaseCamera; Vroom::Settings::Save(); break;
+    case Action::Gearbox: Drive.Automatic = !Drive.Automatic; Vroom::Settings::Mutable().Automatic = Drive.Automatic; Vroom::Settings::Save(); break;
+    case Action::MouseSteer: MouseSteer = !MouseSteer; MouseTarget = 0; break;
+    case Action::TrackNext: if (Circuit) SelectSessionTrack((Circuit->TrackIndex + 1) % 6); break;
+    case Action::TrackPrevious: if (Circuit) SelectSessionTrack((Circuit->TrackIndex + 5) % 6); break;
+    case Action::ModeNext: SetSessionMode(static_cast<Vroom::SessionMode>((static_cast<int32>(Session.Mode) + 1) % 3)); break;
+    case Action::DifficultyNext: SetDifficulty(static_cast<Vroom::RaceDifficulty>((static_cast<int32>(Session.Difficulty) + 1) % 3)); break;
+    case Action::Tyres: if (Circuit && Circuit->Running && !Circuit->Paused && !Session.Solo()) Pit.Request(true, false); break;
+    case Action::Refuel: if (Circuit && Circuit->Running && !Circuit->Paused && !Session.Solo()) Pit.Request(false, true); break;
+    case Action::Options:
+    {
+        const bool WasOpen = Vroom::Graphics::IsOpen();
+        if (!WasOpen) GraphicsPauseBefore = Circuit && Circuit->Paused;
+        Vroom::Graphics::Toggle();
+        if (Circuit) Circuit->Paused = Vroom::Graphics::IsOpen() ? true : GraphicsPauseBefore;
+        if (WasOpen && !Vroom::Graphics::IsOpen()) BeginCircuitPreparation();
+        if (auto* PC = Cast<APlayerController>(GetController()))
+        {
+            PC->bShowMouseCursor = Vroom::Graphics::IsOpen() || !Circuit || !Circuit->Running
+                || Circuit->Paused || Session.Phase == Vroom::SessionPhase::Finished;
+            if (PC->bShowMouseCursor)
+            {
+                FInputModeGameAndUI Mode; Mode.SetHideCursorDuringCapture(false);
+                Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock); PC->SetInputMode(Mode);
+            }
+            else PC->SetInputMode(FInputModeGameOnly());
+        }
+        break;
+    }
+    case Action::Controls:
+        if (!Vroom::Settings::IsOpen())
+        {
+            ControlsPauseBefore = Circuit && Circuit->Paused; Vroom::Settings::Toggle();
+            if (Circuit) Circuit->Paused = true;
+            if (auto* PC = Cast<APlayerController>(GetController()))
+            {
+                PC->bShowMouseCursor = true;
+                FInputModeGameAndUI Mode; Mode.SetHideCursorDuringCapture(false); Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+                PC->SetInputMode(Mode);
+            }
+        }
+        break;
+    default: break;
+    }
+}
+
+double AVroomCar::QualificationBenchmark() const
+{
+    if (!Circuit) return 120;
+    double Time = 0;
+    const double Len = Circuit->LengthM();
+    for (double S = 0; S < Len; S += 25)
+    {
+        const double K = FMath::Max(FMath::Abs(Circuit->Curvature(S + 25)), FMath::Abs(Circuit->Curvature(S + 90)));
+        const double Speed = FMath::Clamp(FMath::Sqrt(16.0 / FMath::Max(K, .001)), 14.0, 72.0) * Vroom::TrafficPace(Session.Difficulty);
+        Time += FMath::Min(25.0, Len - S) / Speed;
+    }
+    return Time + 5.0;
+}
+
+void AVroomCar::UpdateSessionRules()
+{
+    if (AutoDemo || !Session.Active()) return;
+    int32 Position = 1;
+    if (Circuit->OpponentsVisible)
+        for (int32 I = 0; I < Circuit->OpponentS.Num(); ++I)
+            if ((Circuit->OpponentFinishTimes.IsValidIndex(I) && Circuit->OpponentFinishTimes[I] > 0)
+                || Circuit->OpponentS[I] > Drive.State.DistanceM) ++Position;
+    const auto Before = Session.Phase;
+    double ResultClock = Circuit->RaceClock;
+    if (Session.Mode == Vroom::SessionMode::GrandPrix && !Session.QualifyingRun && Circuit->RaceFinishDistance > 0
+        && PreviousDrive.DistanceM < Circuit->RaceFinishDistance && Drive.State.DistanceM >= Circuit->RaceFinishDistance)
+    {
+        const double Fraction = FMath::Clamp((Circuit->RaceFinishDistance - PreviousDrive.DistanceM)
+            / FMath::Max(.0001, Drive.State.DistanceM - PreviousDrive.DistanceM), 0.0, 1.0);
+        ResultClock -= Vroom::FrameTiming::StepSeconds * (1.0 - Fraction);
+    }
+    Session.Tick(ResultClock, Lap - 1, CarsPassed, Position, Drive.Fuel, Drive.State.SpeedMps);
+    if (Session.Phase == Vroom::SessionPhase::Finished && Before != Session.Phase)
+    {
+        if (Session.Mode == Vroom::SessionMode::GrandPrix && !Session.QualifyingRun)
+        {
+            std::array<int, 13> Order{};
+            std::array<double, 13> FinishTimes{}, Distances{};
+            for (int32 I = 0; I < 13; ++I)
+            {
+                Order[I] = I;
+                FinishTimes[I] = I == Vroom::SessionModel::PlayerDriver ? (Session.Retired ? 0 : Session.FinishedTime)
+                    : Circuit->OpponentFinishTimes[I];
+                Distances[I] = I == Vroom::SessionModel::PlayerDriver ? Drive.State.DistanceM : Circuit->OpponentS[I];
+            }
+            std::sort(Order.begin(), Order.end(), [&](int A, int B)
+            {
+                if (A == B) return false;
+                if (Session.Retired && (A == Vroom::SessionModel::PlayerDriver || B == Vroom::SessionModel::PlayerDriver))
+                    return B == Vroom::SessionModel::PlayerDriver;
+                const bool AFinished = FinishTimes[A] > 0, BFinished = FinishTimes[B] > 0;
+                if (AFinished != BFinished) return AFinished;
+                if (AFinished && FinishTimes[A] != FinishTimes[B]) return FinishTimes[A] < FinishTimes[B];
+                if (!AFinished && Distances[A] != Distances[B]) return Distances[A] > Distances[B];
+                return A < B;
+            });
+            Session.ClassifyRace(Order);
+        }
+        Circuit->Paused = true;
+        if (auto* PC = Cast<APlayerController>(GetController())) PC->bShowMouseCursor = true;
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Finished mode=%d position=%d time=%.3f success=%d points=%d"),
+            static_cast<int32>(Session.Mode), Session.Position, Session.FinishedTime, Session.Won, Session.ChampionshipPoints);
+    }
 }
 
 bool AVroomCar::HandleGraphicsInput(APlayerController* PC)
@@ -261,22 +526,21 @@ bool AVroomCar::HandleGraphicsInput(APlayerController* PC)
             ClickedOptions = X / Scale >= 415 && X / Scale <= 665
                 && Y / Scale >= Height / Scale - 171 && Y / Scale <= Height / Scale - 106;
     }
-    if (ClickedOptions || PC->WasInputKeyJustPressed(EKeys::O) || PC->WasInputKeyJustPressed(EKeys::F7))
+    if (ClickedOptions || Vroom::Settings::WasPressed(PC, Vroom::Action::Options) || PC->WasInputKeyJustPressed(EKeys::F7))
     {
-        if (!WasOpen) GraphicsPauseBefore = Circuit->Paused;
-        Toggle();
+        HandleAction(Vroom::Action::Options);
     }
-    if (IsOpen())
+    if (IsOpen()) Circuit->Paused = true;
+    if (IsOpen() && WasOpen)
     {
-        Circuit->Paused = true;
-        if (PC->WasInputKeyJustPressed(EKeys::Escape)) Cancel();
-        else if (PC->WasInputKeyJustPressed(EKeys::Enter)) Apply();
+        if (PC->WasInputKeyJustPressed(EKeys::Escape) || PC->WasInputKeyJustPressed(EKeys::Gamepad_FaceButton_Right)) Cancel();
+        else if (PC->WasInputKeyJustPressed(EKeys::Enter) || PC->WasInputKeyJustPressed(EKeys::Gamepad_FaceButton_Bottom)) Apply();
         else
         {
-            if (PC->WasInputKeyJustPressed(EKeys::Up)) SelectRow((SelectedRow() + RowCount() - 1) % RowCount());
-            if (PC->WasInputKeyJustPressed(EKeys::Down)) SelectRow((SelectedRow() + 1) % RowCount());
-            if (PC->WasInputKeyJustPressed(EKeys::Left)) Adjust(-1);
-            if (PC->WasInputKeyJustPressed(EKeys::Right)) Adjust(1);
+            if (PC->WasInputKeyJustPressed(EKeys::Up) || PC->WasInputKeyJustPressed(EKeys::Gamepad_DPad_Up)) SelectRow((SelectedRow() + RowCount() - 1) % RowCount());
+            if (PC->WasInputKeyJustPressed(EKeys::Down) || PC->WasInputKeyJustPressed(EKeys::Gamepad_DPad_Down)) SelectRow((SelectedRow() + 1) % RowCount());
+            if (PC->WasInputKeyJustPressed(EKeys::Left) || PC->WasInputKeyJustPressed(EKeys::Gamepad_DPad_Left)) Adjust(-1);
+            if (PC->WasInputKeyJustPressed(EKeys::Right) || PC->WasInputKeyJustPressed(EKeys::Gamepad_DPad_Right)) Adjust(1);
             float MouseX = 0, MouseY = 0;
             int32 Width = 0, Height = 0;
             PC->GetViewportSize(Width, Height);
@@ -299,11 +563,15 @@ bool AVroomCar::HandleGraphicsInput(APlayerController* PC)
         }
     }
     const bool Open = IsOpen();
-    if (WasOpen && !Open) Circuit->Paused = GraphicsPauseBefore;
-    PC->bShowMouseCursor = Open || !Circuit->Running;
+    if (WasOpen && !Open)
+    {
+        Circuit->Paused = GraphicsPauseBefore;
+        if (!PreparingCircuit) BeginCircuitPreparation();
+    }
+    PC->bShowMouseCursor = Open || !Circuit->Running || Circuit->Paused || Session.Phase == Vroom::SessionPhase::Finished;
     if (WasOpen != Open)
     {
-        if (Open)
+        if (PC->bShowMouseCursor)
         {
             FInputModeGameAndUI Mode;
             Mode.SetHideCursorDuringCapture(false);
@@ -325,10 +593,79 @@ void AVroomCar::Tick(float Dt)
         if (It) Circuit = *It;
     }
     if (!Circuit || !Circuit->CurrentTrack()) return;
+    if (!TrackArgumentApplied)
+    {
+        TrackArgumentApplied = true;
+        int32 RequestedTrack = Circuit->TrackIndex;
+        const bool HasTrackArgument = FParse::Value(FCommandLine::Get(), TEXT("VroomTrack="), RequestedTrack);
+        if (HasTrackArgument) Circuit->SelectTrack(FMath::Clamp(RequestedTrack, 0, 5));
+        else if (!VerificationMode && !AutoDemo) Circuit->SelectTrack(Vroom::SessionModel::ChampionshipOrder[0]);
+        Session.SelectTrack(Circuit->TrackIndex);
+        TourStartDistance = Drive.State.DistanceM;
+        if (TourDemo) Circuit->ConfigureTraffic(true, false, Session.Difficulty);
+        FString SessionPreview;
+        if (FParse::Value(FCommandLine::Get(), TEXT("VroomSessionPreview="), SessionPreview))
+        {
+            // Synthetic HUD poses only; the flag does not validate race rules.
+            Session.Mode = SessionPreview == TEXT("arcade") ? Vroom::SessionMode::Arcade : Vroom::SessionMode::GrandPrix;
+            StartSession(); Circuit->RaceClock = 24; AutoDemo = false;
+            Session.Phase = Session.QualifyingRun ? Vroom::SessionPhase::Qualifying : Vroom::SessionPhase::Racing;
+            Drive.State.SpeedMps = 0; PreviousDrive = Drive.State;
+            if (SessionPreview == TEXT("results"))
+            {
+                Session.QualifyingRun = false; Session.QualificationComplete = true;
+                Session.Position = 3; Session.LapsCompleted = 3; Session.Finish(334.28, false);
+                const std::array<int, 13> PreviewOrder = {0,1,12,2,3,4,5,6,7,8,9,10,11};
+                Session.ClassifyRace(PreviewOrder);
+                Score = 12850; Circuit->Paused = true;
+            }
+            else if (SessionPreview == TEXT("pit"))
+            {
+                Session.QualifyingRun = false; Session.Mode = Vroom::SessionMode::GrandPrix;
+                Drive.State.DistanceM = 102; Drive.State.LateralM = 12.5; PreviousDrive = Drive.State;
+                Pit.Locate(102,12.5,0,Circuit->LengthM()); Pit.Request(true,true);
+            }
+            else if (SessionPreview == TEXT("controls")) HandleAction(Vroom::Action::Controls);
+        }
+        // BeginPlay can run before GameMode creates the circuit. Prepare this
+        // capture once, only after the same dependencies as the real menu exist.
+        if (FParse::Param(FCommandLine::Get(), TEXT("VroomGraphicsPreview")))
+        {
+            HandleAction(Vroom::Action::Options);
+            UE_LOG(LogTemp, Display, TEXT("VROOM: Graphics preview %s"),
+                Vroom::Graphics::IsOpen() ? TEXT("PASS") : TEXT("FAIL"));
+        }
+    }
     auto* PC = Cast<APlayerController>(GetController());
     if (!PC) return;
     auto Pressed = [&](const FKey& Key) { return !VerificationMode && PC->WasInputKeyJustPressed(Key); };
+    auto ActionPressed = [&](Vroom::Action Action) { return !VerificationMode && Vroom::Settings::WasPressed(PC, Action); };
     Circuit->UpdateVegetation();
+    // This is also used by verification: CSV capture still starts at frame 0,
+    // with the same hard frame-time gates and warmup as an ordinary launch.
+    if (UpdateCircuitPreparation()) return;
+    if (!VerificationMode && !Vroom::Graphics::IsOpen())
+    {
+        const bool WasControlsOpen = Vroom::Settings::IsOpen();
+        const bool WasPaused = Circuit->Paused;
+        if (!WasControlsOpen && ActionPressed(Vroom::Action::Controls)) HandleAction(Vroom::Action::Controls);
+        if (Vroom::Settings::HandleMenuInput(PC))
+        {
+            if (!WasControlsOpen && Vroom::Settings::IsOpen()) ControlsPauseBefore = WasPaused;
+            Circuit->Paused = Vroom::Settings::IsOpen() ? true : ControlsPauseBefore;
+            Drive.Automatic = Vroom::Settings::Get().Automatic;
+            ChaseCamera = Vroom::Settings::Get().ChaseCamera;
+            PC->bShowMouseCursor = Vroom::Settings::IsOpen() || !Circuit->Running || Circuit->Paused;
+            if (PC->bShowMouseCursor)
+            {
+                FInputModeGameAndUI Mode; Mode.SetHideCursorDuringCapture(false); Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+                PC->SetInputMode(Mode);
+            }
+            else PC->SetInputMode(FInputModeGameOnly());
+            UpdatePresentation(Circuit->Running ? FrameTiming.Alpha() : 1);
+            EngineAudio->SetVolumeMultiplier(0); UpdateDiagnostics(Dt); return;
+        }
+    }
     if (HandleGraphicsInput(PC))
     {
         UpdatePresentation(Circuit->Running ? FrameTiming.Alpha() : 1);
@@ -336,85 +673,91 @@ void AVroomCar::Tick(float Dt)
         UpdateDiagnostics(Dt);
         return;
     }
+    if (VerificationMode && Vroom::Settings::IsOpen())
+    {
+        UpdatePresentation(Circuit->Running ? FrameTiming.Alpha() : 1);
+        UpdateDiagnostics(Dt); return;
+    }
     if (!TestImpact.IsEmpty() && !TestPrepared) PrepareCollisionTest();
+    if (PitTest && !TestPrepared)
+    {
+        ResetCar(); TestPrepared = true;
+        Circuit->Running = true; Circuit->Paused = false; Circuit->RaceClock = 0;
+        Circuit->ConfigureTraffic(true, false, Vroom::RaceDifficulty::Normal);
+        Drive.State.DistanceM = 102; Drive.State.LateralM = 12.5;
+        Drive.Fuel = .2; Drive.TyreHealth = 100;
+        PreviousDrive = Drive.State;
+        Pit.Locate(102,12.5,0,Circuit->LengthM()); Pit.Request(true,true);
+        PitTestOpponentStart = Circuit->OpponentS.IsEmpty() ? 0 : Circuit->OpponentS[0];
+        if (ExitAfter <= 0) ExitAfter = 9;
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Pit test started combined service=7s, throttle held throughout"));
+    }
+    if (!VerificationMode && Pressed(EKeys::MiddleMouseButton) && Circuit->Running)
+        HandleAction(Vroom::Action::Pause);
+    if (!AutoDemo && Vroom::MenuLayout::HandleInput(this, PC))
+    {
+        UpdatePresentation(Circuit->Running ? FrameTiming.Alpha() : 1);
+        Circuit->RenderOpponents(1);
+        EngineAudio->SetVolumeMultiplier(.025f * Vroom::Settings::Get().MasterVolume);
+        UpdateDiagnostics(Dt); return;
+    }
     const FKey TrackKeys[] = {EKeys::F1,EKeys::F2,EKeys::F3,EKeys::F4,EKeys::F5,EKeys::F6};
     for (int32 I = 0; I < 6; ++I)
     {
         if (Pressed(TrackKeys[I]))
         {
-            Circuit->Running = false; Circuit->Paused = false;
-            Circuit->SelectTrack(I); ResetCar(); BestLap = 0;
+            SelectSessionTrack(I);
         }
-    }
-    if (Pressed(EKeys::Enter))
-    {
-        ResetCar(); Circuit->SelectTrack(Circuit->TrackIndex);
-        Circuit->Running = true; Circuit->Paused = false; Circuit->RaceClock = -3;
     }
     if (AutoDemo && !Circuit->Running)
     {
         Circuit->Running = true;
         Circuit->RaceClock = FParse::Param(FCommandLine::Get(), TEXT("VroomPreviewCountdown")) ? -3 : 0;
     }
-    if (Pressed(EKeys::Escape)) { Circuit->Running = false; Circuit->Paused = false; }
-    if (Pressed(EKeys::P)) Circuit->Paused = !Circuit->Paused;
-    if (Pressed(EKeys::R)) { ResetCar(); Circuit->SelectTrack(Circuit->TrackIndex); }
-    if (Pressed(EKeys::G)) Drive.Automatic = !Drive.Automatic;
-    {
-        const double Len = Circuit->LengthM();
-        const double Along = std::fmod(std::fmod(Drive.State.DistanceM, Len) + Len, Len);
-        const bool InPits = Circuit->Running && Drive.State.SpeedMps < 12.0
-            && std::abs(Drive.State.LateralM) < 8.0
-            && (Along < 90.0 || Along > Len - 40.0);
-        if (InPits && Pressed(EKeys::T))
-        {
-            Drive.ChangeTyres();
-            UE_LOG(LogTemp, Display, TEXT("VROOM: Pit stop tyres"));
-        }
-        if (InPits && Pressed(EKeys::F))
-        {
-            Drive.Refuel();
-            UE_LOG(LogTemp, Display, TEXT("VROOM: Pit stop fuel"));
-        }
-    }
-    if (Pressed(EKeys::C)) ChaseCamera = !ChaseCamera;
-    if (Pressed(EKeys::M)) { MouseSteer = !MouseSteer; MouseTarget = 0; }
+    for (auto Action : {Vroom::Action::Menu, Vroom::Action::Pause, Vroom::Action::Restart,
+        Vroom::Action::Gearbox, Vroom::Action::View, Vroom::Action::MouseSteer})
+        if (ActionPressed(Action)) HandleAction(Action);
+    Pit.Locate(Drive.State.DistanceM, Drive.State.LateralM, Drive.State.SpeedMps, Circuit->LengthM());
+    if (Pit.Available && !Session.Solo() && !Circuit->Paused
+        && (ActionPressed(Vroom::Action::Start) || (MouseSteer && Pressed(EKeys::LeftMouseButton))))
+        Pit.Request(true, true);
+    if (ActionPressed(Vroom::Action::Tyres)) HandleAction(Vroom::Action::Tyres);
+    if (ActionPressed(Vroom::Action::Refuel)) HandleAction(Vroom::Action::Refuel);
     if (Pressed(EKeys::F10)) FovIndex = (FovIndex + 1) % 3;
     Vroom::DriveInput Input;
-    Input.Throttle = (PC->IsInputKeyDown(EKeys::W) || PC->IsInputKeyDown(EKeys::Z) || PC->IsInputKeyDown(EKeys::Up)) ? 1 : PC->GetInputAnalogKeyState(EKeys::Gamepad_RightTriggerAxis);
-    Input.Brake = (PC->IsInputKeyDown(EKeys::S) || PC->IsInputKeyDown(EKeys::Down) || PC->IsInputKeyDown(EKeys::SpaceBar)) ? 1 : PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftTriggerAxis);
+    Input.Throttle = Vroom::Settings::IsDown(PC, Vroom::Action::Throttle) || (MouseSteer && PC->IsInputKeyDown(EKeys::LeftMouseButton)) ? 1 : PC->GetInputAnalogKeyState(EKeys::Gamepad_RightTriggerAxis);
+    Input.Brake = Vroom::Settings::IsDown(PC, Vroom::Action::Brake) || (MouseSteer && PC->IsInputKeyDown(EKeys::RightMouseButton)) ? 1 : PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftTriggerAxis);
     const float AnalogSteer = PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftX);
-    const float Deadzone = VroomSteeringInputDeadzone();
-    const float AnalogSteerClean = Vroom::SteeringDeadzone(AnalogSteer, Deadzone);
-    const float DigitalSteer = (PC->IsInputKeyDown(EKeys::A) || PC->IsInputKeyDown(EKeys::Q) || PC->IsInputKeyDown(EKeys::Left) ? -1.f : 0.f)
-                           + (PC->IsInputKeyDown(EKeys::D) || PC->IsInputKeyDown(EKeys::Right) ? 1.f : 0.f);
+    const float Deadzone = VerificationMode ? VroomSteeringInputDeadzone() : Vroom::Settings::Get().SteeringDeadzone;
+    const float AnalogSteerClean = Vroom::SteeringDeadzone(AnalogSteer, Deadzone) * Vroom::Settings::Get().SteeringSensitivity;
+    const float DigitalSteer = (Vroom::Settings::IsDown(PC, Vroom::Action::SteerLeft) ? -1.f : 0.f)
+                           + (Vroom::Settings::IsDown(PC, Vroom::Action::SteerRight) ? 1.f : 0.f);
     float Steering = DigitalSteer != 0.f ? DigitalSteer : AnalogSteerClean;
     if (MouseSteer)
     {
         float X, Y; PC->GetInputMouseDelta(X,Y);
-        MouseTarget = FMath::Clamp(MouseTarget + X * .004f, -1.f, 1.f);
+        MouseTarget = FMath::Clamp(MouseTarget + X * Vroom::Settings::Get().MouseSensitivity, -1.f, 1.f);
         Steering += MouseTarget;
     }
     // Filter at the simulation rate below; a render-frame clamp changed the
     // steering response whenever the GPU cadence changed in a corner.
     Input.Steer = FMath::Clamp(Steering,-1.f,1.f);
-    Input.Drift = PC->IsInputKeyDown(EKeys::LeftShift) || PC->IsInputKeyDown(EKeys::RightShift)
-        || PC->IsInputKeyDown(EKeys::Gamepad_LeftShoulder)
-        || PC->IsInputKeyDown(EKeys::Gamepad_RightShoulder);
-    PendingShiftUp |= Pressed(EKeys::E);
-    PendingShiftDown |= Pressed(EKeys::X);
+    Input.Drift = Vroom::Settings::IsDown(PC, Vroom::Action::Drift);
+    PendingShiftUp |= ActionPressed(Vroom::Action::ShiftUp) || (MouseSteer && Pressed(EKeys::MouseScrollUp));
+    PendingShiftDown |= ActionPressed(Vroom::Action::ShiftDown) || (MouseSteer && Pressed(EKeys::MouseScrollDown));
     Input.ShiftUp = PendingShiftUp;
     Input.ShiftDown = PendingShiftDown;
     if (AutoDemo)
     {
         const double S = Drive.State.DistanceM;
         const double K = Circuit->Curvature(S + 12);
-        const double Desired = FMath::Clamp(FMath::Sqrt(26.0 / FMath::Max(std::abs(K), .004)), 15.0, 70.0);
+        const double CurveAhead = TourDemo ? FMath::Max(std::abs(K), FMath::Abs(Circuit->Curvature(S + 65))) : std::abs(K);
+        const double Desired = FMath::Clamp(FMath::Sqrt(26.0 / FMath::Max(CurveAhead, .004)), 15.0, TourDemo ? 60.0 : 70.0);
         Input.Throttle = Drive.State.SpeedMps < Desired ? .85 : 0;
         Input.Brake = Drive.State.SpeedMps > Desired + 3 ? .6 : 0;
         // Arcade XBCMP3: hold the stick to cancel curve wash and stay near
         // a racing line. No yaw PID — the chassis stays parallel.
-        const double SteerGain = std::max(Vroom::DriveModel::ArcadeSteerLatMps(1, Drive.State.SpeedMps), 0.4);
+        const double SteerGain = std::max(Vroom::DriveModel::ArcadeSteerLatMps(1, Drive.State.SpeedMps) * Drive.TyreGrip(), 0.4);
         const double Wash = Vroom::DriveModel::ArcadeWashLatMps(Drive.State.SpeedMps, K);
         Input.Steer = FMath::Clamp(Wash / SteerGain - Drive.State.LateralM * .12, -.85, .85);
         if (FMath::IsFinite(PreviewSteering) && FMath::Abs(PreviewSteering) <= 1)
@@ -439,11 +782,18 @@ void AVroomCar::Tick(float Dt)
         Input.Throttle = FMath::Clamp(FixedThrottle, 0.f, 1.f);
         Input.Brake = 0;
     }
+    if (FParse::Param(FCommandLine::Get(), TEXT("VroomDriftTest")))
+    {
+        Input = Vroom::DriveInput{};
+        Input.Throttle = .55; Input.Steer = PreviewClock < 1.4 ? .23 : -.12;
+        Input.Drift = PreviewClock >= .2 && PreviewClock < 1.35;
+    }
     if (!TestImpact.IsEmpty())
     {
         Input = Vroom::DriveInput{};
         InputSteering = 0.f;
     }
+    if (PitTest) { Input = Vroom::DriveInput{}; Input.Throttle = 1; }
     if (AutoDemo && PreviewClock >= NextTrace)
     {
         NextTrace = PreviewClock + 1.0;
@@ -451,6 +801,10 @@ void AVroomCar::Tick(float Dt)
             PreviewClock, Drive.State.DistanceM, Drive.State.SpeedMps, Drive.State.LateralM,
             Drive.State.HeadingRad, Drive.VisualHeading(), GetActorRotation().Yaw,
             Drive.State.Steering, Circuit->Curvature(Drive.State.DistanceM), Drive.SkidAmount);
+        if (TourDemo)
+            UE_LOG(LogTemp, Display, TEXT("VROOM-TOUR track=%d distanceCovered=%.3f length=%.3f complete=%d"),
+                Circuit->TrackIndex, Drive.State.DistanceM - TourStartDistance, Circuit->LengthM(),
+                Drive.State.DistanceM - TourStartDistance >= Circuit->LengthM());
     }
     if (Circuit->Running && !Circuit->Paused)
     {
@@ -460,6 +814,7 @@ void AVroomCar::Tick(float Dt)
             SimulateStep(Input, Vroom::FrameTiming::StepSeconds);
             Input.ShiftUp = false; Input.ShiftDown = false;
             PendingShiftUp = PendingShiftDown = false;
+            if (Circuit->Paused || !Circuit->Running) break;
         }
     }
     const double Alpha = Circuit->Running ? FrameTiming.Alpha() : 1;
@@ -495,7 +850,8 @@ void AVroomCar::Tick(float Dt)
         if (!Correct) ++TestVisibilityErrors;
     }
     Circuit->RenderOpponents(Alpha);
-    EngineAudio->SetVolumeMultiplier(Circuit->Paused ? 0 : (Circuit->Running ? .22f : .05f));
+    EngineAudio->SetVolumeMultiplier((Circuit->Paused ? 0 : (Circuit->Running ? .22f : .05f))
+        * Vroom::Settings::Get().MasterVolume);
     UpdateSound();
     UpdateDiagnostics(Dt);
 }
@@ -503,7 +859,7 @@ void AVroomCar::Tick(float Dt)
 void AVroomCar::UpdateDiagnostics(float Dt)
 {
     PreviewClock += Dt;
-    const double CheckClock = TestImpact.IsEmpty() ? PreviewClock : TestSeconds;
+    const double CheckClock = TestImpact.IsEmpty() && !PitTest ? PreviewClock : TestSeconds;
     if (!CapturePath.IsEmpty() && CheckClock >= CaptureAfter)
     {
         FScreenshotRequest::RequestScreenshot(CapturePath, true, false);
@@ -515,13 +871,23 @@ void AVroomCar::UpdateDiagnostics(float Dt)
     }
     if (ExitAfter > 0 && CheckClock >= ExitAfter)
     {
-        const bool Passed = TestImpact.IsEmpty() || (TestContacts == 1 && TestVisibilityErrors == 0 &&
+        bool Passed = TestImpact.IsEmpty() || (TestContacts == 1 && TestVisibilityErrors == 0 &&
             ((TestImpact == TEXT("slow") && Contacts.State.LastKind == Vroom::ContactKind::SlowImpact && TestRespawns == 0) ||
             (TestImpact == TEXT("crash") && Contacts.State.LastKind == Vroom::ContactKind::Crash && TestRespawns == 1) ||
             (TestImpact == TEXT("tyre") && Contacts.State.LastKind == Vroom::ContactKind::TyreJump && TestRespawns == 1) ||
             (TestImpact == TEXT("scenery") && Contacts.State.LastKind == Vroom::ContactKind::Crash && TestRespawns == 1
                 && !Contacts.State.ControlsLocked && Drive.State.SpeedMps < .1
                 && FMath::Abs(Drive.State.LateralM) < Circuit->HalfWidthM)));
+        if (PitTest)
+        {
+            Passed = PitTestStationary && PitTestCompleted && !Pit.Servicing && Drive.TyreHealth > 2040
+                && Drive.Fuel > .99 && Drive.State.SpeedMps > 1 && Drive.State.DistanceM > 102
+                && !Contacts.State.ControlsLocked && TestContacts == 0 && Circuit->RaceClock >= 8
+                && !Circuit->OpponentS.IsEmpty() && Circuit->OpponentS[0] > PitTestOpponentStart + 5;
+            UE_LOG(LogTemp, Display, TEXT("VROOM-PIT stationary=%d completed=%d servicing=%d fuel=%.4f tyres=%.1f speed=%.2f s=%.2f clock=%.2f opponentProgress=%.2f"),
+                PitTestStationary, PitTestCompleted, Pit.Servicing, Drive.Fuel, Drive.TyreHealth,
+                Drive.State.SpeedMps, Drive.State.DistanceM, Circuit->RaceClock, Circuit->OpponentS[0] - PitTestOpponentStart);
+        }
         UE_LOG(LogTemp, Display, TEXT("VROOM: Verification %s scenario=%s contacts=%d respawns=%d visibilityErrors=%d"), Passed ? TEXT("PASS") : TEXT("FAIL"), *TestImpact, TestContacts, TestRespawns, TestVisibilityErrors);
         FPlatformMisc::RequestExitWithStatus(false, Passed ? 0 : 1);
     }
@@ -533,9 +899,29 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
     PreviousVisualHeading = Contacts.State.ControlsLocked ? Drive.State.HeadingRad : Drive.VisualHeading();
     PreviousContact = Contacts.State;
     PreviousHopHeight = Drive.HopHeightM;
+    Circuit->TrafficPlayer.Distance = Drive.State.DistanceM;
+    Circuit->TrafficPlayer.Lateral = Drive.State.LateralM;
+    Circuit->TrafficPlayer.Speed = Drive.State.SpeedMps;
+    Circuit->TrafficPlayerActive = !TourDemo && Circuit->OpponentsVisible;
     Circuit->AdvanceRace(H);
     TestSeconds += H;
     if (Circuit->RaceClock < 0) return;
+    Pit.Locate(Drive.State.DistanceM, Drive.State.LateralM, Drive.State.SpeedMps, Circuit->LengthM());
+    if (Pit.Servicing)
+    {
+        if (PitTest) PitTestStationary &= FMath::Abs(Drive.State.DistanceM - 102) < .001
+            && FMath::Abs(Drive.State.LateralM - 12.5) < .001 && Drive.State.SpeedMps < .001;
+        Drive.CancelArcadeEffects(); Drive.State.SpeedMps = 0; Drive.State.Rpm = 1000;
+        Drive.State.Steering = 0; InputSteering = 0;
+        if (Pit.Step(H))
+        {
+            if (PitTest) PitTestCompleted = true;
+            if (Pit.NeedTyres) { Drive.ChangeTyres(); Contacts.Reset(); ResetCrashDebris(); }
+            if (Pit.NeedFuel) Drive.Refuel();
+            UE_LOG(LogTemp, Display, TEXT("VROOM: Pit service complete tyres=%d fuel=%d duration=%.1f"), Pit.NeedTyres, Pit.NeedFuel, Pit.Duration);
+        }
+        UpdateSessionRules(); return;
+    }
 
     Vroom::DriveInput Input = RawInput;
     if (Contacts.State.ControlsLocked) Input = Vroom::DriveInput{};
@@ -569,7 +955,7 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
         Drive.State.Rpm = 1000;
         Drive.State.Steering = 0;
     }
-    else Drive.Step(Input, H, Circuit->Curvature(Drive.State.DistanceM), Half,
+    else Drive.Step(Input, H, Circuit->Curvature(Drive.State.DistanceM), Pit.InLane ? 15.2 : Half,
         Airborne ? 0 : Circuit->Elevation(Drive.State.DistanceM).Grade, Airborne);
     Contacts.Step(H);
 
@@ -593,7 +979,7 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
     // Sweep the actual rendered car volume against the opaque scenery's
     // registered instances. The tall crossbeam of a gantry stays above us;
     // its pillars, the real tree trunks and pit walls remain solid.
-    if (!Contacts.State.ControlsLocked && Contacts.State.InvulnerabilityRemaining <= 0)
+    if (!TourDemo && !Contacts.State.ControlsLocked && Contacts.State.InvulnerabilityRemaining <= 0)
     {
         const FVector Start = Circuit->Position(PreviousDrive.DistanceM, PreviousDrive.LateralM)
             + FVector(0,0,66 + (PreviousContact.HeightM + PreviousHopHeight) * 100);
@@ -689,6 +1075,8 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
     if (OvertakeSides.Num() != Circuit->OpponentS.Num()) OvertakeSides.SetNumZeroed(Circuit->OpponentS.Num());
     for (int32 I = 0; I < Circuit->OpponentS.Num(); ++I)
     {
+        if (!Circuit->OpponentsVisible) break;
+        if (Circuit->OpponentRecycled.IsValidIndex(I) && Circuit->OpponentRecycled[I]) OvertakeSides[I] = 0;
         double Gap = std::fmod(Circuit->OpponentS[I] - Drive.State.DistanceM + Len * 100, Len);
         if (Gap > Len / 2) Gap -= Len;
         double PrevGap = Gap;
@@ -718,10 +1106,13 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
         Q.OpponentId = I; Q.GapM = Gap;
         Q.PreviousGapM = Gap - OpponentDelta + PlayerDelta;
         Q.LateralGapM = Circuit->OpponentLanes[I] - Drive.State.LateralM;
-        Q.PreviousLateralGapM = Circuit->OpponentLanes[I] - PreviousDrive.LateralM;
+        Q.PreviousLateralGapM = (Circuit->PreviousOpponentLanes.IsValidIndex(I)
+            ? Circuit->PreviousOpponentLanes[I] : Circuit->OpponentLanes[I]) - PreviousDrive.LateralM;
         Q.PlayerSpeedMps = Drive.State.SpeedMps; Q.OpponentSpeedMps = Circuit->OpponentSpeeds[I];
+        if (TourDemo) continue;
         const auto Hit = Contacts.TryContact(Q);
         if (Hit.Kind == Vroom::ContactKind::None) continue;
+        Circuit->HitOpponent(I, Hit.RelativeSpeedMps);
         Drive.State.SpeedMps = Hit.SpeedAfterMps;
         if (Hit.Kind == Vroom::ContactKind::Crash)
         {
@@ -739,11 +1130,20 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
     const int32 NewLap = 1 + FMath::FloorToInt(Drive.State.DistanceM / Len);
     if (NewLap > Lap)
     {
+        LastLapClean = LapClean;
         LastLap = Circuit->RaceClock - LapStart;
         if (LapClean && (BestLap <= 0 || LastLap < BestLap)) BestLap = LastLap;
+        if (!AutoDemo && Session.QualifyingRun && Session.Active())
+        {
+            Session.CompleteQualification(LastLap, LapClean, QualificationBenchmark());
+            Circuit->Paused = true;
+            if (auto* PC = Cast<APlayerController>(GetController())) PC->bShowMouseCursor = true;
+            UE_LOG(LogTemp, Display, TEXT("VROOM: Qualification time=%.3f clean=%d grid=%d"), LastLap, LapClean, Session.QualificationPosition);
+        }
         LapStart = Circuit->RaceClock; Lap = NewLap; LapClean = !Contacts.State.ControlsLocked;
         UE_LOG(LogTemp, Display, TEXT("VROOM: Lap %d time %.3f"), Lap - 1, LastLap);
     }
+    UpdateSessionRules();
 }
 
 void AVroomCar::UpdatePresentation(double Alpha)
@@ -761,7 +1161,8 @@ void AVroomCar::UpdatePresentation(double Alpha)
     SetActorLocationAndRotation(Circuit->Position(S, L) + FVector(0,0,6 + Height * 100), R);
     // Leave the road horizon beneath the Amiga information band in both views.
     Camera->SetRelativeLocation(ChaseCamera ? FVector(-850,0,310) : FVector(0,0,170));
-    const float Fovs[] = {80,68,92}; Camera->SetFieldOfView(Fovs[FovIndex]);
+    const float FovOffsets[] = {0,-12,12};
+    Camera->SetFieldOfView(FMath::Clamp((VerificationMode ? 80.f : Vroom::Settings::Get().Fov) + FovOffsets[FovIndex], 55.f, 110.f));
     VisualSteering = FMath::Clamp(static_cast<float>(FMath::Lerp(PreviousDrive.Steering, Drive.State.Steering, Alpha)), -1.f, 1.f);
     const float SmoothedSteering = UpdateCockpit(VisualSteering);
     static const bool InspectCockpit = FParse::Param(FCommandLine::Get(), TEXT("VroomInspectCockpit"));
@@ -800,6 +1201,7 @@ void AVroomCar::UpdatePresentation(double Alpha)
 void AVroomCar::PrepareCollisionTest()
 {
     ResetCar(); TestPrepared = true;
+    Circuit->ReactiveTraffic = false;
     Circuit->Running = true; Circuit->Paused = false;
     Drive.State.DistanceM = 100; Drive.State.SpeedMps = TestImpact == TEXT("slow") ? 20 : (TestImpact == TEXT("crash") ? 80 : 55);
     Drive.State.LateralM = 0; Drive.State.HeadingRad = 0; Drive.State.Steering = 0;
@@ -859,6 +1261,8 @@ void AVroomCar::LoadAmigaSound()
 void AVroomCar::UpdateSound()
 {
     if (!EngineWave || EngineWave->GetAvailableAudioByteCount() > 4800) return;
+    const double EngineGain = Vroom::Settings::Get().EngineVolume;
+    const double EffectsGain = Vroom::Settings::Get().EffectsVolume;
     TArray<int16> Samples; Samples.SetNumUninitialized(2400);
     if (AmigaEngine && AmigaEngineN > 0 && AmigaPeriods.Num() > 0)
     {
@@ -881,21 +1285,21 @@ void AVroomCar::UpdateSound()
         for (int32 I = 0; I < Samples.Num(); ++I)
         {
             AmigaEnginePos = FMath::Fmod(AmigaEnginePos + EngineRate, double(AmigaEngineN));
-            double Mix = At(AmigaEngine, AmigaEngineN, AmigaEnginePos) * (52.0 / 64.0);
+            double Mix = At(AmigaEngine, AmigaEngineN, AmigaEnginePos) * (52.0 / 64.0) * EngineGain;
             if (Bright > 0.01 && AmigaEngineOctave.Num() > 1)
             {
                 AmigaOctavePos = FMath::Fmod(AmigaOctavePos + EngineRate, double(AmigaEngineOctave.Num()));
-                Mix += At(AmigaEngineOctave.GetData(), AmigaEngineOctave.Num(), AmigaOctavePos) * Bright * 0.55;
+                Mix += At(AmigaEngineOctave.GetData(), AmigaEngineOctave.Num(), AmigaOctavePos) * Bright * 0.55 * EngineGain;
             }
             if (Drive.Skidding && AmigaScreechN > 0)
             {
                 AmigaScreechPos = FMath::Fmod(AmigaScreechPos + ScreechRate, double(AmigaScreechN));
                 Mix += At(AmigaScreech, AmigaScreechN, AmigaScreechPos)
-                    * std::max(0.45, Drive.SkidAmount) * 1.25;
+                    * std::max(0.45, Drive.SkidAmount) * 1.25 * EffectsGain;
             }
             if (AmigaCrashPos >= 0 && AmigaCrashN > 0)
             {
-                Mix += At(AmigaCrash, AmigaCrashN, AmigaCrashPos) * 0.9;
+                Mix += At(AmigaCrash, AmigaCrashN, AmigaCrashPos) * 0.9 * EffectsGain;
                 AmigaCrashPos += CrashRate;
                 if (AmigaCrashPos >= AmigaCrashN) AmigaCrashPos = -1;
             }
@@ -912,7 +1316,7 @@ void AVroomCar::UpdateSound()
             AudioPhase += AudioFrequency / 48000 * UE_TWO_PI;
             AudioPhase = std::fmod(AudioPhase, UE_TWO_PI);
             const double Pulse = std::sin(AudioPhase) * .5 + std::sin(AudioPhase * 2) * .18;
-            Samples[I] = static_cast<int16>(FMath::Clamp(Pulse * 11000.0, -32000.0, 32000.0));
+            Samples[I] = static_cast<int16>(FMath::Clamp(Pulse * 11000.0 * EngineGain, -32000.0, 32000.0));
         }
     }
     EngineWave->QueueAudio(reinterpret_cast<const uint8*>(Samples.GetData()), Samples.Num() * sizeof(int16));

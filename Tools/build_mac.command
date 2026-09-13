@@ -71,16 +71,14 @@ if [[ "$VROOM_MODE" == package ]]; then
     printf '%s\n' 'Compilation et préparation de l’application Mac…'
     "$VROOM_UAT" BuildCookRun "-project=$VROOM_PROJECT" -nop4 -unattended -WaitForUATMutex \
         -platform=Mac -clientconfig=Development -build -cook -stage -pak -iostore -package -archive \
-        "-archivedirectory=$VROOM_ARCHIVE_DIR" -utf8output
-    printf 'Package créé dans : %s\n' "$VROOM_ARCHIVE_DIR"
-    # Le raccourci Bureau cherche le binaire le plus récent : le rafraîchir
-    # après chaque package, sans copier l’.app (sinon il redevient périmé).
-    if [[ -f "$VROOM_PROJECT_DIR/Tools/play_latest.command" ]]; then
-        /bin/cp "$VROOM_PROJECT_DIR/Tools/play_latest.command" "$HOME/Desktop/Vroom.command"
-        /bin/chmod +x "$HOME/Desktop/Vroom.command"
-        /usr/bin/xattr -d com.apple.quarantine "$HOME/Desktop/Vroom.command" 2>/dev/null || true
-        printf '%s\n' 'Raccourci Bureau mis à jour : Desktop/Vroom.command (dernier build).'
+        "-archivedirectory=$VROOM_ARCHIVE_DIR" -utf8output | tee "$VROOM_PROJECT_DIR/Saved/Logs/VroomPackage-UAT.log"
+    if /usr/bin/grep -q 'Failed to compile Material' "$VROOM_PROJECT_DIR/Saved/Logs/VroomPackage-UAT.log"; then
+        printf '%s\n' 'Échec : un matériau du package ne compile pas. Consulter Saved/Logs/VroomPackage-UAT.log.' >&2
+        exit 1
     fi
+    printf 'Package créé dans : %s\n' "$VROOM_ARCHIVE_DIR"
+    printf '%s\n' 'La version installée reste active. Valider avec Tools/verify_mac.py --profile --soak, puis Tools/install_mac.py --validation CHEMIN/results.json.'
+
 else
     printf '%s\n' 'Prêt. Double-cliquer Tools/run_mac.command ou Desktop/Vroom.command pour jouer.'
 fi

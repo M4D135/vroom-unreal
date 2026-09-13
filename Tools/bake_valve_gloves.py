@@ -269,6 +269,9 @@ def main():
     angles = (*(args.curl or ()), *args.thumb_curl, *(args.finger_proximal or ()))
     require(all(math.isfinite(a) and abs(a) <= 90 for a in angles), "Curl angles must be finite and within +/-90 degrees")
     output = bake(args.source, args.curl, args.thumb_curl, args.finger_proximal)
+    if args.curl is None and args.finger_proximal is None and tuple(args.thumb_curl) == (0., 25.):
+        from fit_glove_clearance import fit
+        output = fit(output)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(output, separators=(",", ":"), allow_nan=False) + "\n", encoding="utf-8")
     print(json.dumps({"output": str(args.output), **output["validation"]}, indent=2))

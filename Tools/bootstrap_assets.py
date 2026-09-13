@@ -444,6 +444,8 @@ def main():
     runpy.run_path(str(Path(__file__).with_name("bootstrap_hand_assets.py")), run_name="__main__")
     runpy.run_path(str(Path(__file__).with_name("bootstrap_grass_assets.py")), run_name="__main__")
     runpy.run_path(str(Path(__file__).with_name("bootstrap_car_assets.py")), run_name="__main__")
+    runpy.run_path(str(Path(__file__).with_name("bootstrap_environment_assets.py")), run_name="__main__")
+    runpy.run_path(str(Path(__file__).with_name("bootstrap_feedback_assets.py")), run_name="__main__")
 
     if not ASSET_LIBRARY.does_asset_exist(MAP_PATH):
         level_editor = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)

@@ -1,6 +1,8 @@
 # NVIDIA DLSS — installation facultative Windows
 
-Référence vérifiée le 8 septembre 2026 : NVIDIA propose **DLSS 4.5 pour Unreal Engine 5.8**, paquet **8.7.2**, daté du 21 juillet 2026. Le descripteur `DLSS.uplugin` indique `EngineVersion: 5.8.0` et `VersionName: 8.7.2-NGX310.6.0`. La page officielle décrit DLSS 4.5 ; cette intégration ne doit pas être appelée « DLSS 5 ». [NVIDIA DLSS](https://developer.nvidia.com/rtx/dlss)
+**État du lot 0.30 préparé le 12 septembre 2026 : intégration facultative présente dans le code, validation Windows/NVIDIA encore absente.** david-pc est inaccessible par son accès SSH configuré pendant cette passe. Ni la carte actuellement active, ni le chargement du plugin, ni un gain de performance DLSS ne sont confirmés sur cette machine.
+
+Référence consultée le 8 septembre 2026 : le paquet retenu était **DLSS 4.5 pour Unreal Engine 5.8**, paquet **8.7.2**, daté du 21 juillet 2026. Le descripteur `DLSS.uplugin` indique `EngineVersion: 5.8.0` et `VersionName: 8.7.2-NGX310.6.0`. La page officielle décrit DLSS 4.5 ; cette intégration ne doit pas être appelée « DLSS 5 ». [NVIDIA DLSS](https://developer.nvidia.com/rtx/dlss)
 
 Le code du jeu peut être compilé et lancé sans les composants NVIDIA. L'intégration facultative vise Windows x64 ; le support effectif dépend du GPU, du pilote et du résultat renvoyé par l'API NVIDIA. Le Mac conserve les choix TAA et TSR et affiche l'indisponibilité de DLSS. Installer les fichiers sur un Mac ne permet pas d'y activer DLSS.
 
@@ -49,3 +51,15 @@ python3 Tests/nvidia_installer_test.py
 ```
 
 Ils couvrent l'installation et sa réexécution, la conservation des runtimes et des sources, le refus d'une version UE différente, les traversées de chemin, les liens, les collisions de casse et la préservation d'un plugin existant modifié. Ils ne remplacent pas un build ou un lancement Windows avec le paquet NVIDIA réel.
+
+## Preuve d'activation à produire sur Windows
+
+Après installation facultative et compilation native Development, choisir le mode graphique dans le jeu puis lancer :
+
+```powershell
+.\Tools\verify_windows.ps1 -ExpectedVersion 0.30.0 -Profile -ExpectedDLSS quality -TargetFPS 60
+```
+
+Cette commande est destinée au **futur package 0.30.0 effectivement construit**. Le manifeste du build, l'empreinte de l'exécutable et la version du journal doivent correspondre. Le contrôle conserve l'adaptateur DX12 choisi, les messages NVIDIA, les préférences appliquées et le mode effectif que le jeu rapporte après `IsDLSSEnabled()`. Un repli vers le rendu natif échoue si `quality` est exigé. `-ExpectedDLSS native` permet une mesure séparée sans DLSS ; `any` enregistre seulement le mode observé.
+
+Les valeurs `DLSS=0/1/2/3/4` du journal correspondent à natif/DLAA/Quality/Balanced/Performance. Une ligne de montage du plugin ou un fichier `.uplugin` ne satisfait pas à elle seule cette vérification. Aucune génération d'images n'est intégrée : le débit mesuré concerne les images rendues par le jeu. Les critères, limites et fichiers de preuve sont décrits dans [RTX5090.md](RTX5090.md).

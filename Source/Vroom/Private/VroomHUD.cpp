@@ -1,5 +1,8 @@
 #include "VroomGame.h"
 #include "VroomGraphicsSettings.h"
+#include "VroomPlayerSettings.h"
+#include "VroomProgress.h"
+#include "VroomMenuLayout.h"
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
 #include "Engine/Font.h"
@@ -9,6 +12,9 @@
 #include "GameFramework/PlayerController.h"
 #include "Misc/Paths.h"
 #include "UObject/StrongObjectPtr.h"
+#include "HAL/PlatformTime.h"
+#include "CanvasTypes.h"
+#include "RenderCommandFence.h"
 
 namespace
 {
@@ -34,6 +40,22 @@ FString LapTime(double Seconds)
         (Milliseconds / 1000) % 60, Milliseconds % 1000);
 }
 
+}
+
+AVroomHUD::AVroomHUD() = default;
+AVroomHUD::~AVroomHUD() = default;
+
+bool AVroomHUD::IsCanvasPreparationComplete() const
+{
+    return CanvasWarmupSubmitted && CanvasWarmupFence && CanvasWarmupFence->IsFenceComplete();
+}
+
+void AVroomHUD::EndPlay(const EEndPlayReason::Type Reason)
+{
+    // Release the task while rendering and its event pools are still alive.
+    if (CanvasWarmupFence) CanvasWarmupFence->Wait();
+    CanvasWarmupFence.Reset();
+    Super::EndPlay(Reason);
 }
 
 void AVroomHUD::Label(const FString& S, float X, float Y, float Size, FLinearColor Color, bool CentreX)
@@ -81,12 +103,35 @@ void AVroomHUD::DrawHUD()
     {
         DrawRect(Color, X * Scale, Y * Scale, Width * Scale, Height * Scale);
     };
+    // Canvas thick lines create a fresh rasterizer state for every batch. On
+    // Metal that changes the pointer-based RHI PSO key every frame, defeating
+    // warmup even when the underlying shader is already cached. Reuse the same
+    // static triangle state as the other HUD shapes instead.
+    FCanvasTriangleItem LineItem(FVector2D::ZeroVector, FVector2D::ZeroVector,
+        FVector2D::ZeroVector, GWhiteTexture);
+    LineItem.TriangleList.SetNum(2);
+    LineItem.BlendMode = SE_BLEND_Translucent;
     auto Line = [&](FVector2D A, FVector2D B, FLinearColor Color, float Thickness = 1.0f)
     {
-        FCanvasLineItem Item(A * Scale, B * Scale);
-        Item.SetColor(Color);
-        Item.LineThickness = Thickness * Scale;
-        Canvas->DrawItem(Item);
+        const FVector2D Direction = (B - A).GetSafeNormal();
+        if (Direction.IsNearlyZero()) return;
+        const double Half = FMath::Max(0.0f, Thickness) * Scale * .5;
+        const FVector2D Side(-Direction.Y * Half, Direction.X * Half);
+        // Square ends keep adjacent minimap segments joined at their corners.
+        A = A * Scale - Direction * Half;
+        B = B * Scale + Direction * Half;
+        auto& First = LineItem.TriangleList[0];
+        auto& Second = LineItem.TriangleList[1];
+        First.V0_Pos = A - Side; First.V1_Pos = B - Side; First.V2_Pos = B + Side;
+        Second.V0_Pos = A - Side; Second.V1_Pos = B + Side; Second.V2_Pos = A + Side;
+        // FCanvasLineItem also forced line opacity, regardless of input alpha.
+        Color.A = 1;
+        for (auto& Triangle : LineItem.TriangleList)
+        {
+            Triangle.V0_UV = Triangle.V1_UV = Triangle.V2_UV = FVector2D::ZeroVector;
+            Triangle.V0_Color = Triangle.V1_Color = Triangle.V2_Color = Color;
+        }
+        Canvas->DrawItem(LineItem);
     };
     auto Rounded = [&](float X, float Y, float Width, float Height, float Radius, FLinearColor Color)
     {
@@ -172,11 +217,12 @@ void AVroomHUD::DrawHUD()
         Rect(Start.X - 4, Start.Y - 4, 8, 8, Paper);
         if (ShowCars)
         {
-            for (double Distance : Circuit->OpponentS)
-            {
-                const FVector2D P = Project(Circuit->Position(Distance) / 100.0f);
-                Rect(P.X - 2, P.Y - 2, 4, 4, Muted);
-            }
+            if (Circuit->OpponentsVisible)
+                for (double Distance : Circuit->OpponentS)
+                {
+                    const FVector2D P = Project(Circuit->Position(Distance) / 100.0f);
+                    Rect(P.X - 2, P.Y - 2, 4, 4, Muted);
+                }
             const FVector2D P = Project(Circuit->Position(Car->Drive.State.DistanceM) / 100.0f);
             Rect(P.X - 6, P.Y - 6, 12, 12, Panel);
             Rect(P.X - 4, P.Y - 4, 8, 8, RacingRed);
@@ -186,8 +232,69 @@ void AVroomHUD::DrawHUD()
     const FString TrackName = Track ? Track->Name.ToUpper() : TEXT("CIRCUIT");
     const FString Distance = FString::Printf(TEXT("%.2f KM"), Circuit->LengthM() / 1000.0f);
 
-    if (Vroom::Graphics::IsOpen())
+    if (Car->PreparingCircuit)
     {
+        if (!CanvasWarmupSubmitted && Canvas->Canvas)
+        {
+            // SimpleElement/Canvas has no native graphics PSO collector in 5.8.
+            // Exercise the actual HUD primitives on its actual render target,
+            // gamma and font path, then cover them with the preparation screen.
+            // Offscreen/transparent dummy geometry can be culled and is not a
+            // substitute for issuing these real draws.
+            Rect(4, 4, 28, 20, Paper);
+            Rect(36, 4, 28, 20, FLinearColor(1, 1, 1, .55f));
+            Rounded(68, 4, 36, 24, 7, Paper);
+            Rounded(108, 4, 36, 24, 7, Panel);
+            // Start lights use an opaque triangle batch, unlike rounded panels
+            // and the line quads. Warm that exact path explicitly as well.
+            FCanvasNGonItem Lamp(FVector2D(160 * Scale, 16 * Scale),
+                FVector2D(8 * Scale), 24, RacingRed);
+            Lamp.BlendMode = SE_BLEND_Opaque;
+            Canvas->DrawItem(Lamp);
+            for (float Thickness : {1.f, 1.6f, 4.f, 8.f})
+            {
+                const float Y = 34 + Thickness * 7;
+                Line(FVector2D(4, Y), FVector2D(100, Y + 2), Paper, Thickness);
+                Line(FVector2D(110, Y), FVector2D(206, Y + 2), Muted, Thickness);
+            }
+            const FString Glyphs = TEXT("0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz ÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŸ àâäçéèêëîïôöùûüÿ °%+−=:.,/()·—…←→↑↓");
+            for (float Size : {10.f, 12.f, 16.f, 24.f, 32.f, 52.f})
+                Text(Glyphs, 4, 72 + Size * 2, Size, Paper);
+            Text(Glyphs, 4, 205, 18, Muted);
+            // Force submission before the opaque covering panel, so Canvas
+            // sorting cannot put the samples above it. The RHI fence includes
+            // parallel command translation and the runtime PSO compilation.
+            Canvas->Canvas->Flush_GameThread(true);
+            CanvasWarmupFence = MakeUnique<FRenderCommandFence>();
+            CanvasWarmupFence->BeginFence(FRenderCommandFence::ESyncDepth::RHIThread);
+            CanvasWarmupSubmitted = true;
+            UE_LOG(LogTemp, Display, TEXT("VROOM: Canvas PSO preparation submitted output=%dx%d"),
+                FMath::RoundToInt(Canvas->ClipX), FMath::RoundToInt(Canvas->ClipY));
+        }
+        Rect(0, 0, W, H, FLinearColor(.012f, .019f, .024f, 1));
+        const float X = W * .5f, Y = H * .5f;
+        Text(TEXT("VROOM"), X, Y - 96, 19, RacingRed, true);
+        Text(TEXT("PRÉPARATION DU CIRCUIT"), X, Y - 44, 32, Paper, true);
+        Text(Track ? Track->Name : TEXT(""), X, Y + 8, 18, Muted, true);
+        Text(TEXT("Un instant, la piste se prépare…"), X, Y + 57, 16, Muted, true);
+        const float Phase = static_cast<float>(FMath::Fmod(FPlatformTime::Seconds(), 1.6) / 1.6);
+        Rect(X - 120, Y + 105, 240, 3, FLinearColor(.1f, .15f, .18f, 1));
+        Rect(X - 120 + Phase * 180, Y + 105, 60, 3, RacingRed);
+        return;
+    }
+    if (CanvasWarmupSubmitted)
+    {
+        // This preparation is complete. Arm a fresh pass for the next circuit
+        // or graphics change, releasing the completed fence immediately.
+        CanvasWarmupSubmitted = false;
+        CanvasWarmupFence.Reset();
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Canvas PSO preparation ready"));
+    }
+    if (Vroom::Graphics::IsOpen() || Vroom::Settings::IsOpen())
+    {
+        const bool Controls = Vroom::Settings::IsOpen();
+        auto RowLabel = [&](int Row) { return Controls ? Vroom::Settings::Label(Row) : Vroom::Graphics::Label(Row); };
+        auto RowValue = [&](int Row) { return Controls ? Vroom::Settings::Value(Row) : Vroom::Graphics::Value(Row); };
         const float X = W * .5f - 430, Y = H * .5f - 400;
         const FLinearColor Cyan(.31f, .86f, .88f, 1.f);
         const FLinearColor Gold(.97f, .73f, .32f, 1.f);
@@ -195,15 +302,18 @@ void AVroomHUD::DrawHUD()
         Rect(0, 0, W, H, FLinearColor(.004f, .009f, .014f, .78f));
         Rect(X, Y, 860, 800, FLinearColor(.017f, .036f, .048f, .98f));
         Rect(X, Y, 860, 3, Cyan);
-        Text(TEXT("VROOM / GRAPHISMES"), X + 27, Y + 23, 26, Paper);
-        Text(TEXT("QUALITÉ & FLUIDITÉ"), X + 29, Y + 60, 12, Gold);
+        Text(Controls ? TEXT("VROOM / COMMANDES ET SON") : TEXT("VROOM / GRAPHISMES"), X + 27, Y + 23, 26, Paper);
+        Text(Controls ? TEXT("CONFORT DE PILOTAGE") : TEXT("QUALITÉ & FLUIDITÉ"), X + 29, Y + 60, 12, Gold);
         Text(TEXT("HAUT / BAS : CHOISIR   GAUCHE / DROITE : REGLER"), X + 340, Y + 60, 11, Muted);
 
-        const int32 Selected = Vroom::Graphics::SelectedRow();
-        for (int32 I = 0; I < Vroom::Graphics::RowCount(); ++I)
+        const int32 Selected = Controls ? Vroom::Settings::SelectedRow() : Vroom::Graphics::SelectedRow();
+        const int32 First = Controls ? Vroom::Settings::FirstVisibleRow() : 0;
+        const int32 Count = Controls ? Vroom::Settings::RowCount() : Vroom::Graphics::RowCount();
+        const int32 Last = Controls ? FMath::Min(Count, First + Vroom::Settings::VisibleRows) : Count;
+        for (int32 I = First; I < Last; ++I)
         {
-            const float RowY = Y + 92 + I * 40;
-            const bool Enabled = Vroom::Graphics::IsEnabled(I);
+            const float RowY = Y + 92 + (I - First) * 40;
+            const bool Enabled = Controls || Vroom::Graphics::IsEnabled(I);
             const bool Focused = I == Selected;
             if (Focused)
             {
@@ -212,18 +322,25 @@ void AVroomHUD::DrawHUD()
             }
             else if (I % 2 == 0)
                 Rect(X + 24, RowY, 812, 38, FLinearColor(.035f, .064f, .081f, .60f));
-            Text(Vroom::Graphics::Label(I), X + 41, RowY + 10, 17, Enabled ? Paper : Inactive);
-            Text(Vroom::Graphics::Value(I), X + 637, RowY + 10, 16, Enabled ? Cyan : Inactive, true);
+            Text(RowLabel(I), X + 41, RowY + 10, 17, Enabled ? Paper : Inactive);
+            Text(RowValue(I), X + 637, RowY + 10, 16, Enabled ? Cyan : Inactive, true);
             if (Focused && Enabled)
             {
                 Text(TEXT("-"), X + 468, RowY + 5, 25, Cyan, true);
                 Text(TEXT("+"), X + 801, RowY + 5, 25, Cyan, true);
             }
         }
+        if (Controls)
+        {
+            Text(TEXT("< PAGE PRÉCÉDENTE"), X + 28, Y + 590, 12, Cyan);
+            Text(FString::Printf(TEXT("%d / %d"), First / Vroom::Settings::VisibleRows + 1,
+                FMath::DivideAndRoundUp(Count, Vroom::Settings::VisibleRows)), X + 430, Y + 590, 12, Muted, true);
+            Text(TEXT("PAGE SUIVANTE >"), X + 645, Y + 590, 12, Cyan);
+        }
         const float DetailsY = Y + 633;
         Rect(X + 25, DetailsY - 7, 810, 1, FLinearColor(.13f, .24f, .28f, 1.f));
-        Text(Vroom::Graphics::Label(Selected).ToUpper(), X + 29, DetailsY + 7, 12, Gold);
-        FString Description = Vroom::Graphics::Description(Selected);
+        Text(RowLabel(Selected).ToUpper(), X + 29, DetailsY + 7, 12, Gold);
+        FString Description = Controls ? Vroom::Settings::Description(Selected) : Vroom::Graphics::Description(Selected);
         // Wrap longer notices without shrinking the help text.
         const int32 CharacterLimit = 102;
         int32 Cut = FMath::Min(CharacterLimit, Description.Len());
@@ -238,61 +355,113 @@ void AVroomHUD::DrawHUD()
         Text(TEXT("ANNULER"), X + 110, Y + 747, 15, Paper, true);
         Text(TEXT("ÉCHAP"), X + 215, Y + 750, 11, Muted);
         Rect(X + 598, Y + 733, 238, 44, Cyan);
-        Text(TEXT("APPLIQUER (ENTREE)"), X + 717, Y + 747, 14, FLinearColor(.012f, .040f, .052f, 1.f), true);
+        Text(Controls ? TEXT("APPLIQUER / START") : TEXT("APPLIQUER (ENTREE)"), X + 717, Y + 747, 14, FLinearColor(.012f, .040f, .052f, 1.f), true);
         return;
     }
 
+    auto MenuButtons = [&]()
+    {
+        const auto Items = Vroom::MenuLayout::Items(Car, W, H);
+        for (int32 I = 0; I < Items.Num(); ++I)
+        {
+            const auto& Item = Items[I];
+            const bool Selected = (Item.Kind == Vroom::MenuLayout::ItemKind::Mode && Item.Value == static_cast<int>(Car->Session.Mode))
+                || (Item.Kind == Vroom::MenuLayout::ItemKind::Difficulty && Item.Value == static_cast<int>(Car->Session.Difficulty))
+                || (Item.Kind == Vroom::MenuLayout::ItemKind::Track && Item.Value == Circuit->TrackIndex);
+            const bool Focus = I == Vroom::MenuLayout::FocusedItem();
+            const bool Primary = Item.Kind == Vroom::MenuLayout::ItemKind::Action && I == 0;
+            const FVector2D P = Item.Bounds.Min, Size = Item.Bounds.GetSize();
+            Rounded(P.X, P.Y, Size.X, Size.Y, 6, Primary ? RacingRed : Selected ? FLinearColor(.065f,.20f,.23f,.98f) : FLinearColor(.028f,.058f,.071f,.96f));
+            if (Focus || Selected)
+                Rect(P.X + 3, P.Y + Size.Y - 3, Size.X - 6, 2, Focus ? Paper : FLinearColor(.31f,.86f,.88f,1));
+            Text(Item.Label, P.X + Size.X * .5f, P.Y + Size.Y * .5f - 10, Item.Kind == Vroom::MenuLayout::ItemKind::Track ? 16 : 15, Paper, true);
+        }
+    };
+    const auto& Record = Vroom::Progress::Record(Circuit->TrackIndex, static_cast<int>(Car->Session.Mode));
+    if (Car->Session.Phase == Vroom::SessionPhase::Finished)
+    {
+        Rect(0,0,W,H,FLinearColor(.004f,.01f,.016f,.70f));
+        const bool Qualifying=Car->Session.QualifyingRun;
+        const bool Standings=Car->Session.Mode==Vroom::SessionMode::GrandPrix&&!Qualifying;
+        const float PanelWidth=Standings?1060.f:700.f,PanelHeight=Standings?570.f:430.f;
+        const float X=W*.5f-PanelWidth*.5f,Y=H*.5f-(Standings?285.f:220.f);
+        Rounded(X,Y,PanelWidth,PanelHeight,14,Panel);Rect(X+30,Y+28,48,4,RacingRed);
+        const FString Title=Car->Session.ChampionshipComplete?TEXT("CHAMPIONNAT TERMINÉ")
+            :Car->Session.Retired?TEXT("ABANDON · PANNE SÈCHE"):Qualifying?TEXT("QUALIFICATIONS")
+            :Car->Session.Mode==Vroom::SessionMode::Arcade?(Car->Session.Won?TEXT("OBJECTIF ATTEINT"):TEXT("FIN DE COURSE")):TEXT("ARRIVÉE");
+        Text(Title,X+30,Y+53,29);Text(TrackName,X+32,Y+97,15,Muted);
+        if(Qualifying)
+        {
+            Text(FString::Printf(TEXT("P%d SUR LA GRILLE"),Car->Session.QualificationPosition),X+30,Y+141,35);
+            Text(Car->Session.Won?LapTime(Car->Session.QualificationTime):TEXT("TOUR INVALIDÉ · DÉPART EN FOND DE GRILLE"),X+32,Y+194,17,Car->Session.Won?Paper:RacingRed);
+        }
+        else if(Standings)
+        {
+            const FLinearColor Cyan(.31f,.86f,.88f,1.f);
+            Text(Car->Session.Retired?TEXT("COURSE · ABANDON"):FString::Printf(TEXT("COURSE · P%d / 13"),Car->Session.Position),X+30,Y+141,29);
+            Text(FString::Printf(TEXT("TEMPS  %s"),*LapTime(Car->Session.FinishedTime)),X+32,Y+191,16,Muted);
+            Text(FString::Printf(TEXT("GÉNÉRAL  P%d · %d POINTS"),Car->Session.ChampionshipRank(),Car->Session.ChampionshipPoints),X+32,Y+227,21,Cyan);
+            if(Car->Session.ChampionshipComplete)
+            {
+                const int Winner=Car->Session.ChampionshipWinner();
+                Text(Winner==12?TEXT("VOUS REMPORTEZ LE CHAMPIONNAT")
+                    :FString::Printf(TEXT("CHAMPION · F1-%02d"),Winner+1),X+32,Y+277,19,Winner==12?Cyan:Paper);
+            }
+            else Text(FString::Printf(TEXT("ÉTAPE %d / 6"),Car->Session.Stage+1),X+32,Y+279,16,Muted);
+            Text(TEXT("Les rivaux encore en piste sont classés"),X+32,Y+343,13,Muted);
+            Text(TEXT("selon leur avancement à votre arrivée."),X+32,Y+362,13,Muted);
+            const float TX=X+520;
+            Text(TEXT("CLASSEMENT GÉNÉRAL"),TX,Y+28,17,Cyan);
+            Text(TEXT("RG"),TX+12,Y+64,10,Muted);Text(TEXT("PILOTE"),TX+55,Y+64,10,Muted);
+            Text(TEXT("COURSE"),TX+230,Y+64,10,Muted);Text(TEXT("PTS"),TX+342,Y+64,10,Muted);Text(TEXT("VIC."),TX+430,Y+64,10,Muted);
+            const auto Table=Car->Session.Standings();
+            for(int I=0;I<13;++I)
+            {
+                const auto& Entry=Table[I];const bool Player=Entry.Driver==12;
+                const float RowY=Y+87+I*23;
+                Rect(TX,RowY,508,21,Player?FLinearColor(.04f,.21f,.23f,.98f):FLinearColor(.035f,.065f,.080f,I%2?.65f:.25f));
+                const FLinearColor C=Player?Cyan:Paper;
+                Text(FString::FromInt(I+1),TX+12,RowY+3,13,C);
+                Text(Player?TEXT("VOUS"):FString::Printf(TEXT("F1-%02d"),Entry.Driver+1),TX+55,RowY+3,13,C);
+                const int RaceRank=Car->Session.RaceRanks[Entry.Driver];
+                Text(RaceRank>0?FString::Printf(TEXT("P%d"),RaceRank):TEXT("—"),TX+230,RowY+3,13,C);
+                Text(FString::FromInt(Entry.Points),TX+342,RowY+3,13,C);
+                Text(FString::FromInt(Entry.Wins),TX+430,RowY+3,13,C);
+            }
+        }
+        else
+        {
+            Text(FString::Printf(TEXT("%d / %d DÉPASSEMENTS"),Car->CarsPassed,Car->Session.TargetPasses),X+30,Y+143,29);
+            Text(FString::Printf(TEXT("TEMPS  %s     SCORE  %05d"),*LapTime(Car->Session.FinishedTime),Car->Score),X+32,Y+193,16,Muted);
+        }
+        MenuButtons();return;
+    }
     if (!Circuit->Running)
     {
-        Rect(0, 0, W, H, FLinearColor(0.008f, 0.012f, 0.015f, 0.37f));
-        // The left shade keeps the opening screen legible over the live circuit.
-        for (int32 I = 0; I < 32; ++I)
+        Rect(0,0,W,H,FLinearColor(.008f,.012f,.015f,.37f));
+        for(int32 I=0;I<32;++I)Rect(I*W*.027f,0,W*.027f+1,H,FLinearColor(.008f,.012f,.015f,.92f*(1.f-I/32.f)));
+        Rect(66,77,46,4,RacingRed);Text(TEXT("1991 / RETOUR EN PISTE"),130,69,15);
+        Text(TEXT("VROOM"),57,114,126);Text(TEXT("La vitesse. Le rythme. La trajectoire."),67,278,20,Muted);
+        Text(TEXT("CHOISIR SA COURSE"),67,H-456,13,Muted);
+        const TCHAR* Descriptions[] = {TEXT("Dépasse les adversaires avant la fin du chrono. Six étapes à enchaîner."),
+            TEXT("Un tour de qualification, une grille de 13 voitures, puis trois tours de course."),
+            TEXT("Seul en piste : améliore ton record et poursuis le fantôme de ton meilleur tour.")};
+        Text(Descriptions[static_cast<int>(Car->Session.Mode)],67,H-347,14,Muted);
+        Text(TEXT("DIFFICULTÉ"),67,H-324,12,Muted);
+        Text(Record.Best>0?FString::Printf(TEXT("RECORD PERSONNEL  %s"),*LapTime(Record.Best)):TEXT("RECORD PERSONNEL  —  À ÉTABLIR"),67,H-235,17,Paper);
+        if(!Record.History.IsEmpty())
         {
-            const float Alpha = 0.92f * (1.0f - static_cast<float>(I) / 32.0f);
-            Rect(I * W * 0.027f, 0, W * 0.027f + 1, H,
-                FLinearColor(0.008f, 0.012f, 0.015f, Alpha));
+            FString History=TEXT("DERNIERS TOURS  ");
+            for(int I=0;I<FMath::Min(3,Record.History.Num());++I)History+=LapTime(Record.History[I])+(I<2?TEXT("   "):TEXT(""));
+            Text(History,67,H-207,12,Muted);
         }
-        Rect(62, 68, 46, 5, RacingRed);
-        Text(TEXT("1991 / RETOUR EN PISTE"), 124, 61, 17);
-        Text(TEXT("VROOM"), 57, 116, 155);
-        Text(TEXT("PREMIERS TOURS"), 66, 294, 32);
-        Text(TEXT("La vitesse. Le rythme. La trajectoire."), 67, 347, 19, Muted);
-
-        Text(TEXT("SÉANCE LIBRE"), 67, H - 316, 14, Muted);
-        Text(TrackName, 64, H - 286, 43);
-        Text(FString::Printf(TEXT("CIRCUIT %02d / 06    ·    %s"), Circuit->TrackIndex + 1, *Distance),
-            67, H - 228, 16, Muted);
-        Rect(66, H - 171, 333, 65, RacingRed);
-        Text(TEXT("ENTRÉE"), 87, H - 154, 25);
-        Text(TEXT("ROULER  >"), 231, H - 150, 18);
-        Rect(415, H - 171, 250, 65, FLinearColor(.038f, .095f, .119f, .96f));
-        Rect(415, H - 171, 250, 2, FLinearColor(.31f, .86f, .88f, 1.f));
-        Text(TEXT("O"), 437, H - 154, 25, FLinearColor(.31f, .86f, .88f, 1.f));
-        Text(TEXT("GRAPHISMES"), 478, H - 150, 18);
-
-        const float CardX = W - 437;
-        const float CardY = 90;
-        Rect(CardX, CardY, 369, 614, Panel);
-        Rect(CardX, CardY, 369, 3, RacingRed);
-        Text(TEXT("LES SIX CIRCUITS"), CardX + 24, CardY + 24, 18);
-        Text(TEXT("F1 — F6 POUR CHOISIR"), CardX + 24, CardY + 54, 13, Muted);
-        Map(CardX + 33, CardY + 91, 303, 192, false);
-        for (int32 I = 0; I < Circuit->Tracks.Num() && I < 6; ++I)
-        {
-            const float Y = CardY + 306 + I * 45;
-            const bool Selected = I == Circuit->TrackIndex;
-            if (Selected)
-            {
-                Rect(CardX + 12, Y - 5, 345, 40, FLinearColor(0.18f, 0.035f, 0.026f, 0.94f));
-                Rect(CardX + 12, Y - 5, 3, 40, RacingRed);
-            }
-            Text(FString::Printf(TEXT("F%d"), I + 1), CardX + 26, Y + 1, 16, Selected ? RacingRed : Muted);
-            Text(Circuit->Tracks[I].Name.ToUpper(), CardX + 74, Y, 18, Selected ? Paper : Muted);
-            if (Selected) Text(TEXT("<"), CardX + 324, Y, 18, RacingRed);
-        }
-        Text(TEXT("FLÈCHES / ZQSD   CONDUIRE       C   VUE       G   BOÎTE       O   GRAPHISMES"), 67, H - 73, 13, Muted);
-        Text(FString::Printf(TEXT("PROTOTYPE V%s · TRACÉ PROVISOIRE"), Vroom::AppVersion), 67, H - 43, 12, Muted);
-        Text(TEXT("01 / PREMIERS TOURS"), W - 258, H - 43, 12, Muted);
+        const float CardX=W-437,CardY=90;
+        Rounded(CardX,CardY,369,614,10,Panel);Rect(CardX+15,CardY,339,3,RacingRed);
+        Text(TEXT("LES SIX CIRCUITS"),CardX+24,CardY+24,18);Text(TEXT("CLIC / F1–F6 / MANETTE"),CardX+24,CardY+54,12,Muted);
+        Map(CardX+33,CardY+91,303,192,false);
+        MenuButtons();
+        Text(FString::Printf(TEXT("FLÈCHES / CROIX : CHOISIR    %s / A : VALIDER    %s / B : RETOUR"),*Vroom::Settings::BindingLabel(Vroom::Action::Start),*Vroom::Settings::BindingLabel(Vroom::Action::Menu)),67,H-72,12,Muted);
+        Text(FString::Printf(TEXT("V%s · %s · %s"),Vroom::AppVersion,*TrackName,*Distance),67,H-43,12,Muted);
         return;
     }
 
@@ -309,16 +478,11 @@ void AVroomHUD::DrawHUD()
 
     if (Circuit->Paused)
     {
-        Rect(0, 0, W, H, FLinearColor(0.008f, 0.012f, 0.015f, 0.57f));
-        const float X = W * 0.5f - 225;
-        const float Y = H * 0.5f - 111;
-        Rect(X, Y, 450, 222, Panel);
-        Rect(X, Y, 450, 4, RacingRed);
-        Text(TEXT("AU STAND"), X + 33, Y + 28, 48);
-        Text(TEXT("La séance est en pause."), X + 37, Y + 98, 19, Muted);
-        Text(TEXT("P  REPRENDRE"), X + 37, Y + 158, 19);
-        Text(TEXT("ÉCHAP  MENU"), X + 245, Y + 161, 15, Muted);
-        return;
+        Rect(0,0,W,H,FLinearColor(.008f,.012f,.015f,.64f));
+        const float X=W*.5f-260,Y=H*.5f-210;
+        Rounded(X,Y,520,395,12,Panel);Rect(X+35,Y+28,46,4,RacingRed);
+        Text(TEXT("PAUSE"),X+35,Y+49,35);
+        MenuButtons();return;
     }
 
     const FLinearColor Detail(0.55f, 0.72f, 0.78f, 1);
@@ -327,75 +491,87 @@ void AVroomHUD::DrawHUD()
 
     const bool NeedsRecovery = Contact.Phase == Vroom::ContactPhase::Crashed
         || Contact.Phase == Vroom::ContactPhase::Recovering;
-    // A compact translucent interpretation retains the original race data
-    // while leaving most of the road view open.
-    const FLinearColor Ice(.37f, .89f, .90f, 1.f), Silver(.69f, .77f, .79f, 1.f);
-    const FLinearColor Hairline(.58f, .81f, .83f, .16f);
-    Rounded(22, 21, W - 44, 112, 16, FLinearColor(.003f, .008f, .016f, .18f));
-    Rounded(22, 18, W - 44, 112, 16, Hairline);
-    Rounded(23, 19, W - 46, 110, 15, FLinearColor(.007f, .024f, .036f, .74f));
-    Line(FVector2D(46, 19), FVector2D(W - 46, 19), FLinearColor(.71f, .95f, .97f, .20f));
-    Map(39, 32, 124, 82, true);
-
-    const bool Starting = Circuit->RaceClock < 0;
-    const FLinearColor LampColors[] = {RacingRed, FLinearColor(.96f, .67f, .23f, 1),
-        FLinearColor(.39f, .91f, .59f, 1)};
-    const bool LampOn[] = {Starting || NeedsRecovery,
-        Starting ? Circuit->RaceClock >= -2 : Car->Drive.Skidding,
-        !Starting && !NeedsRecovery};
-    for (int32 I = 0; I < 3; ++I)
+    // 84 px in the 1440 x 900 design space; all original race indicators remain.
+    const FLinearColor Ice(.37f,.89f,.90f,1.f),Silver(.69f,.77f,.79f,1.f),Hairline(.58f,.81f,.83f,.16f);
+    Rounded(22,18,W-44,84,12,Hairline);Rounded(23,19,W-46,82,11,FLinearColor(.007f,.024f,.036f,.77f));
+    Map(34,23,104,71,true);
+    const bool Starting=Circuit->RaceClock<0;
+    const FLinearColor LampColors[]={RacingRed,FLinearColor(.96f,.67f,.23f,1),FLinearColor(.39f,.91f,.59f,1)};
+    const bool LampOn[]={Starting||NeedsRecovery,Starting?Circuit->RaceClock>=-2:Car->Drive.Skidding,!Starting&&!NeedsRecovery};
+    for(int I=0;I<3;++I)
     {
-        const FVector2D Centre(184 * Scale, (43 + I * 30) * Scale);
-        FCanvasNGonItem Ring(Centre, FVector2D(7 * Scale), 24, FLinearColor(.45f, .67f, .72f, .14f));
-        Canvas->DrawItem(Ring);
-        FLinearColor Color = LampColors[I]; Color.A = LampOn[I] ? 1.f : .14f;
-        FCanvasNGonItem Light(Centre, FVector2D(4.5f * Scale), 24, Color);
-        Canvas->DrawItem(Light);
+        FLinearColor Color=LampColors[I];Color.A=LampOn[I]?1.f:.18f;
+        FCanvasNGonItem Light(FVector2D(154*Scale,(36+I*23)*Scale),FVector2D(4.5f*Scale),20,Color);Canvas->DrawItem(Light);
     }
-    Text(FString::Printf(TEXT("GRAND PRIX / %s"), *TrackName), 214, 34, 11, Ice);
-    const FString CircuitTitle = Track && !Track->CircuitName.IsEmpty() ? Track->CircuitName : TrackName;
-    Text(CircuitTitle, 213, 53, 27, Paper);
-    Text(Distance, 215, 96, 11, Silver);
-    for (float X : {477.f, 842.f, W - 220})
-        Line(FVector2D(X, 39), FVector2D(X, 109), Hairline);
-
-    Text(TEXT("SCORE"), 501, 35, 10, Silver);
-    Text(FString::Printf(TEXT("%05d"), FMath::Clamp(Car->Score, 0, 99999)), 499, 53, 31, Paper);
-    Text(TEXT("STAGE"), 666, 35, 10, Silver);
-    Text(FString::Printf(TEXT("%02d"), Circuit->TrackIndex + 1), 664, 53, 31, Paper);
-    Text(TEXT("TOUR"), 765, 35, 10, Silver);
-    Text(FString::Printf(TEXT("%02d"), FMath::Max(0, Car->Lap - 1)), 763, 53, 31, Paper);
-    const FString Status = NeedsRecovery ? TEXT("RETOUR EN PISTE") : Starting ? TEXT("DÉPART")
-        : Contact.Phase == Vroom::ContactPhase::Airborne ? TEXT("EN L'AIR") : TEXT("EN PISTE");
-    Text(Status, 501, 98, 10, NeedsRecovery ? RacingRed : Ice);
-
-    const float PassX = W - 562;
-    Text(TEXT("DÉPASSEMENTS"), PassX, 35, 10, Silver);
-    Text(FString::Printf(TEXT("%02d"), Car->CarsPassed), PassX + 234, 31, 16, Ice);
-    const int32 Passed = FMath::Clamp(Car->CarsPassed, 0, 27);
-    for (int32 I = 0; I < 27; ++I)
+    const TCHAR*ModeNames[]={TEXT("ARCADE"),TEXT("GRAND PRIX"),TEXT("CHRONO")};
+    Text(FString::Printf(TEXT("%s / %s"),ModeNames[static_cast<int>(Car->Session.Mode)],*TrackName),177,29,10,Ice);
+    const FString CircuitTitle=Track&&!Track->CircuitName.IsEmpty()?Track->CircuitName:TrackName;
+    Text(CircuitTitle,176,45,24);Text(Distance,178,79,10,Silver);
+    for(float X:{440.f,790.f,W-201})Line(FVector2D(X,32),FVector2D(X,88),Hairline);
+    Text(Car->Session.Mode==Vroom::SessionMode::GrandPrix?TEXT("POINTS"):TEXT("SCORE"),460,29,9,Silver);
+    Text(FString::Printf(TEXT("%05d"),FMath::Clamp(Car->Session.Mode==Vroom::SessionMode::GrandPrix?Car->Session.ChampionshipPoints:Car->Score,0,99999)),458,43,26);
+    Text(TEXT("STAGE"),598,29,9,Silver);Text(FString::Printf(TEXT("%02d"),Car->Session.Stage+1),597,43,26);
+    Text(TEXT("TOUR"),674,29,9,Silver);Text(Car->Session.LapTarget>0?FString::Printf(TEXT("%d/%d"),FMath::Min(Car->Lap,Car->Session.LapTarget),Car->Session.LapTarget):FString::Printf(TEXT("%02d"),Car->Lap),673,43,26);
+    const FString Status=NeedsRecovery?TEXT("RETOUR EN PISTE"):Car->Session.QualifyingRun?TEXT("QUALIFICATION")
+        :Car->Session.Solo()?TEXT("CONTRE LA MONTRE"):FString::Printf(TEXT("POSITION %02d / 13"),Car->Session.Position);
+    Text(Status,461,79,10,NeedsRecovery?RacingRed:Ice);
+    const float PassX=W-621;
+    if(Car->Session.Mode==Vroom::SessionMode::Arcade)
     {
-        const float X = PassX + (I % 9) * 28, Y = 64 + (I / 9) * 17;
-        const FLinearColor Color = I < Passed ? Ice : FLinearColor(.38f, .62f, .66f, .28f);
-        Rect(X, Y, 17, 4, Color);
-        Rect(X + 5, Y - 3, 7, 10, Color);
-        Rect(X + 1, Y - 2, 3, 2, Color); Rect(X + 13, Y - 2, 3, 2, Color);
-        Rect(X + 1, Y + 4, 3, 2, Color); Rect(X + 13, Y + 4, 3, 2, Color);
+        Text(TEXT("DÉPASSEMENTS"),PassX,29,9,Silver);
+        Text(FString::Printf(TEXT("%02d"),Car->CarsPassed),PassX+245,27,14,Ice);
+        const int Passed=FMath::Clamp(Car->CarsPassed,0,27);
+        for(int I=0;I<27;++I)
+        {
+            const float X=PassX+(I%9)*28,Y=51+(I/9)*13;const FLinearColor C=I<Passed?Ice:FLinearColor(.38f,.62f,.66f,.25f);
+            Rect(X,Y,17,3,C);Rect(X+5,Y-3,7,9,C);Rect(X+1,Y-2,3,2,C);Rect(X+13,Y-2,3,2,C);
+        }
     }
-    const float FuelX = W - 194;
-    const float Fuel = FMath::Clamp(static_cast<float>(Car->Drive.Fuel), 0.f, 1.f);
-    const FLinearColor FuelColor = Fuel < .22f ? RacingRed : Ice;
-    Text(TEXT("ESSENCE"), FuelX, 35, 10, Silver);
-    Text(FString::Printf(TEXT("%d"), FMath::RoundToInt(Fuel * 100)), FuelX - 2, 53, 31, Paper);
-    Text(TEXT("%"), FuelX + 58, 71, 12, Silver);
-    Rounded(W - 58, 41, 5, 66, 2.5, FLinearColor(.29f, .52f, .57f, .22f));
-    if (Fuel > .001f) Rounded(W - 58, 107 - 66 * Fuel, 5, 66 * Fuel, 2.5, FuelColor);
-    Text(Fuel < .22f ? TEXT("RAVITAILLER") : TEXT("RÉSERVE OK"), FuelX, 98, 10, FuelColor);
+    else if(Car->Session.QualifyingRun)
+    {
+        Text(TEXT("QUALIFICATION"),PassX,29,9,Silver);
+        Text(TEXT("UN TOUR PROPRE"),PassX,46,18,Car->LapClean?Ice:RacingRed);
+        Text(Record.Best>0?FString::Printf(TEXT("RECORD  %s"),*LapTime(Record.Best)):TEXT("DÉTERMINE VOTRE PLACE SUR LA GRILLE"),PassX,79,10,Silver);
+    }
+    else if(Car->Session.Mode==Vroom::SessionMode::GrandPrix)
+    {
+        Text(TEXT("POSITION EN COURSE"),PassX,29,9,Silver);
+        Text(FString::Printf(TEXT("P%d / 13"),Car->Session.Position),PassX,45,22,Ice);
+        Text(TEXT("VOUS"),PassX+213,50,10,Ice);
+        for(int I=0;I<13;++I)
+        {
+            const bool Player=I+1==Car->Session.Position;const float X=PassX+I*20;
+            Rect(X,78,17,15,Player?Ice:FLinearColor(.11f,.25f,.29f,.70f));
+            Text(FString::FromInt(I+1),X+8.5f,81,8,Player?Panel:Silver,true);
+        }
+    }
+    else
+    {
+        Text(TEXT("CONTRE LA MONTRE"),PassX,29,9,Silver);
+        Text(Record.Best>0?LapTime(Record.Best):TEXT("PREMIER RECORD"),PassX,46,20,Ice);
+        Text(Record.Ghost.Num()>1&&Vroom::Settings::Get().GhostEnabled?TEXT("FANTÔME DU MEILLEUR TOUR"):TEXT("ENCHAÎNER LES TOURS PROPRES"),PassX,79,10,Silver);
+    }
+    const float FuelX=W-177;const float Fuel=FMath::Clamp(static_cast<float>(Car->Drive.Fuel),0.f,1.f);
+    Text(TEXT("ESSENCE"),FuelX,29,9,Silver);Text(FString::Printf(TEXT("%d %%"),FMath::RoundToInt(Fuel*100)),FuelX-1,43,26);
+    Fill(FuelX,81,116,4,Fuel,Fuel<.22f?RacingRed:Ice);
+    const float Tyres=FMath::Clamp(static_cast<float>(Car->Drive.TyreHealth/2048.),0.f,1.f);
+    FString Alert;
+    if(Car->Pit.Servicing)Alert=FString::Printf(TEXT("STAND · %s · %.1f s"),Car->Pit.NeedTyres&&Car->Pit.NeedFuel?TEXT("PNEUS + ESSENCE"):Car->Pit.NeedTyres?TEXT("PNEUS"):TEXT("ESSENCE"),Car->Pit.Remaining);
+    else if(!Car->Session.Solo()&&Car->Pit.Available)Alert=FString::Printf(TEXT("STAND · %s PNEUS · %s ESSENCE · %s : LES DEUX"),*Vroom::Settings::BindingLabel(Vroom::Action::Tyres),*Vroom::Settings::BindingLabel(Vroom::Action::Refuel),Car->MouseSteer?TEXT("A / CLIC SOURIS"):TEXT("A"));
+    else if(!Car->Session.Solo()&&Car->Pit.InLane)Alert=TEXT("STANDS · S’ARRÊTER DANS L’EMPLACEMENT");
+    else if(!Car->Session.Solo()&&(Fuel<.22f||Tyres<.3f))Alert=FString::Printf(TEXT("%s%sSTANDS À DROITE APRÈS LA LIGNE"),Fuel<.22f?TEXT("ESSENCE BASSE · "):TEXT(""),Tyres<.3f?TEXT("PNEUS USÉS · "):TEXT(""));
+    if(!Alert.IsEmpty()){Rounded(W*.5f-335,114,670,32,8,Panel);Text(Alert,W*.5f,121,13,Car->Pit.InLane?Ice:RacingRed,true);}
+    if(Car->Session.Mode==Vroom::SessionMode::Arcade)
+    {
+        Text(TEXT("OBJECTIF"),W-316,29,9,Silver);
+        Text(FString::Printf(TEXT("%d / %d"),Car->CarsPassed,Car->Session.TargetPasses),W-317,45,20,Ice);
+        Text(LapTime(Car->Session.RemainingSeconds(Circuit->RaceClock)).Left(5),W-315,79,10,Silver);
+    }
 
     if (Circuit->RaceClock < 0)
     {
         const int32 Countdown = FMath::Clamp(FMath::CeilToInt(-Circuit->RaceClock), 1, 3);
-        const float Y = 146.f;
+        const float Y = 154.f;
         Rect(W * .5f - 125, Y, 250, 72, Panel);
         Text(FString::Printf(TEXT("DÉPART DANS %d"), Countdown), W * .5f, Y + 10, 17, Paper, true);
         for (int32 I = 0; I < 3; ++I)
@@ -412,8 +588,12 @@ void AVroomHUD::DrawHUD()
 
     // Lap timing remains useful in free practice, outside the original band.
     Text(LapTime(FMath::Max(0.0, Circuit->RaceClock - Car->LapStart)), 24, H - 65, 23);
-    Text(Car->BestLap > 0 ? FString::Printf(TEXT("MEILLEUR  %s"), *LapTime(Car->BestLap))
-        : TEXT("PREMIER TOUR"), 24, H - 35, 12, Muted);
+    const double Best=Record.Best;
+    Text(Best>0?FString::Printf(TEXT("RECORD  %s"),*LapTime(Best)):TEXT("PREMIER TOUR"),24,H-35,12,Muted);
+    const double LapDistance=Car->Drive.State.DistanceM-(Car->Lap-1)*Circuit->LengthM();
+    const auto Delta=Vroom::Progress::LapDelta(Circuit->TrackIndex,static_cast<int>(Car->Session.Mode),LapDistance,FMath::Max(0.,Circuit->RaceClock-Car->LapStart));
+    if(Delta.IsSet()&&Car->LapClean)Text(FString::Printf(TEXT("%+.3f s"),Delta.GetValue()),225,H-58,17,Delta.GetValue()>0?RacingRed:Ice);
+    Text(FString::Printf(TEXT("PNEUS %d %%"),FMath::RoundToInt(Tyres*100)),24,H-116,11,Tyres<.3f?RacingRed:Muted);
     if (!Car->LapClean) Text(TEXT("TOUR INVALIDÉ"), 24, H - 90, 12, RacingRed);
 
     // The cockpit has its own physical speed, gear and RPM instruments.

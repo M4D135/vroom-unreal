@@ -16,6 +16,7 @@ Fichiers consultés : `motor.asm` (titre « MOTOR TABLES 20 Cycles - V15 - 22 Ju
 | Régime lié aux roues | rpm = vitesse interne × `GVNTBL[rapport]` / 256 | `vr2.asm`, `SPEDC2B`, lignes 954–958 |
 | Table de couple | 833 valeurs espacées de 16 tr/min, de 0 à 13312 ; maximum 534 | `motor.asm`, `MOMTBL` |
 | Freinage, pneus neufs | (94 × pédale)² / 16 | `vr2.asm`, `SPEDC0`, lignes 872–884 |
+| Réduction originale du freinage avec l'usure | `(TIRUSE + 2048) / 4096`, soit 0,5…1 | `vr2.asm`, `SPEDC0`, lignes 877–881 |
 | Résistance de l'air | vitesse interne² / 468 | `vr2.asm`, `SPEDC1`, lignes 886–889 ; le commentaire parle de 458 mais l'instruction emploie 468 |
 | Roulement | 10 sur route ; +100 avec une roue sur bordure ; +198 hors route | `vr2.asm`, `SPEDC1A`, lignes 893–902 |
 | Couple net engagé | couple moteur − frein − air − 10 − roulement | `vr2.asm`, `SPEDC2B`, lignes 949–952 |
@@ -42,6 +43,7 @@ Le clavier de conduite moderne est une adaptation. Les branches étudiées étab
 - **Pente.** L’accélération reçoit `−9,81 × g / sqrt(1 + g²)`, avec `g = dz/ds`. Cette adaptation SI disparaît pendant un saut. Le profil et son calibrage sont décrits dans [ELEVATION.md](ELEVATION.md).
 - **Accotements.** Une empreinte de roues de 1,6 m fait varier progressivement le roulement de +0 à +198 au-delà de la demi-largeur. L’autorité latérale du volant diminue jusqu’à 50 % sur l’herbe. Il n’y a plus de butée latérale invisible à proximité immédiate de la route.
 - **Commande.** Le modèle utilise une réponse exponentielle `1 − exp(−dt/tau)`. La prise de braquage varie de **45 à 72 ms** de constante de temps selon la vitesse ; relâchement et contre-braquage emploient **25 ms**. Réduire une commande en conservant son signe utilise la réponse normale. L’entrée est façonnée par un exposant 0,92. Ce sont des réglages du prototype. Unreal applique en amont une zone morte continue et son filtre d’entrée au pas physique ; le filtre ne dépend plus du nombre d’images affichées.
+- **Pneus.** Depuis la 0.30, `TyreGrip() = 0,65 + 0,35 × clamp(TyreHealth / 2048, 0, 1)`. Ce coefficient multiplie la commande latérale, le moment de freinage et les seuils de glisse. L'usure réduit donc l'autorité de direction et allonge le freinage. La borne **0,65 est un réglage de jouabilité**, différent de la borne originale **0,5 pour le freinage**. La source `sub6.asm`, routine `angul`, utilise par ailleurs `TIRUSE` pour choisir un seuil dans `LIMCRI` ; appliquer un même coefficient moderne aux trois effets n'en reproduit pas la table.
 
 ## Déplacement latéral arcade
 
@@ -51,7 +53,8 @@ Pour une vitesse `v` en m/s, la commande latérale sur route vaut :
 
 ```text
 vInterne = 5,4 × v
-volantLat = volantNormalisé × 271 × vInterne / 2048 × 50 / 256 × 1,12
+gripPneus = 0,65 + 0,35 × clamp(étatPneus / 2048, 0, 1)
+volantLat = volantNormalisé × 271 × vInterne / 2048 × 50 / 256 × 1,12 × gripPneus
 wash = v × courbure × 11,2 × transitionPetiteCourbure
 latDot = volantLat − wash + impulsionDeContact + glisseAdditionnelle
 sDot = v / clamp(1 − courbure × déport, 0,3, 3)
@@ -67,9 +70,11 @@ Maintenir **Maj**, un bouton d’épaule de manette, ou au moins 34 % de frein, 
 
 Un relâchement volontaire sur la route libère une poussée de **0,55 s après 0,42 s de charge**, ou **1,15 s après 1 s de charge**. Sortir sur l’herbe, subir un saut physique ou passer sous la vitesse minimale annule la charge. Recentrer le volant avec la commande de glisse maintenue ne donne pas de bonus : il faut relâcher avant de réengager. Le frein et le hors-piste coupent une poussée en cours. Un accident efface ces effets.
 
-Ce saut, les deux niveaux de poussée et leur chronométrage sont des **ajouts ludiques du prototype**, pas des comportements originaux démontrés. Les crissements de pneus, la consommation d’essence et la décrémentation de l’état des pneus sont suivis de façon simplifiée ; leur simulation et les règles de stands restent incomplètes. Pas de marche arrière, de tête-à-queue complet, de transfert de charge ou d’aspiration.
+Ce saut, les deux niveaux de poussée et leur chronométrage sont des **ajouts ludiques du prototype**, pas des comportements originaux démontrés. L'usure des pneus retire 12 unités par seconde en sollicitation excessive de virage, plus les pertes dues à certains chocs. Le freinage seul ne possède pas encore son propre terme d'usure ; un état de zéro reste conduisible avec le coefficient 0,65. Le `TIRUS` original peut au contraire terminer l'épreuve sur éclatement lorsque l'état passe sous zéro (`vr2.asm`, lignes 2122–2136). Le remake ne reproduit pas encore cette panne ni l'usure du moteur.
 
-Les contacts sont traités séparément. Le propriétaire Unreal replace au besoin la voiture juste à l’intérieur du bitume lors de la récupération et lui conserve au moins 12 m/s ; ce retour est une adaptation. [COLLISIONS.md](COLLISIONS.md) décrit les règles de contact et les références historiques, à distinguer de cette politique de reprise.
+La consommation d'essence est `accélérateur × dt × 0,00055` de réservoir. Une panne sèche coupe le couple ; une immobilisation qui suit termine une course Grand Prix ou une étape Arcade. Les remplacements de pneus et ravitaillements exigent désormais un arrêt dans la zone de service, pendant 4 et 3 secondes respectivement ; [GAMEPLAY.md](GAMEPLAY.md) décrit ces règles et les modes de course. Pas de marche arrière, de tête-à-queue complet, de transfert de charge ou d’aspiration.
+
+Les contacts sont traités séparément. Après une casse, le propriétaire Unreal immobilise la voiture puis la ramène progressivement à l'intérieur du bitume en 2,8 à 7 secondes selon son éloignement. La reprise se fait **à l'arrêt**, sans vitesse offerte ; chrono et adversaires continuent pendant la pénalité. [COLLISIONS.md](COLLISIONS.md) décrit les règles de contact et les références historiques, à distinguer de cette politique de reprise.
 
 ## Intégration et validation
 
@@ -91,6 +96,8 @@ clang++ -std=c++17 -Wall -Wextra -Werror -pedantic -O2 \
 ```
 
 Les contrôles portent sur l’accélération, les rapports, le freinage, la symétrie gauche/droite, la dérive due à la courbe, le hors-piste, les valeurs non finies, la glisse et ses sorties invalides. Les essais de cadence vérifient que le découpage des images ne réintroduit pas de retour à une ancienne pose. Ces tests portent sur le prototype ; le rendu Unreal et la fidélité historique demandent des vérifications distinctes.
+
+La suite `Tests/tyre_model_test.cpp` compare un freinage avec pneus neufs et entièrement usés, vérifie une autorité latérale réduite et le retour à l'adhérence neuve après remplacement. Elle s'exécute avec les autres suites via `python3 Tools/test_portable.py`. Ses seuils comparent deux états du remake ; ce ne sont pas des distances de freinage mesurées dans le jeu Amiga.
 
 ## Mesures portables du 8 septembre 2026
 

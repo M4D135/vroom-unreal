@@ -6,7 +6,7 @@ public class Vroom : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "ProceduralMeshComponent", "Json", "JsonUtilities", "Projects" });
-        PrivateDependencyModuleNames.AddRange(new string[] { "SlateCore", "ImageWrapper", "RenderCore" });
+        PrivateDependencyModuleNames.AddRange(new string[] { "SlateCore", "ImageWrapper", "RenderCore", "RHI" });
         bool WithDLSS = Target.Platform == UnrealTargetPlatform.Win64 &&
             Target.Architecture == UnrealArch.X64 &&
             File.Exists(Path.Combine(PluginDirectoryOrProject(), "Plugins", "DLSS", "DLSS.uplugin"));

@@ -1,5 +1,8 @@
 #include "VroomGame.h"
+#include "VroomProceduralMeshComponent.h"
 #include "VroomTrackPreview.h"
+#include "VroomEnvironment.h"
+#include "TimerManager.h"
 #include "VroomGraphicsSettings.h"
 #include "Components/SplineComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -12,6 +15,8 @@
 #include "Engine/StaticMesh.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 
@@ -46,10 +51,10 @@ AVroomCircuit::AVroomCircuit()
     PrimaryActorTick.bCanEverTick = false;
     Spline = CreateDefaultSubobject<USplineComponent>(TEXT("CircuitSpline"));
     RootComponent = Spline;
-    Surface = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Asphalt"));
+    Surface = CreateDefaultSubobject<UVroomProceduralMeshComponent>(TEXT("Asphalt"));
     Surface->SetupAttachment(RootComponent);
     Surface->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    Terrain = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("CircuitTerrain"));
+    Terrain = CreateDefaultSubobject<UVroomProceduralMeshComponent>(TEXT("CircuitTerrain"));
     Terrain->SetupAttachment(RootComponent);
     Terrain->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
@@ -283,43 +288,85 @@ void AVroomCircuit::BuildSurface()
 
 void AVroomCircuit::BuildTerrain()
 {
-    // Static terrain follows the nearest road elevation. A separate grass verge
-    // covers the grid close to the track; no per-frame terrain generation occurs.
     Terrain->ClearAllMeshSections();
     FBox Bounds(ForceInit);
     for (int32 I = 0; I < Spline->GetNumberOfSplinePoints(); ++I)
         Bounds += Spline->GetLocationAtSplinePoint(I, ESplineCoordinateSpace::World);
-    Bounds = Bounds.ExpandBy(FVector(40000,40000,0));
-    const int32 NX = FMath::CeilToInt(Bounds.GetSize().X / 3200);
-    const int32 NY = FMath::CeilToInt(Bounds.GetSize().Y / 3200);
+    const FVector CircuitCenter = Bounds.GetCenter();
+    const FVector CircuitExtent = Bounds.GetExtent();
+    Bounds = Bounds.ExpandBy(FVector(65000,65000,0));
+    const int32 NX = FMath::CeilToInt(Bounds.GetSize().X / 2800);
+    const int32 NY = FMath::CeilToInt(Bounds.GetSize().Y / 2800);
     TArray<FVector> V, Normals;
     TArray<int32> T;
     TArray<FVector2D> UV;
+    TArray<FLinearColor> Colors;
     TArray<FProcMeshTangent> Tangents;
-    double MinHeight = 0;
-    for (const auto& P : Tracks[TrackIndex].Elevation.Samples) MinHeight = FMath::Min(MinHeight, P.HeightM);
+    double Minimum = 0;
+    for (const auto& P : Tracks[TrackIndex].Elevation.Samples) Minimum = FMath::Min(Minimum, P.HeightM);
+    const auto& Profile = Vroom::Environment::Profile(TrackIndex);
     for (int32 Y = 0; Y <= NY; ++Y)
-    {
         for (int32 X = 0; X <= NX; ++X)
         {
             FVector P(Bounds.Min.X + Bounds.GetSize().X * X / NX, Bounds.Min.Y + Bounds.GetSize().Y * Y / NY, 0);
             const float Key = Spline->FindInputKeyClosestToWorldLocation(P);
             const FVector Road = Spline->GetLocationAtSplineInputKey(Key, ESplineCoordinateSpace::World);
             const float S = Spline->GetDistanceAlongSplineAtSplineInputKey(Key) / 100;
-            const double DistanceM = FVector::Dist2D(P, Road) / 100;
-            const double Taper = FMath::SmoothStep(180.0, 350.0, DistanceM);
-            P.Z = FMath::Lerp(Elevation(S).HeightM - 2.5, MinHeight - 12, Taper) * 100;
+            const double Distance = FVector::Dist2D(P, Road) / 100;
+            P.Z = Vroom::Environment::HeightM(TrackIndex, P, Distance, Elevation(S).HeightM, Minimum) * 100;
             V.Add(P); UV.Add(FVector2D(P.X / 1600, P.Y / 1600));
+            const float Variation = .92f + .11f * FMath::Sin(P.X * .00047 + P.Y * .00023)
+                + .045f * FMath::Cos(P.Y * .00112);
+            Colors.Add(Profile.Ground * Variation);
             if (X < NX && Y < NY)
             {
                 const int32 I = Y * (NX + 1) + X;
-                T.Append({I, I+NX+2, I+1, I, I+NX+1, I+NX+2});
+                T.Append({I,I+NX+2,I+1,I,I+NX+1,I+NX+2});
             }
         }
-    }
-    UKismetProceduralMeshLibrary::CalculateTangentsForMesh(V, T, UV, Normals, Tangents);
-    Terrain->CreateMeshSection_LinearColor(0, V, T, Normals, UV, TArray<FLinearColor>{}, Tangents, false);
-    Terrain->SetMaterial(0, Mat(TEXT("M_Grass")));
+    UKismetProceduralMeshLibrary::CalculateTangentsForMesh(V,T,UV,Normals,Tangents);
+    Terrain->CreateMeshSection_LinearColor(0,V,T,Normals,UV,Colors,Tangents,false);
+    auto* Finish = Mat(TEXT("M_EnvironmentGround"));
+    Terrain->SetMaterial(0, Finish ? Finish : Mat(TEXT("M_Grass")));
+
+    // A low-cost closed skyline follows the artistic region profile. Its base
+    // sits beyond the detailed terrain, never across the driveable circuit.
+    V.Reset(); T.Reset(); UV.Reset(); Colors.Reset();
+    constexpr int32 Segments = 96;
+    for (int32 Ring = 0; Ring < 3; ++Ring)
+        for (int32 I = 0; I <= Segments; ++I)
+        {
+            const double Angle = UE_TWO_PI * I / Segments;
+            const double Wave = .42 + .20 * FMath::Sin(Angle * 5 + TrackIndex)
+                + .16 * FMath::Cos(Angle * 9 - .7) + .09 * FMath::Sin(Angle * 17);
+            const double Radius = Ring == 0 ? 55000 : Ring == 1 ? 115000 : 175000;
+            FVector P = CircuitCenter + FVector(FMath::Cos(Angle) * (CircuitExtent.X + Radius),
+                FMath::Sin(Angle) * (CircuitExtent.Y + Radius), 0);
+            double Height = Minimum - 16;
+            if (Ring == 1)
+            {
+                Height += Profile.MountainM * Wave;
+                // A broad volcanic summit gives Japan a different silhouette.
+                if (TrackIndex == 4)
+                {
+                    const double Summit = FMath::Exp(-FMath::Square(FMath::FindDeltaAngleRadians(Angle,1.1) / .34));
+                    Height += Summit * 450;
+                }
+            }
+            P.Z = Height * 100; V.Add(P); UV.Add(FVector2D(double(I)/Segments,Ring));
+            FLinearColor Shade = FLinearColor::LerpUsingHSV(Profile.Ground,FLinearColor(.15,.20,.21),.45f);
+            if (Ring == 1 && Height - Minimum > 340) Shade = FLinearColor(.60,.63,.61);
+            Colors.Add(Shade * float(.88 + .12 * FMath::Sin(Angle * 7)));
+            if (Ring < 2 && I < Segments)
+            {
+                const int32 A = Ring * (Segments + 1) + I;
+                T.Append({A,A+1,A+Segments+2,A,A+Segments+2,A+Segments+1});
+            }
+        }
+    UKismetProceduralMeshLibrary::CalculateTangentsForMesh(V,T,UV,Normals,Tangents);
+    Terrain->CreateMeshSection_LinearColor(1,V,T,Normals,UV,Colors,Tangents,false);
+    Terrain->SetMaterial(1, Finish ? Finish : Mat(TEXT("M_Grass")));
+    Terrain->SetCastShadow(false);
 }
 
 void AVroomCircuit::BuildScenery()
@@ -349,7 +396,31 @@ void AVroomCircuit::BuildScenery()
     auto RoundMetal = Group(TEXT("Cylinder"), TEXT("M_Metal"));
     auto Windows = Group(TEXT("Cube"), TEXT("M_CockpitSlate"));
     auto Apron = Group(TEXT("Cube"), TEXT("M_Asphalt"));
-    auto Trees = Group(TEXT("Cone"), TEXT("M_Foliage"));
+    auto EnvironmentGroup = [&](const TCHAR* Name, int32 CullDistance)
+    {
+        const FString Path = FString::Printf(TEXT("/Game/Meshes/%s.%s"),Name,Name);
+        auto* Mesh = LoadObject<UStaticMesh>(nullptr,*Path);
+        if (!Mesh) { UE_LOG(LogTemp,Error,TEXT("VROOM: Missing environment asset %s"),Name); return static_cast<UHierarchicalInstancedStaticMeshComponent*>(nullptr); }
+        auto* C = NewObject<UHierarchicalInstancedStaticMeshComponent>(this);
+        C->SetupAttachment(RootComponent);
+        C->SetMobility(EComponentMobility::Movable);
+        C->SetStaticMesh(Mesh);
+        C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        C->SetCanEverAffectNavigation(false);
+        C->SetCastShadow(false);
+        C->SetAffectDistanceFieldLighting(false);
+        C->SetAffectDynamicIndirectLighting(false);
+        C->SetCullDistances(CullDistance-12000,CullDistance);
+        C->SetNumCustomDataFloats(3);
+        C->bAutoRebuildTreeOnInstanceChanges = false;
+        C->RegisterComponent(); Scenery.Add(C); return C;
+    };
+    UHierarchicalInstancedStaticMeshComponent* Forest[] = {
+        EnvironmentGroup(TEXT("SM_EnvironmentBroadleaf"),65000),
+        EnvironmentGroup(TEXT("SM_EnvironmentConifer"),65000),
+        EnvironmentGroup(TEXT("SM_EnvironmentUmbrella"),65000),
+        EnvironmentGroup(TEXT("SM_EnvironmentBirch"),65000)};
+    auto* Rocks = EnvironmentGroup(TEXT("SM_EnvironmentRock"),26000);
     auto Trunks = Group(TEXT("Cylinder"), TEXT("M_Wood"));
     UInstancedStaticMeshComponent* Ads[] = {
         Group(TEXT("Plane"), TEXT("M_Ad01")), Group(TEXT("Plane"), TEXT("M_Ad02")),
@@ -518,24 +589,88 @@ void AVroomCircuit::BuildScenery()
     }
     VegetationQuality = -1;
     UpdateVegetation();
-    for (float S = 0; S < LengthM(); S += 12)
-    {
-        for (float Side : {-1.f, 1.f})
+    // Trees are authored branch/crown meshes, with one instanced population
+    // per silhouette. Deterministic variation breaks the old evenly spaced
+    // cone rows; trunks keep matching physical collision volumes.
+    const auto& Regional = Vroom::Environment::Profile(TrackIndex);
+    int32 TreeCount = 0;
+    for (float S = 0; S < LengthM(); S += Regional.TreeSpacingM)
+        for (float Side : {-1.f,1.f})
         {
-            if (static_cast<int32>(S) % 36 == 0)
+            if (S < 220 && Side > 0) continue; // Pit road stays open.
+            const int32 Population = Random.FRand() < .32f ? 3 : 1;
+            for (int32 Member = 0; Member < Population; ++Member)
             {
-                auto TreePoint = Position(S, Side * Random.FRandRange(28, 110));
-                const float Key = Spline->FindInputKeyClosestToWorldLocation(TreePoint);
-                if (FVector::Dist2D(TreePoint, Spline->GetLocationAtSplineInputKey(Key, ESplineCoordinateSpace::World)) > 2000)
+                const float Along = S + Random.FRandRange(-16,16);
+                const float Lateral = Side * Random.FRandRange(29,Member ? 145 : 82);
+                FVector Root = Position(Along,Lateral);
+                const float Key = Spline->FindInputKeyClosestToWorldLocation(Root);
+                const FVector Closest = Spline->GetLocationAtSplineInputKey(Key,ESplineCoordinateSpace::World);
+                const double Distance = FVector::Dist2D(Root,Closest)/100;
+                if (Distance < 24) continue;
+                const float NearS = Spline->GetDistanceAlongSplineAtSplineInputKey(Key)/100;
+                Root.Z = Vroom::Environment::HeightM(TrackIndex,Root,Distance,Elevation(NearS).HeightM,MinHeight)*100;
+                const int32 Species = Random.FRand() < .72f ? Regional.PrimaryTree
+                    : (Regional.PrimaryTree + 1 + Random.RandRange(0,1)) % 4;
+                const double Scale = Random.FRandRange(.70,1.34);
+                const FTransform Pose(FRotator(0,Random.FRandRange(0,360),0),Root,
+                    FVector(Scale*Random.FRandRange(.88,1.13),Scale,Scale));
+                if (Forest[Species])
                 {
-                    const float H = Random.FRandRange(7, 15);
-                    TreePoint.Z = Elevation(Spline->GetDistanceAlongSplineAtSplineInputKey(Key) / 100).HeightM * 100 - 250;
-                    Trees->AddInstance(FTransform(FRotator(0, Random.FRandRange(0, 360), 0), TreePoint + FVector(0, 0, H * 65), FVector(H * .55, H * .55, H)), true);
-                    Trunks->AddInstance(FTransform(FRotator::ZeroRotator, TreePoint + FVector(0, 0, H * 30), FVector(.35, .35, H * .6)), true);
+                    const int32 Instance = Forest[Species]->AddInstance(Pose,true);
+                    FLinearColor Leaf = Regional.Leaf * Random.FRandRange(.75f,1.35f);
+                    if (TrackIndex == 2 && Random.FRand() < .20f)
+                        Leaf = FLinearColor(.23f,.115f,.032f); // Warm mixed woodland.
+                    Forest[Species]->SetCustomDataValue(Instance,0,Leaf.R,false);
+                    Forest[Species]->SetCustomDataValue(Instance,1,Leaf.G,false);
+                    Forest[Species]->SetCustomDataValue(Instance,2,Leaf.B,false);
+                    ++TreeCount;
                 }
+                Trunks->AddInstance(FTransform(FRotator::ZeroRotator,
+                    Root+FVector(0,0,Scale*380),FVector(.34*Scale,.34*Scale,7.6*Scale)),true);
+                if (Member == 0 && Rocks && Random.FRand() < .22f)
+                    Rocks->AddInstance(FTransform(FRotator(0,Random.FRandRange(0,360),0),
+                        Root + FVector(180,-110,-24),FVector(Scale*1.4,Scale,Scale*.75)),true);
             }
         }
+    for (auto* Population : Forest)
+        if (Population) { Population->BuildTreeIfOutdated(false,true); Population->MarkRenderStateDirty(); }
+    if (Rocks) Rocks->BuildTreeIfOutdated(false,true);
+    UE_LOG(LogTemp,Display,TEXT("VROOM: Regional scenery track=%d trees=%d primary=%d relief=%.0fm"),
+        TrackIndex,TreeCount,Regional.PrimaryTree,Regional.ReliefM);
+
+    // A driveable pit lane runs past the existing garages. Ground paint and
+    // thin asphalt never enter the scenery collision grid.
+    for (float S = 55; S < 190; S += 3)
+    {
+        const FTransform F = Frame(S+1.5f,12.5f);
+        LocalBox(Apron,F,FVector(0,0,.020),FVector(3.08,4.7,.035));
+        for (float Side : {-1.f,1.f})
+            LocalBox(White,F,FVector(0,Side*2.12,.048),FVector(3.05,.09,.012));
+        if (static_cast<int32>(S) % 9 == 1)
+            LocalBox(White,F,FVector(0,0,.052),FVector(1.2,.12,.012));
     }
+    // Entry/exit wedges join the main course without a wall or a kerb.
+    for (int32 End = 0; End < 2; ++End)
+        for (int32 Step = 0; Step < 9; ++Step)
+        {
+            const float Blend = Step / 8.f;
+            const float S = End ? 190 + Step*3.f : 31 + Step*3.f;
+            const float Lateral = FMath::Lerp(End ? 12.5f : 5.7f,End ? 5.7f : 12.5f,Blend);
+            const FTransform F = Frame(S,Lateral);
+            LocalBox(Apron,F,FVector(0,0,.015),FVector(3.35,4.6,.028));
+        }
+    const FTransform Service = Frame(102,12.5f);
+    for (float Side : {-1.f,1.f})
+    {
+        LocalBox(White,Service,FVector(Side*5.7,0,.08),FVector(.12,3,.015));
+        LocalBox(Red,Service,FVector(0,Side*1.5,.08),FVector(11.5,.13,.015));
+    }
+    // Painted P, legible from the apron, with no new obstacle in the service box.
+    LocalBox(White,Service,FVector(-2.0,-.35,.081),FVector(2.0,.16,.016));
+    LocalBox(White,Service,FVector(-1.1,.10,.081),FVector(.16,1.0,.016));
+    LocalBox(White,Service,FVector(-1.55,.53,.081),FVector(.9,.16,.016));
+    LocalBox(White,Service,FVector(-2.0,.12,.081),FVector(.16,.9,.016));
 
     // Slot du joueur en fond de grille, colonne droite (S=24, voie +2,2).
     White->AddInstance(FTransform(Rotation(24), Position(26.3f, 2.2f) + FVector(0,0,7), FVector(.10,2.4,.014)), true);
@@ -682,13 +817,109 @@ void AVroomCircuit::BuildScenery()
     for (int32 I = 0; 260 + I * 360 < LengthM() - 180; ++I)
         TracksideBoard(260 + I * 360, I % 2 ? 1 : -1, I % 4);
 
+    // Compact grandstands, with stepped seating and open roof supports. Their
+    // metal/seat instances share the existing scenery draw groups.
+    const int32 StandRows[] = {6,5,7,5,7,8};
+    const double StandWidth[] = {30,28,34,26,34,40};
+    auto LandscapeFrame = [&](float S, float Lateral)
+    {
+        FTransform F = Frame(S,Lateral);
+        FVector P = F.GetLocation();
+        const float Key = Spline->FindInputKeyClosestToWorldLocation(P);
+        const FVector Near = Spline->GetLocationAtSplineInputKey(Key,ESplineCoordinateSpace::World);
+        const float NearS = Spline->GetDistanceAlongSplineAtSplineInputKey(Key)/100;
+        P.Z = Vroom::Environment::HeightM(TrackIndex,P,FVector::Dist2D(P,Near)/100,
+            Elevation(NearS).HeightM,MinHeight)*100;
+        F.SetLocation(P); return F;
+    };
+    for (int32 Stand = 0; Stand < 3; ++Stand)
+    {
+        const float S = Stand == 0 ? 115.f : LengthM() * (Stand == 1 ? .38f : .74f);
+        const FTransform F = LandscapeFrame(S,-34.f-Stand*3.f);
+        const double Width = StandWidth[TrackIndex], Rows = StandRows[TrackIndex];
+        bool Clear = true;
+        for (float X : {-float(Width)*.6f,float(Width)*.6f})
+            for (float Y : {-12.f,3.f})
+            {
+                const FVector P = F.TransformPosition(FVector(X,Y,0)*100);
+                const float Key = Spline->FindInputKeyClosestToWorldLocation(P);
+                if (FVector::Dist2D(P,Spline->GetLocationAtSplineInputKey(Key,ESplineCoordinateSpace::World))<1700) Clear=false;
+            }
+        if (!Clear) continue;
+        auto P = [&](double X,double Y,double Z){return F.TransformPosition(FVector(X,Y,Z)*100);};
+        for (int32 Row = 0; Row < Rows; ++Row)
+        {
+            const double Y = -Row*1.12, Z = .25+Row*.49;
+            LocalBox(Metal,F,FVector(0,Y,Z-.12),FVector(Width,1.12,.24));
+            LocalBox(Row%3==0 ? White : Red,F,FVector(0,Y-.16,Z+.29),FVector(Width-.7,.45,.16));
+            LocalBox(Row%3==0 ? White : Red,F,FVector(0,Y-.43,Z+.58),FVector(Width-.7,.10,.48));
+            // Small seated silhouettes keep stands occupied without animated
+            // crowds, actor ticks, or transparent billboard overdraw.
+            for (int32 Seat = 0; Seat < int(Width/.72)-1; Seat += 2)
+            {
+                if ((Seat+Row*3+Stand)%7==0) continue;
+                const double X = -Width*.5+.9+Seat*.72;
+                auto* Shirt = (Seat+Row)%3==0 ? White : Posts;
+                LocalBox(Shirt,F,FVector(X,Y-.13,Z+.65),FVector(.34,.28,.48));
+                LocalBox(Metal,F,FVector(X,Y-.13,Z+.97),FVector(.21,.21,.22));
+            }
+        }
+        const double RoofZ = Rows*.49+2.35;
+        LocalBox(White,F,FVector(0,-Rows*.56,RoofZ),FVector(Width+1.5,Rows*1.12+2,.17));
+        LocalBox(Red,F,FVector(0,.95,RoofZ-.13),FVector(Width+1.5,.15,.42));
+        for (double X : {-Width*.49,0.,Width*.49})
+        {
+            Pole(P(X,1,0),P(X,1,RoofZ),.14);
+            Pole(P(X,-Rows*1.12,0),P(X,-Rows*1.12,RoofZ),.17);
+            Beam(Metal,P(X,1,RoofZ-.3),P(X,-Rows*1.12,RoofZ-.3),.12);
+            Beam(Metal,P(X,-Rows*1.12,RoofZ-.3),P(X+1,-Rows*1.12,RoofZ-2),.08);
+        }
+        for (double Side : {-1.,1.})
+            Beam(Metal,P(Side*Width*.5,.5,1.0),P(Side*Width*.5,-Rows*1.12,Rows*.49+1),.08);
+    }
+
+    // Regional paddock silhouettes: a wood clubhouse in Sweden, low hangars
+    // for the former airfields, or glazed timing towers near the pit complex.
+    const FTransform Landmark = LandscapeFrame(230,-72);
+    auto LandmarkPoint = [&](FVector P){return Landmark.TransformPosition(P*100);};
+    if (TrackIndex == 1 || TrackIndex == 5)
+    {
+        for (int32 Bay=0;Bay<3;++Bay)
+        {
+            LocalBox(White,Landmark,FVector(Bay*18,0,4.2),FVector(17,18,8.4));
+            LocalBox(Posts,Landmark,FVector(Bay*18,9.05,3.2),FVector(13,.08,6.1));
+            LocalBox(Metal,Landmark,FVector(Bay*18,0,8.5),FVector(17.4,18.7,.30));
+            for (int32 Rib=-3;Rib<=3;++Rib)
+                LocalBox(Metal,Landmark,FVector(Bay*18+Rib*2.3,9.11,3.2),FVector(.08,.04,6.1));
+        }
+    }
+    else
+    {
+        const bool Clubhouse = TrackIndex == 3;
+        const int32 Floors = Clubhouse ? 2 : 4;
+        for (int32 Floor=0;Floor<Floors;++Floor)
+        {
+            LocalBox(Clubhouse ? Red : White,Landmark,FVector(0,0,1.7+Floor*3.4),FVector(13,9,3.4));
+            LocalBox(Windows,Landmark,FVector(0,4.55,2.1+Floor*3.4),FVector(11.7,.06,1.6));
+            for (int32 Mullion=-3;Mullion<=3;++Mullion)
+                LocalBox(White,Landmark,FVector(Mullion*1.65,4.60,2.1+Floor*3.4),FVector(.10,.06,1.65));
+            LocalBox(Metal,Landmark,FVector(0,0,3.4+Floor*3.4),FVector(14.2,10.2,.17));
+        }
+        if (TrackIndex == 4)
+            for (int32 Step=0;Step<3;++Step)
+                LocalBox(Posts,Landmark,FVector(0,0,Floors*3.4+.2+Step*.34),FVector(15-Step*2,11-Step*1.5,.34));
+        Pole(LandmarkPoint(FVector(0,0,Floors*3.4)),LandmarkPoint(FVector(0,0,Floors*3.4+5)),.07);
+    }
+
     // Collision volumes come from the same opaque instances as the scenery.
     // Exclude ground, leaves, grass and billboard artwork. The real trunks,
     // posts, pit walls, supports and trusses retain their actual height.
     constexpr double CellSize = 4000.0;
-    UInstancedStaticMeshComponent* SolidGroups[] = {Posts, White, Red, Metal, RoundMetal, Windows, Trunks};
+    const bool PitProbe = FParse::Param(FCommandLine::Get(), TEXT("VroomPitTest"));
+    UInstancedStaticMeshComponent* SolidGroups[] = {Posts, White, Red, Metal, RoundMetal, Windows, Trunks, Rocks};
     for (auto* SolidGroup : SolidGroups)
     {
+        if (!SolidGroup) continue;
         const UStaticMesh* Mesh = SolidGroup->GetStaticMesh();
         if (!Mesh) continue;
         const FBox MeshBounds = Mesh->GetBoundingBox();
@@ -704,6 +935,10 @@ void AVroomCircuit::BuildScenery()
             Hazard.HalfExtent = HalfExtent;
             Hazard.Bounds = FBox(-HalfExtent, HalfExtent).TransformBy(Hazard.Transform.ToMatrixWithScale());
             const int32 Index = Hazards.Add(Hazard);
+            if (PitProbe && FVector::Dist2D(Hazard.Transform.GetLocation(), Position(102,12.5)) < 500)
+                UE_LOG(LogTemp, Display, TEXT("VROOM-PIT-HAZARD index=%d mesh=%s material=%s instance=%d center=%s extent=%s rotation=%s"),
+                    Index, *Mesh->GetName(), *GetNameSafe(SolidGroup->GetMaterial(0)), Instance,
+                    *Hazard.Transform.GetLocation().ToString(), *HalfExtent.ToString(), *Hazard.Transform.Rotator().ToString());
             const int32 MinX = FMath::FloorToInt(Hazard.Bounds.Min.X / CellSize);
             const int32 MaxX = FMath::FloorToInt(Hazard.Bounds.Max.X / CellSize);
             const int32 MinY = FMath::FloorToInt(Hazard.Bounds.Min.Y / CellSize);
@@ -714,6 +949,11 @@ void AVroomCircuit::BuildScenery()
         }
     }
     UE_LOG(LogTemp, Display, TEXT("VROOM: Scenery collision volumes=%d cells=%d"), Hazards.Num(), HazardCells.Num());
+    TWeakObjectPtr<AVroomCircuit> WeakThis(this);
+    GetWorld()->GetTimerManager().SetTimerForNextTick([WeakThis]()
+    {
+        if (WeakThis.IsValid()) Vroom::Environment::ApplyAtmosphere(WeakThis->GetWorld(),WeakThis->TrackIndex);
+    });
 }
 
 bool AVroomCircuit::SweepScenery(const FVector& PreviousCenter, const FVector& Center,
@@ -741,23 +981,25 @@ bool AVroomCircuit::SweepScenery(const FVector& PreviousCenter, const FVector& C
                 if (!Hazard.Bounds.Intersect(SweptBounds)) continue;
                 const FVector A = Hazard.Transform.InverseTransformPosition(PreviousCenter);
                 const FVector B = Hazard.Transform.InverseTransformPosition(Center);
-                FVector Expanded = Hazard.HalfExtent;
+                std::array<std::array<double,3>,3> LocalCarAxes{};
                 for (int32 Axis = 0; Axis < 3; ++Axis)
                 {
-                    const FVector HazardAxis = Hazard.Transform.GetUnitAxis(static_cast<EAxis::Type>(Axis + 1));
-                    Expanded[Axis] += FMath::Abs(FVector::DotProduct(HazardAxis, CarAxes[0])) * CarHalf.X
-                        + FMath::Abs(FVector::DotProduct(HazardAxis, CarAxes[1])) * CarHalf.Y
-                        + FMath::Abs(FVector::DotProduct(HazardAxis, CarAxes[2])) * CarHalf.Z;
+                    const FVector Local = Hazard.Transform.InverseTransformVectorNoScale(CarAxes[Axis]);
+                    LocalCarAxes[Axis] = {Local.X,Local.Y,Local.Z};
                 }
                 double Fraction = 1;
-                int NormalAxis = 0, NormalSide = 1;
-                if (!Vroom::ContactModel::SweepObstacle({A.X,A.Y,A.Z}, {B.X,B.Y,B.Z},
-                    {Expanded.X,Expanded.Y,Expanded.Z}, Fraction, NormalAxis, NormalSide) || Fraction > OutFraction)
+                std::array<double,3> LocalNormal{};
+                if (!Vroom::ContactModel::SweepOrientedObstacle({A.X,A.Y,A.Z}, {B.X,B.Y,B.Z},
+                    {Hazard.HalfExtent.X,Hazard.HalfExtent.Y,Hazard.HalfExtent.Z}, LocalCarAxes,
+                    {CarHalf.X,CarHalf.Y,CarHalf.Z}, Fraction, LocalNormal) || Fraction > OutFraction)
                     continue;
                 Hit = true;
+                if (FParse::Param(FCommandLine::Get(), TEXT("VroomPitTest")))
+                    UE_LOG(LogTemp, Display, TEXT("VROOM-PIT-HIT index=%d center=%s extent=%s car=%s local=%s fraction=%.6f"),
+                        Index, *Hazard.Transform.GetLocation().ToString(), *Hazard.HalfExtent.ToString(),
+                        *PreviousCenter.ToString(), *A.ToString(), Fraction);
                 OutFraction = Fraction;
-                FVector Normal = FVector::ZeroVector;
-                Normal[NormalAxis] = NormalSide;
+                const FVector Normal(LocalNormal[0],LocalNormal[1],LocalNormal[2]);
                 OutNormal = Hazard.Transform.TransformVectorNoScale(Normal);
             }
         }
@@ -795,6 +1037,9 @@ void AVroomCircuit::BuildOpponents()
     for (auto C : OpponentMeshes) if (C) C->DestroyComponent();
     OpponentMeshes.Empty();
     OpponentS.Empty(); OpponentLanes.Empty(); OpponentSpeeds.Empty();
+    PreviousOpponentLanes.Empty(); Traffic.clear(); Traffic.reserve(12);
+    OpponentRecycled.Init(false, 12);
+    OpponentFinishTimes.Init(0, 12); RaceFinishDistance = 0;
     OpponentMotionNeedsReset = false;
     static const TCHAR* Materials[] = { TEXT("M_F1Paint"), TEXT("M_F1Pearl"), TEXT("M_F1Carbon"), TEXT("M_F1Rubber") };
     static const TCHAR* MeshNames[] = { TEXT("SM_F1OpponentPaint"), TEXT("SM_F1OpponentTrim"),
@@ -822,6 +1067,7 @@ void AVroomCircuit::BuildOpponents()
         C->SetAffectDynamicIndirectLighting(false);
 #endif
         C->RegisterComponent();
+        C->SetVisibility(OpponentsVisible);
         OpponentMeshes.Add(C);
     }
     for (int32 I = 0; I < 12; ++I)
@@ -829,6 +1075,9 @@ void AVroomCircuit::BuildOpponents()
         OpponentS.Add(40 + (I / 2) * 16);
         OpponentLanes.Add(I % 2 ? 2.2 : -2.2);
         OpponentSpeeds.Add(0);
+        Vroom::TrafficCar Agent;
+        Agent.Distance = OpponentS.Last(); Agent.Lateral = Agent.TargetLane = OpponentLanes.Last();
+        Traffic.push_back(Agent);
         static const FLinearColor Liveries[] = { FLinearColor(.012f,.075f,.65f), FLinearColor(.72f,.012f,.018f),
             FLinearColor(.91f,.60f,.012f), FLinearColor(.02f,.35f,.13f),
             FLinearColor(.33f,.025f,.57f), FLinearColor(.88f,.19f,.012f) };
@@ -846,14 +1095,36 @@ void AVroomCircuit::BuildOpponents()
         }
     }
     PreviousOpponentS = OpponentS;
+    PreviousOpponentLanes = OpponentLanes;
     RenderedOpponentS.Init(TNumericLimits<double>::Max(), OpponentS.Num());
+    RenderedOpponentLanes.Init(TNumericLimits<double>::Max(), OpponentS.Num());
+    OpponentVisualYaw.Init(0, OpponentS.Num());
     RenderOpponents(1);
+}
+
+void AVroomCircuit::ConfigureTraffic(bool Visible, bool Arcade, Vroom::RaceDifficulty Level)
+{
+    OpponentsVisible = Visible; ArcadeTraffic = Arcade; Difficulty = Level;
+    for (auto Mesh : OpponentMeshes) if (Mesh) Mesh->SetVisibility(Visible);
+}
+
+void AVroomCircuit::HitOpponent(int32 Index, double RelativeSpeed)
+{
+    if (!ReactiveTraffic || !OpponentSpeeds.IsValidIndex(Index)) return;
+    OpponentSpeeds[Index] = FMath::Max(0.0, OpponentSpeeds[Index] - FMath::Clamp(RelativeSpeed * .35, 2.0, 15.0));
+    if (Index < static_cast<int32>(Traffic.size()))
+    {
+        Traffic[Index].Speed = OpponentSpeeds[Index];
+        Traffic[Index].DamageDelay = FMath::Clamp(RelativeSpeed * .12, .5, 3.0);
+    }
 }
 
 void AVroomCircuit::AdvanceRace(float H)
 {
     if (Tracks.IsEmpty() || !Running || Paused || !FMath::IsFinite(H) || H <= 0) return;
     PreviousOpponentS = OpponentS;
+    PreviousOpponentLanes = OpponentLanes;
+    for (int32 I = 0; I < OpponentRecycled.Num(); ++I) OpponentRecycled[I] = false;
     RaceClock += H;
     const int32 LightStage = RaceClock < 0
         ? FMath::Clamp(FMath::CeilToInt((3.0 + RaceClock) * 5.0 / 3.0), 1, 5) : 0;
@@ -865,7 +1136,39 @@ void AVroomCircuit::AdvanceRace(float H)
         StartLightStage = LightStage;
         UE_LOG(LogTemp, Display, TEXT("VROOM: Start lights columns=%d raceClock=%.3f"), LightStage, RaceClock);
     }
-    if (RaceClock < 0) return;
+    if (RaceClock < 0 || !OpponentsVisible) return;
+    if (ReactiveTraffic && Traffic.size() == static_cast<std::size_t>(OpponentS.Num()))
+    {
+        for (int32 I = 0; I < OpponentS.Num(); ++I)
+        {
+            Traffic[I].Distance = OpponentS[I]; Traffic[I].Lateral = OpponentLanes[I]; Traffic[I].Speed = OpponentSpeeds[I];
+        }
+        Vroom::StepTraffic(Traffic, H, LengthM(), HalfWidthM, Difficulty,
+            TrafficPlayerActive ? &TrafficPlayer : nullptr, [&](double S) { return static_cast<double>(Curvature(S)); });
+        for (int32 I = 0; I < OpponentS.Num(); ++I)
+        {
+            auto& Agent = Traffic[I];
+            // Arcade is replenished traffic. Recycle only far behind, then
+            // reset both render and pass history so spawning grants no points.
+            if (ArcadeTraffic && TrafficPlayerActive && TrafficPlayer.Distance - Agent.Distance > 100)
+            {
+                Agent.Distance = TrafficPlayer.Distance + 230 + I * 24;
+                Agent.Lateral = Agent.TargetLane = I % 2 ? 2.4 : -2.4;
+                Agent.Speed = FMath::Max(20.0, TrafficPlayer.Speed * .72);
+                PreviousOpponentS[I] = Agent.Distance;
+                PreviousOpponentLanes[I] = Agent.Lateral;
+                OpponentRecycled[I] = true;
+            }
+            OpponentS[I] = Agent.Distance; OpponentLanes[I] = Agent.Lateral; OpponentSpeeds[I] = Agent.Speed;
+            if (RaceFinishDistance > 0 && OpponentFinishTimes[I] <= 0 && Agent.Distance >= RaceFinishDistance)
+            {
+                const double Fraction = FMath::Clamp((RaceFinishDistance - PreviousOpponentS[I])
+                    / FMath::Max(.0001, Agent.Distance - PreviousOpponentS[I]), 0.0, 1.0);
+                OpponentFinishTimes[I] = RaceClock - H + H * Fraction;
+            }
+        }
+        return;
+    }
     for (int32 I = 0; I < OpponentS.Num(); ++I)
     {
         const float K = FMath::Max(FMath::Abs(Curvature(OpponentS[I] + 25)), FMath::Abs(Curvature(OpponentS[I] + 90)));
@@ -879,9 +1182,23 @@ void AVroomCircuit::RenderOpponents(float Alpha)
 {
     if (OpponentMeshes.Num() != 4 || PreviousOpponentS.Num() != OpponentS.Num()) return;
     Alpha = FMath::Clamp(Alpha, 0.0f, 1.0f);
-    bool Changed = RenderedOpponentS.Num() != OpponentS.Num();
+    bool Changed = RenderedOpponentS.Num() != OpponentS.Num() || RenderedOpponentLanes.Num() != OpponentS.Num();
+    // The traffic planner can choose a lane in one simulation step. Ease only
+    // the visible steering yaw; keep its safety-tested positions and speeds
+    // untouched. Continue settling at rest, and freeze this state during pause.
+    const double VisualDt = Running && !Paused && GetWorld() ? FMath::Clamp(static_cast<double>(GetWorld()->GetDeltaSeconds()), 0.0, .1) : 0;
+    const double YawAlpha = 1 - FMath::Exp(-12.0 * VisualDt);
+    for (int32 I = 0; I < OpponentS.Num(); ++I)
+    {
+        const double TargetYaw = ReactiveTraffic && I < static_cast<int32>(Traffic.size())
+            ? FMath::Atan2(Traffic[I].LaneVelocity, FMath::Max(8.0, OpponentSpeeds[I])) : 0;
+        const double BeforeYaw = OpponentVisualYaw[I];
+        OpponentVisualYaw[I] += (TargetYaw - BeforeYaw) * YawAlpha;
+        Changed |= !FMath::IsNearlyEqual(BeforeYaw, OpponentVisualYaw[I], 1e-7);
+    }
     for (int32 I = 0; I < OpponentS.Num() && !Changed; ++I)
-        Changed = !FMath::IsNearlyEqual(RenderedOpponentS[I], FMath::Lerp(PreviousOpponentS[I], OpponentS[I], Alpha), 1e-6);
+        Changed = !FMath::IsNearlyEqual(RenderedOpponentS[I], FMath::Lerp(PreviousOpponentS[I], OpponentS[I], Alpha), 1e-6)
+            || !FMath::IsNearlyEqual(RenderedOpponentLanes[I], FMath::Lerp(PreviousOpponentLanes[I], OpponentLanes[I], Alpha), 1e-6);
     if (!Changed)
     {
         if (OpponentMotionNeedsReset)
@@ -901,11 +1218,16 @@ void AVroomCircuit::RenderOpponents(float Alpha)
     // four bulk updates, with no per-frame transform-buffer allocations.
     for (auto& Transforms : NextOpponentTransforms) Transforms.Reset();
     RenderedOpponentS.SetNumUninitialized(OpponentS.Num());
+    RenderedOpponentLanes.SetNumUninitialized(OpponentS.Num());
     for (int32 I = 0; I < OpponentS.Num(); ++I)
     {
         const double Distance = FMath::Lerp(PreviousOpponentS[I], OpponentS[I], Alpha);
         RenderedOpponentS[I] = Distance;
-        const FTransform Base(Rotation(Distance), Position(Distance, OpponentLanes[I]));
+        const double Lane = FMath::Lerp(PreviousOpponentLanes[I], OpponentLanes[I], Alpha);
+        RenderedOpponentLanes[I] = Lane;
+        FRotator Facing = Rotation(Distance);
+        Facing.Yaw += FMath::RadiansToDegrees(OpponentVisualYaw[I]);
+        const FTransform Base(Facing, Position(Distance, Lane));
         for (int32 J = 0; J < 4; ++J)
             NextOpponentTransforms[OpponentPartGroup(I, J)].Add(OpponentPartTransform(J) * Base);
     }

@@ -5,7 +5,7 @@
 // Version affichee dans le HUD et le journal : le seul temoin de build fiable.
 namespace Vroom
 {
-inline constexpr const TCHAR* AppVersion = TEXT("0.22");
+inline constexpr const TCHAR* AppVersion = TEXT("0.30");
 }
 #include "GameFramework/Pawn.h"
 #include "GameFramework/HUD.h"
@@ -14,7 +14,11 @@ inline constexpr const TCHAR* AppVersion = TEXT("0.22");
 #include "VroomContactModel.h"
 #include "VroomElevationProfile.h"
 #include "VroomFrameTiming.h"
+#include "VroomSession.h"
+#include "VroomTrafficModel.h"
 #include "VroomGame.generated.h"
+
+namespace Vroom { enum class Action : uint8; }
 
 class USplineComponent;
 class UProceduralMeshComponent;
@@ -28,6 +32,7 @@ class USceneCaptureComponent2D;
 class UTextureRenderTarget2D;
 class UTexture2D;
 class UMaterialInstanceDynamic;
+class FRenderCommandFence;
 
 struct FVroomTrack
 {
@@ -82,13 +87,25 @@ public:
     TArray<double> OpponentS;
     TArray<double> PreviousOpponentS;
     TArray<double> OpponentLanes;
+    TArray<double> PreviousOpponentLanes;
     TArray<double> OpponentSpeeds;
+    TArray<double> OpponentFinishTimes;
+    double RaceFinishDistance = 0;
+    TArray<bool> OpponentRecycled;
+    std::vector<Vroom::TrafficCar> Traffic;
+    Vroom::TrafficCar TrafficPlayer;
+    Vroom::RaceDifficulty Difficulty = Vroom::RaceDifficulty::Normal;
+    bool ReactiveTraffic = true, OpponentsVisible = true, ArcadeTraffic = false, TrafficPlayerActive = false;
+    void ConfigureTraffic(bool Visible, bool Arcade, Vroom::RaceDifficulty Level);
+    void HitOpponent(int32 Index, double RelativeSpeed);
     TArray<FVroomHazard> Hazards;
 private:
     TMap<FIntPoint, TArray<int32>> HazardCells;
     int32 VegetationQuality = -1;
     bool VegetationWind = false;
     TArray<double> RenderedOpponentS;
+    TArray<double> RenderedOpponentLanes;
+    TArray<double> OpponentVisualYaw;
     TArray<FTransform> RenderedOpponentTransforms[4];
     // Longueur du spline mise en cache : LengthM() est appelee des dizaines de
     // fois par image (courbure, positions, adversaires, HUD). Evite de
@@ -124,6 +141,16 @@ public:
     void UpdateBanner();
     void BuildMirrors();
     void UpdateMirrors(float Dt);
+    void StartSession();
+    void RestartSession();
+    void AdvanceStage();
+    void ReturnToMenu();
+    void SetSessionMode(Vroom::SessionMode Mode);
+    void SetDifficulty(Vroom::RaceDifficulty Difficulty);
+    void SelectSessionTrack(int32 Index);
+    void HandleAction(Vroom::Action Action);
+    bool PreparingCircuit = true;
+    uint32 PendingRenderJobs = 0;
     UPROPERTY() TObjectPtr<USceneComponent> MirrorRoot;
     UPROPERTY() TObjectPtr<USceneCaptureComponent2D> MirrorCapture;
     UPROPERTY() TObjectPtr<UTextureRenderTarget2D> MirrorTarget;
@@ -142,6 +169,9 @@ public:
     UPROPERTY() TArray<TObjectPtr<UStaticMeshComponent>> BodyParts;
     Vroom::DriveModel Drive;
     Vroom::ContactModel Contacts;
+    Vroom::SessionModel Session;
+    Vroom::PitStopModel Pit;
+    bool TourDemo = false;
     bool MouseSteer = false;
     bool ChaseCamera = false;
 	float VisualSteering = 0;
@@ -153,6 +183,7 @@ public:
     double BestLap = 0;
     double LastLap = 0;
     bool LapClean = true;
+    bool LastLapClean = true;
     // Arcade banner (vr2.asm CAAPAS / ASCORE): 27 slots, +500 per pass.
     int32 CarsPassed = 0;
     int32 Score = 0;
@@ -197,6 +228,15 @@ public:
     bool MotionTrace = false;
     bool VerificationMode = false;
     bool GraphicsPauseBefore = false;
+    bool ControlsPauseBefore = false;
+    bool TrackArgumentApplied = false;
+    bool PreparationHoldsPause = false;
+    bool PreparationPauseBefore = false;
+    int32 PreparationReadyFrames = 0;
+    double PreparationStartTime = 0;
+    void BeginCircuitPreparation();
+    bool UpdateCircuitPreparation();
+    double TourStartDistance = 0;
     int32 TickFrame = 0;
     double NextTrace = 0;
     float CaptureAfter = 6;
@@ -205,6 +245,8 @@ public:
     FString CapturePath;
     FString TestImpact;
     bool TestPrepared = false;
+    bool PitTest = false, PitTestStationary = true, PitTestCompleted = false;
+    double PitTestOpponentStart = 0;
     int32 TestContacts = 0;
     int32 TestRespawns = 0;
     int32 TestVisibilityErrors = 0;
@@ -215,6 +257,8 @@ public:
     bool HandleGraphicsInput(APlayerController* PC);
     void UpdateDiagnostics(float Dt);
     void PrepareCollisionTest();
+    void UpdateSessionRules();
+    double QualificationBenchmark() const;
     void UpdateSound();
     void BuildCrashDebris();
     void ResetCrashDebris();
@@ -234,8 +278,14 @@ class VROOM_API AVroomHUD : public AHUD
 {
     GENERATED_BODY()
 public:
+    AVroomHUD();
+    virtual ~AVroomHUD() override;
     virtual void DrawHUD() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+    bool IsCanvasPreparationComplete() const;
 private:
+    bool CanvasWarmupSubmitted = false;
+    TUniquePtr<FRenderCommandFence> CanvasWarmupFence;
     void Label(const FString& S, float X, float Y, float Size, FLinearColor Color, bool CentreX = false);
 };
 

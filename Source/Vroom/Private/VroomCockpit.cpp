@@ -1,4 +1,5 @@
 #include "VroomGame.h"
+#include "VroomProceduralMeshComponent.h"
 #include "Math/RotationMatrix.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -62,10 +63,25 @@ FDrivingHandPose DrivingHandPose(float Side, float Steering)
     // original low camera crop; camera height is not changed to reveal it.
     const double Turn = -FMath::Clamp(double(Steering / CockpitSteeringInputMax), -1.0, 1.0)
         * CockpitSteeringVisualAngleDeg();
-    static double NeutralAngle = 30.0, GripDepth = -2.5, GripReach = 19.1, Scale = 1.15, WristTilt = 45.0;
+    static double NeutralAngle = 30.0, GripDepth = -2.5, GripReach = 19.1, Scale = 1.05, WristTilt = 80.0;
     static bool Init = false;
     if (!Init)
     {
+        // The baked grip and rendered pose use the same fit parameters. The
+        // Amiga neutral reference puts the glove backs on the wheel's flanks.
+        FString Data;
+        TSharedPtr<FJsonObject> Document;
+        if (FFileHelper::LoadFileToString(Data, *(FPaths::ProjectContentDir() / TEXT("Data/gloves.json")))
+            && FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Data), Document) && Document.IsValid())
+        {
+            const TSharedPtr<FJsonObject>* Pose;
+            if (Document->TryGetObjectField(TEXT("driving_grip"), Pose))
+            {
+                (*Pose)->TryGetNumberField(TEXT("neutral_angle_deg"), NeutralAngle);
+                (*Pose)->TryGetNumberField(TEXT("wrist_tilt_deg"), WristTilt);
+                (*Pose)->TryGetNumberField(TEXT("scale"), Scale);
+            }
+        }
         FParse::Value(FCommandLine::Get(), TEXT("VroomGripAngle="), NeutralAngle);
         FParse::Value(FCommandLine::Get(), TEXT("VroomGripDepth="), GripDepth);
         FParse::Value(FCommandLine::Get(), TEXT("VroomGripReach="), GripReach);
@@ -496,7 +512,7 @@ void AVroomCar::BuildCockpit()
     AddInstanceComponent(SteeringPivot); SteeringPivot->RegisterComponent();
     auto Mesh = [&](const TCHAR* Name, USceneComponent* Parent)
     {
-        auto* C = NewObject<UProceduralMeshComponent>(this, Name);
+        auto* C = NewObject<UVroomProceduralMeshComponent>(this, Name);
         C->SetupAttachment(Parent);
         C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         C->SetCanEverAffectNavigation(false);
@@ -516,7 +532,7 @@ void AVroomCar::BuildCockpit()
             Hub.Ellipsoid(Q.RotateVector(FVector(-.22, Y, 0)), FVector(.045, 1.35, .32), Q, 6, 12);
     }
     Metal.Disc(FVector(-.15, 0, 0), 3.55, 1.0);
-    Metal.Commit(WheelMesh, 1, TEXT("M_WheelNavy"));
+    Metal.Commit(WheelMesh, 1, TEXT("M_F1Carbon"));
     Hub.Disc(FVector(-.87, 0, 0), 2.56, .55);
     Hub.Torus(WheelRadius - .30, .035, FVector(-WheelTube + .06, 0, 0));
     Hub.Commit(WheelMesh, 2, TEXT("M_Dashboard"));
@@ -587,7 +603,12 @@ void AVroomCar::BuildCockpit()
 
     auto* DashMesh = Mesh(TEXT("InstrumentBar"), CockpitRoot);
     DashMesh->SetRelativeTransform(FTransform(InstrumentTilt, InstrumentCenter, FVector(.52)));
-    FCockpitGeometry Bezel, Faces, Markings;
+    FCockpitGeometry Bezel, Faces, Markings, InstrumentTrim;
+    InstrumentTrim.Panel(FVector(.25, 0, 0), 31.05, 7.55, 2.7, 2.2);
+    for (double Side : {-1.0, 1.0})
+        for (double Height : {-4.8, 4.8})
+            InstrumentTrim.Disc(FVector(-1.55, Side * 27.5, Height), .36, .10, 10);
+    InstrumentTrim.Commit(DashMesh, 3, TEXT("M_BrushedMetal"));
     Bezel.Panel(FVector(0, 0, 0), 30.5, 7.0, 2.8, 2.0);
     Bezel.Commit(DashMesh, 0, TEXT("M_CockpitSlate"));
     Faces.Panel(FVector(-1.49, 0, 0), 29.3, 5.85, .15, 1.4);
@@ -624,9 +645,13 @@ void AVroomCar::BuildCockpit()
     InstrumentDigits(0).Commit(DigitsMesh, 0, TEXT("M_GaugeMark"));
 
     auto* SurroundMesh = Mesh(TEXT("CockpitMonocoque"), CockpitRoot);
-    FCockpitGeometry Carbon, Trim;
+    FCockpitGeometry Carbon, Trim, Coaming, Fasteners;
     // Low side rails and a shallow coaming, never a tall modern dashboard.
     Carbon.Panel(FVector(123, 0, 43), 37, 3.5, 6, 2.5);
+    // A low carbon top and rounded padding give the original red surround
+    // a finished edge without raising it into the road view.
+    Coaming.Panel(FVector(119.7, 0, 43.8), 35.8, 2.55, .5, 1.8);
+    Trim.Tube({FVector(118.7, -35, 46.4), FVector(118.7, 0, 46.4), FVector(118.7, 35, 46.4)}, {.45, .45, .45});
     for (float Side : {-1.f, 1.f})
     {
         const FVector N(0, Side, .35);
@@ -634,9 +659,14 @@ void AVroomCar::BuildCockpit()
             FVector(143, Side * 43, 35), FVector(20, Side * 43, 12)}, N);
         Carbon.Face({FVector(25, Side * 36, 20), FVector(130, Side * 36, 44),
             FVector(128, Side * 33, 38), FVector(25, Side * 33, 15)}, -N);
+        Coaming.Face({FVector(25, Side * 36, 20.2), FVector(130, Side * 36, 44.2),
+            FVector(130, Side * 39, 43.2), FVector(25, Side * 39, 18.2)}, FVector::UpVector);
         Trim.Tube({FVector(25, Side * 35.7, 21), FVector(80, Side * 35.7, 34), FVector(129, Side * 35.7, 44.4)}, {.7, .7, .6});
+        for (double Y : {28.5, 33.5})
+            Fasteners.Disc(FVector(119.32, Side * Y, 43.9), .28, .11, 10);
     }
-    Carbon.Commit(SurroundMesh, 0, TEXT("M_Red")); Trim.Commit(SurroundMesh, 1, TEXT("M_Dashboard"));
+    Carbon.Commit(SurroundMesh, 0, TEXT("M_F1Paint")); Trim.Commit(SurroundMesh, 1, TEXT("M_Dashboard"));
+    Coaming.Commit(SurroundMesh, 2, TEXT("M_F1Carbon")); Fasteners.Commit(SurroundMesh, 3, TEXT("M_BrushedMetal"));
     auto* RpmMesh = Mesh(TEXT("EngineRpmStrip"), DashMesh);
     RpmSegments(24, 0, 16).Commit(RpmMesh, 0, TEXT("M_GaugeGreen"));
     RpmSegments(24, 16, 20).Commit(RpmMesh, 1, TEXT("M_GaugeAmber"));
@@ -738,7 +768,7 @@ void AVroomCar::BuildBanner()
     BannerRoot->RegisterComponent();
     auto Mesh = [&](const TCHAR* Name)
     {
-        auto* C = NewObject<UProceduralMeshComponent>(this, Name);
+        auto* C = NewObject<UVroomProceduralMeshComponent>(this, Name);
         C->SetupAttachment(BannerRoot);
         C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         C->SetCanEverAffectNavigation(false);

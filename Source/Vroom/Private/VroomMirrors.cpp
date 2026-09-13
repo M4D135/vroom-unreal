@@ -1,4 +1,6 @@
 #include "VroomGame.h"
+#include "VroomProceduralMeshComponent.h"
+#include "HAL/IConsoleManager.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -7,7 +9,13 @@
 
 namespace
 {
-constexpr float MirrorInterval = 1.f / 15.f;
+float MirrorInterval()
+{
+    // One shared rear capture serves both mirrors. Keep the 512x128 target
+    // small; raise cadence rather than resolving detail smaller than a pixel.
+    static const IConsoleVariable* Effects = IConsoleManager::Get().FindConsoleVariable(TEXT("sg.EffectsQuality"));
+    return 1.f / (Effects && Effects->GetInt() >= 2 ? 60.f : 30.f);
+}
 constexpr double MirrorX = 200;
 constexpr double MirrorY = 70;
 constexpr double MirrorZ = 12;
@@ -172,7 +180,7 @@ void AVroomCar::BuildMirrors()
 
     for (float Side : {-1.f, 1.f})
     {
-        auto* Mesh = NewObject<UProceduralMeshComponent>(this);
+        auto* Mesh = NewObject<UVroomProceduralMeshComponent>(this);
         Mesh->SetupAttachment(MirrorRoot);
         Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         Mesh->SetGenerateOverlapEvents(false);
@@ -186,21 +194,21 @@ void AVroomCar::BuildMirrors()
         const FVector Center(MirrorX, Side * MirrorY, MirrorZ);
         FMirrorGeometry Red;
         Red.Panel(Center, 8, 4.5, 3, 1.5);
-        Red.Rod(FVector(169, Side * 43, -4), Center + FVector(1, -Side * 6, -2), 1.7);
+        // Mount to the coaming's outer edge without reaching the wheel.
+        Red.Rod(FVector(140, Side * 43, 34.4), Center + FVector(1, -Side * 6, -2), 1.7);
         Red.Commit(Mesh, 0, MirrorMaterial(TEXT("M_Red")));
         FMirrorGeometry Gasket;
         Gasket.Panel(Center + FVector(-1.65, 0, 0), 7.15, 3.65, .35, 1);
         Gasket.Commit(Mesh, 1, MirrorMaterial(TEXT("M_GlovePatch")));
         FMirrorGeometry Strut;
-        Strut.Rod(FVector(206, Side * 64, 13), FVector(188, Side * 43, 12), .65);
-        Strut.Rod(FVector(160, Side * 38, 4), FVector(250, Side * 74, -15), 1.0);
+        Strut.Rod(FVector(134, Side * 38.2, 41.2), FVector(187, Side * 59.2, 15.6), .65);
         Strut.Commit(Mesh, 2, MirrorMaterial(TEXT("M_White")));
         FMirrorGeometry Glass;
         Glass.Glass(Center + FVector(-1.9, 0, 0), Side);
         Glass.Commit(Mesh, 3, Surface);
     }
-    MirrorClock = MirrorInterval;
-    UE_LOG(LogTemp, Display, TEXT("VROOM: Rear mirrors ready: shared 512x128 HDR capture at 15 Hz"));
+    MirrorClock = MirrorInterval();
+    UE_LOG(LogTemp, Display, TEXT("VROOM: Rear mirrors ready: shared 512x128 HDR capture, 30/60 Hz by applied effects quality"));
 }
 
 void AVroomCar::UpdateMirrors(float Dt)
@@ -210,14 +218,15 @@ void AVroomCar::UpdateMirrors(float Dt)
     if (MirrorRoot->IsVisible() != Visible) MirrorRoot->SetVisibility(Visible, true);
     if (ChaseCamera)
     {
-        MirrorClock = MirrorInterval;
+        MirrorClock = MirrorInterval();
         return;
     }
     if (!FMath::IsFinite(Dt) || Dt < 0) return;
     MirrorClock += FMath::Min(Dt, .1f);
-    if (MirrorClock >= MirrorInterval)
+    const float Interval = MirrorInterval();
+    if (MirrorClock + 1.e-6f >= Interval)
     {
-        MirrorClock = FMath::Fmod(MirrorClock, MirrorInterval);
+        MirrorClock = FMath::Fmod(FMath::Max(MirrorClock, Interval), Interval);
         // Deferred capture uses the final opponent positions for this frame.
         MirrorCapture->CaptureSceneDeferred();
     }
