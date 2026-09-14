@@ -148,6 +148,18 @@ int main()
     Check(Bars[0].Steers && !Bars[4].Steers, "only the front bars follow steering");
     Check(std::abs(Bars[0].HubY) > std::abs(Bars[0].ChassisY), "bars run from chassis out to the hubs");
 
+    DriveModel Free, Draft;
+    Free.State.SpeedMps = Draft.State.SpeedMps = 50;
+    Free.State.Gear = Draft.State.Gear = 5;
+    Draft.Slipstream = 1;
+    DriveInput Hold; Hold.Throttle = 1;
+    for (int I = 0; I < 120 * 4; ++I)
+    {
+        Free.Step(Hold, 1.0 / 120, 0, 4.75);
+        Draft.Step(Hold, 1.0 / 120, 0, 4.75);
+    }
+    Check(Draft.State.DistanceM > Free.State.DistanceM + 1.5, "slipstream cuts drag instead of inventing speed");
+
     if (Failures)
     {
         std::cerr << Failures << " checks failed\n";

@@ -48,19 +48,6 @@ FTransform OpponentPartTransform(int32)
 {
     return FTransform::Identity; // Mesh positions are authored at full car scale.
 }
-FTransform OpponentWishboneTransform(const Vroom::Wishbone& Bar)
-{
-    const FVector Chassis(Bar.ChassisX, Bar.ChassisY, Bar.ChassisZ);
-    const FVector Hub(Bar.HubX, Bar.HubY, Bar.HubZ);
-    const FVector Delta = Hub - Chassis;
-    const float Length = Delta.Size();
-    FTransform Pose;
-    Pose.SetLocation((Chassis + Hub) * 0.5f);
-    Pose.SetScale3D(FVector(0.038f, 0.038f, FMath::Max(0.02f, Length * 0.01f)));
-    if (Length > 1.f)
-        Pose.SetRotation(FQuat::FindBetweenNormals(FVector::UpVector, Delta / Length));
-    return Pose;
-}
 }
 
 AVroomCircuit::AVroomCircuit()
@@ -305,7 +292,42 @@ void AVroomCircuit::BuildSurface()
     Ribbon(3, HalfWidthM, HalfWidthM + .7f, 5, TEXT("M_Curb"), false);
     Ribbon(4, -HalfWidthM + .12f, -HalfWidthM + .25f, 6, TEXT("M_White"), false);
     Ribbon(5, HalfWidthM - .25f, HalfWidthM - .12f, 6, TEXT("M_White"), false);
-    Ribbon(6, -24, 24, -1, TEXT("M_Grass"), false);
+    Ribbon(6, -HalfWidthM - 8.f, HalfWidthM + 8.f, -2, TEXT("M_Grass"), false);
+    Ribbon(7, -HalfWidthM - 2.2f, HalfWidthM + 2.2f, -90, TEXT("M_Dark"), false);
+    auto Wall = [&](int32 Section, float Lateral, float ZTop, float ZBot, const TCHAR* Material)
+    {
+        TArray<FVector> V, Normals;
+        TArray<int32> T;
+        TArray<FVector2D> UV;
+        TArray<FLinearColor> Colors;
+        TArray<FProcMeshTangent> Tangents;
+        const FVector Out = Rotation(0).RotateVector(FVector::RightVector) * FMath::Sign(Lateral);
+        for (int32 I = 0; I <= Count; ++I)
+        {
+            const float S = I * LengthM() / Count;
+            const FVector Base = Position(S, Lateral);
+            V.Add(Base + FVector(0, 0, ZTop));
+            V.Add(Base + FVector(0, 0, ZBot));
+            const FVector N = Rotation(S).RotateVector(FVector::RightVector) * FMath::Sign(Lateral);
+            for (int32 J = 0; J < 2; ++J)
+            {
+                Normals.Add(N);
+                UV.Add(FVector2D(J, S / 6));
+                Colors.Add(FLinearColor::White);
+                Tangents.Add(FProcMeshTangent(Rotation(S).Vector(), false));
+            }
+            if (I < Count)
+            {
+                const int32 K = I * 2;
+                T.Append({K, K + 1, K + 2, K + 1, K + 3, K + 2});
+            }
+        }
+        Surface->CreateMeshSection_LinearColor(Section, V, T, Normals, UV, Colors, Tangents, false);
+        Surface->SetMaterial(Section, Mat(Material));
+        (void)Out;
+    };
+    Wall(8, -HalfWidthM - 1.6f, 5, -90, TEXT("M_Dark"));
+    Wall(9, HalfWidthM + 1.6f, 5, -90, TEXT("M_Dark"));
 }
 
 void AVroomCircuit::BuildTerrain()
@@ -334,14 +356,7 @@ void AVroomCircuit::BuildTerrain()
             const float Key = Spline->FindInputKeyClosestToWorldLocation(P);
             const FVector Road = Spline->GetLocationAtSplineInputKey(Key, ESplineCoordinateSpace::World);
             const float S = Spline->GetDistanceAlongSplineAtSplineInputKey(Key) / 100;
-            double Distance = FVector::Dist2D(P, Road) / 100;
-            const FVector Right = Spline->GetRightVectorAtSplineInputKey(Key, ESplineCoordinateSpace::World);
-            const double LateralM = FVector::DotProduct(P - Road, Right) / 100.0;
-            const double Bend = Curvature(S);
-            // Hairpin islands sit a few metres from two stretches of tarmac.
-            // Treat that infield as countryside so it does not rise with the road.
-            if (std::abs(Bend) > 0.008 && Bend * LateralM < 0 && Distance > HalfWidthM + 1.2 && Distance < 22.0)
-                Distance = 80.0;
+            const double Distance = FVector::Dist2D(P, Road) / 100;
             P.Z = Vroom::Environment::HeightM(TrackIndex, P, Distance, Elevation(S).HeightM, Minimum) * 100;
             V.Add(P); UV.Add(FVector2D(P.X / 1600, P.Y / 1600));
             const float Variation = .92f + .11f * FMath::Sin(P.X * .00047 + P.Y * .00023)
@@ -1116,19 +1131,17 @@ void AVroomCircuit::BuildOpponents()
     OpponentRecycled.Init(false, 12);
     OpponentFinishTimes.Init(0, 12); RaceFinishDistance = 0;
     OpponentMotionNeedsReset = false;
-    static const TCHAR* Materials[] = { TEXT("M_F1Paint"), TEXT("M_F1Pearl"), TEXT("M_F1Carbon"), TEXT("M_F1Rubber"), TEXT("M_F1Carbon") };
+    static const TCHAR* Materials[] = { TEXT("M_F1Paint"), TEXT("M_F1Pearl"), TEXT("M_F1Carbon"), TEXT("M_F1Rubber") };
     static const TCHAR* MeshNames[] = { TEXT("SM_F1OpponentPaint"), TEXT("SM_F1OpponentTrim"),
-        TEXT("SM_F1OpponentCarbon"), TEXT("SM_F1OpponentWheels"), TEXT("Cylinder") };
-    for (int32 Group = 0; Group < 5; ++Group)
+        TEXT("SM_F1OpponentCarbon"), TEXT("SM_F1OpponentWheels") };
+    for (int32 Group = 0; Group < 4; ++Group)
     {
-        RenderedOpponentTransforms[Group].Reset(Group == 4 ? 96 : 12);
-        NextOpponentTransforms[Group].Reset(Group == 4 ? 96 : 12);
+        RenderedOpponentTransforms[Group].Reset(12);
+        NextOpponentTransforms[Group].Reset(12);
         auto C = NewObject<UInstancedStaticMeshComponent>(this);
         C->SetupAttachment(RootComponent);
         C->SetMobility(EComponentMobility::Movable);
-        const FString MeshPath = Group == 4
-            ? FString::Printf(TEXT("/Engine/BasicShapes/%s.%s"), MeshNames[Group], MeshNames[Group])
-            : FString::Printf(TEXT("/Game/Meshes/%s.%s"), MeshNames[Group], MeshNames[Group]);
+        const FString MeshPath = FString::Printf(TEXT("/Game/Meshes/%s.%s"), MeshNames[Group], MeshNames[Group]);
         C->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, *MeshPath));
         C->SetMaterial(0, Mat(Materials[Group]));
         if (Group == 0) C->SetNumCustomDataFloats(3);
@@ -1176,11 +1189,6 @@ void AVroomCircuit::BuildOpponents()
                 Mesh->SetCustomDataValue(Instance, 2, Colour.B, false);
             }
         }
-        int32 WishboneCount = 0;
-        const Vroom::Wishbone* Wishbones = Vroom::CarWishbones(WishboneCount);
-        auto* Bars = OpponentMeshes[4].Get();
-        for (int32 Bar = 0; Bar < WishboneCount; ++Bar)
-            Bars->AddInstance(OpponentWishboneTransform(Wishbones[Bar]), true);
     }
     PreviousOpponentS = OpponentS;
     PreviousOpponentLanes = OpponentLanes;
@@ -1226,12 +1234,17 @@ void AVroomCircuit::AdvanceRace(float H)
             LightStage, static_cast<int32>(Signal), RaceClock);
     }
     const int32 SignalId = static_cast<int32>(Signal);
+    const bool CountdownBeep =
+        (Signal == Vroom::StartSignal::Red && StartSignalPlayed < 0) ||
+        (Signal == Vroom::StartSignal::Orange && StartSignalPlayed == static_cast<int32>(Vroom::StartSignal::Red)) ||
+        (Signal == Vroom::StartSignal::Green && (StartSignalPlayed == static_cast<int32>(Vroom::StartSignal::Orange)
+            || StartSignalPlayed == static_cast<int32>(Vroom::StartSignal::Red)));
     if (SignalId != StartSignalPlayed && Signal != Vroom::StartSignal::Idle && Signal != Vroom::StartSignal::Racing)
     {
         const Vroom::StartBeep Beep = Vroom::BeepFor(Signal);
-        const float Volume = static_cast<float>(Beep.Volume)
-            * Vroom::Settings::Get().MasterVolume * Vroom::Settings::Get().EffectsVolume;
-        if (StartLightAudio && Beep.Frequency > 0 && Volume > 0.01f)
+        const float Volume = CountdownBeep ? static_cast<float>(Beep.Volume)
+            * Vroom::Settings::Get().MasterVolume * Vroom::Settings::Get().EffectsVolume : 0.f;
+        if (CountdownBeep && StartLightAudio && Beep.Frequency > 0 && Volume > 0.01f)
         {
             if (!StartLightWave)
             {
@@ -1308,7 +1321,7 @@ void AVroomCircuit::AdvanceRace(float H)
 
 void AVroomCircuit::RenderOpponents(float Alpha)
 {
-    if (OpponentMeshes.Num() != 5 || PreviousOpponentS.Num() != OpponentS.Num()) return;
+    if (OpponentMeshes.Num() != 4 || PreviousOpponentS.Num() != OpponentS.Num()) return;
     Alpha = FMath::Clamp(Alpha, 0.0f, 1.0f);
     bool Changed = RenderedOpponentS.Num() != OpponentS.Num() || RenderedOpponentLanes.Num() != OpponentS.Num();
     // The traffic planner can choose a lane in one simulation step. Ease only
@@ -1358,10 +1371,6 @@ void AVroomCircuit::RenderOpponents(float Alpha)
         const FTransform Base(Facing, Position(Distance, Lane));
         for (int32 J = 0; J < 4; ++J)
             NextOpponentTransforms[OpponentPartGroup(I, J)].Add(OpponentPartTransform(J) * Base);
-        int32 WishboneCount = 0;
-        const Vroom::Wishbone* Wishbones = Vroom::CarWishbones(WishboneCount);
-        for (int32 Bar = 0; Bar < WishboneCount; ++Bar)
-            NextOpponentTransforms[4].Add(OpponentWishboneTransform(Wishbones[Bar]) * Base);
     }
     for (int32 Group = 0; Group < OpponentMeshes.Num(); ++Group)
     {

@@ -221,6 +221,15 @@ int main()
     Check(!ContactModel::SweepObstacle({0,0,0}, {0,0,std::numeric_limits<double>::quiet_NaN()},
           {2,1,1}, hitFraction, hitAxis, hitSide), "nonfinite obstacle sweeps are ignored");
 
+    ContactModel Graze;
+    const auto Slow = Graze.ForceObjectGraze(10, 1);
+    Check(Slow.Kind == ContactKind::SlowImpact && Graze.State.Phase == ContactPhase::Driving,
+          "a slow scenery graze does not lock the car into recovery");
+    Check(Slow.SpeedAfterMps > 3 && Slow.SpeedAfterMps < 10, "a graze keeps residual speed");
+    const auto Hard = Graze.ForceObjectGraze(30, -1);
+    Check(Hard.Kind == ContactKind::Crash && Graze.State.Phase == ContactPhase::Crashed,
+          "a fast scenery hit still becomes a crash");
+
     if (Failures)
         return EXIT_FAILURE;
     std::cout << "All contact-model behavioral checks passed.\n"

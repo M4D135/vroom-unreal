@@ -1,8 +1,8 @@
-# Vroom 0.31 — prototype 3D sous Unreal Engine 5.8
+# Vroom 0.32 — prototype 3D sous Unreal Engine 5.8
 
-## Rôle et état de la branche 0.31
+## Rôle et état de la branche 0.32
 
-Prototype personnel de course sous Unreal Engine, inspiré du Vroom de Lankhor. Les sources de conduite, les six tracés et les outils de build Mac sont conservés pour poursuivre le développement. Les fonctionnalités et limites ci-dessous concernent la version de cette branche. La 0.31 ajoute les triangles de suspension, la validation réelle des tours, les portiques, le départ sonore rouge/orange/vert, l’indicateur de pneus, l’obligation d’un arrêt en course et les profils d’IA par couleur. La 0.30 reste la dernière version soak-installée tant que `verify_mac.py --profile --soak` n’a pas certifié ce binaire.
+Prototype personnel de course sous Unreal Engine, inspiré du Vroom de Lankhor. Les sources de conduite, les six tracés et les outils de build Mac sont conservés pour poursuivre le développement. Les fonctionnalités et limites ci-dessous concernent la version de cette branche. La 0.32 ajoute l’aspiration, le limiteur de stands, le régime sur la grille, et retire les compilations audio/ISM qui piquaient le soak France. La 0.30 reste la dernière version soak-installée tant que `verify_mac.py --profile --soak` n’a pas certifié ce binaire.
 
 Dépôt : [vroom-unreal](https://git.estrasse.fr/david/vroom-unreal).
 

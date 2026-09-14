@@ -42,7 +42,7 @@ FTransform WishboneTransform(const FVector& Chassis, const FVector& Hub)
     const float Length = Delta.Size();
     FTransform Pose;
     Pose.SetLocation((Chassis + Hub) * 0.5f);
-    Pose.SetScale3D(FVector(0.038f, 0.038f, FMath::Max(0.02f, Length * 0.01f)));
+    Pose.SetScale3D(FVector(0.055f, 0.055f, FMath::Max(0.02f, Length * 0.01f)));
     if (Length > 1.f)
         Pose.SetRotation(FQuat::FindBetweenNormals(FVector::UpVector, Delta / Length));
     return Pose;
@@ -226,7 +226,7 @@ void AVroomCar::BeginPlay()
         C->SetupAttachment(RootComponent);
         C->SetMobility(EComponentMobility::Movable);
         C->SetStaticMesh(Shape(TEXT("Cylinder")));
-        C->SetMaterial(0, Mat(TEXT("M_F1Carbon")));
+        C->SetMaterial(0, Mat(TEXT("M_Metal")));
         C->SetRelativeTransform(WishboneTransform(Chassis, Hub));
         C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         C->SetCanEverAffectNavigation(false);
@@ -828,7 +828,8 @@ void AVroomCar::Tick(float Dt)
         const double CurveAhead = TourDemo ? FMath::Max(std::abs(K), FMath::Abs(Circuit->Curvature(S + 65))) : std::abs(K);
         const double Desired = FMath::Clamp(FMath::Sqrt(26.0 / FMath::Max(CurveAhead, .004)), 15.0, TourDemo ? 60.0 : 70.0);
         Input.Throttle = Drive.State.SpeedMps < Desired ? .85 : 0;
-        Input.Brake = Drive.State.SpeedMps > Desired + 3 ? .6 : 0;
+        // Stay under the 0.34 drift-entry brake so assisted tours do not hop.
+        Input.Brake = Drive.State.SpeedMps > Desired + 3 ? .28 : 0;
         // Arcade XBCMP3: hold the stick to cancel curve wash and stay near
         // a racing line. No yaw PID — the chassis stays parallel.
         const double SteerGain = std::max(Vroom::DriveModel::ArcadeSteerLatMps(1, Drive.State.SpeedMps) * Drive.TyreGrip(), 0.4);
@@ -979,7 +980,13 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
     Circuit->TrafficPlayerActive = !TourDemo && Circuit->OpponentsVisible;
     Circuit->AdvanceRace(H);
     TestSeconds += H;
-    if (Circuit->RaceClock < 0) return;
+    if (Circuit->RaceClock < 0)
+    {
+        const double Target = 1000.0 + 8500.0 * std::clamp(RawInput.Throttle, 0.0, 1.0);
+        Drive.State.Rpm = Drive.State.Rpm + (Target - Drive.State.Rpm) * (1.0 - std::exp(-H / 0.09));
+        Drive.State.SpeedMps = 0;
+        return;
+    }
     Pit.Locate(Drive.State.DistanceM, Drive.State.LateralM, Drive.State.SpeedMps, Circuit->LengthM());
     if (Pit.Servicing)
     {
@@ -999,6 +1006,27 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
 
     Vroom::DriveInput Input = RawInput;
     if (Contacts.State.ControlsLocked) Input = Vroom::DriveInput{};
+    if (Pit.InLane && !Pit.Servicing)
+    {
+        Input.Throttle = std::min(Input.Throttle, 0.28);
+        if (Drive.State.SpeedMps > 16.0)
+        {
+            Input.Throttle = 0;
+            Input.Brake = std::max(Input.Brake, 0.28);
+        }
+    }
+    Drive.Slipstream = 0;
+    if (Circuit->OpponentsVisible && !TourDemo)
+    {
+        const double Len = Circuit->LengthM();
+        for (int32 I = 0; I < Circuit->OpponentS.Num(); ++I)
+        {
+            double Gap = std::fmod(Circuit->OpponentS[I] - Drive.State.DistanceM + Len * 100.0, Len);
+            if (Gap > Len * 0.5) Gap -= Len;
+            if (Gap > 0.8 && Gap < 16.0 && std::abs(Circuit->OpponentLanes[I] - Drive.State.LateralM) < 2.2)
+                Drive.Slipstream = std::max(Drive.Slipstream, 1.0 - Gap / 16.0);
+        }
+    }
     InputSteering += (Input.Steer - InputSteering) * Vroom::ExponentialAlpha(VroomSteeringInputFilterHz(), H);
     Input.Steer = InputSteering;
     const bool Wrecked = Contacts.State.Phase == Vroom::ContactPhase::Crashed || Contacts.State.Phase == Vroom::ContactPhase::Recovering;
@@ -1068,24 +1096,36 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
             const double RelativeSpeed = FVector::Dist(Start,End) / (100 * H);
             const double SideDot = FVector::DotProduct(Normal, CarRotation.Quaternion().GetRightVector());
             const int Side = FMath::Abs(SideDot) > .1 ? (SideDot > 0 ? -1 : 1) : (Drive.State.LateralM >= 0 ? 1 : -1);
-            const auto Hit = Contacts.ForceObjectCrash(RelativeSpeed, Side);
+            const auto Hit = Contacts.ForceObjectGraze(RelativeSpeed, Side);
             if (Hit.Kind != Vroom::ContactKind::None)
             {
                 Drive.State.DistanceM = FMath::Lerp(PreviousDrive.DistanceM, Drive.State.DistanceM, Fraction);
                 Drive.State.LateralM = FMath::Lerp(PreviousDrive.LateralM, Drive.State.LateralM, Fraction);
-                Drive.State.SpeedMps = 0;
-                Drive.State.Rpm = 1000;
                 Drive.State.HeadingRad = Drive.VisualHeading();
                 Drive.CancelArcadeEffects();
                 Drive.ExtraLatVel = 0;
-                Drive.SetVelocityHeading(Drive.State.HeadingRad);
-                Contacts.PrepareRoadRecovery(Drive.State.LateralM, Half);
-                Drive.TyreHealth = FMath::Max(0.0, Drive.TyreHealth - (Contacts.State.TyresBroken ? 180 : 40));
+                if (Hit.Kind == Vroom::ContactKind::Crash)
+                {
+                    Drive.State.SpeedMps = 0;
+                    Drive.State.Rpm = 1000;
+                    Drive.SetVelocityHeading(Drive.State.HeadingRad);
+                    Contacts.PrepareRoadRecovery(Drive.State.LateralM, Half);
+                    Drive.TyreHealth = FMath::Max(0.0, Drive.TyreHealth - (Contacts.State.TyresBroken ? 180 : 40));
+                    ImpactSound = Contacts.State.TyresBroken ? 1 : .4;
+                }
+                else
+                {
+                    Drive.State.SpeedMps = Hit.SpeedAfterMps;
+                    Drive.SetVelocityHeading(Drive.State.HeadingRad);
+                    if (std::abs(Hit.LateralShoveMps) > 0.05)
+                        Drive.Shove(Hit.LateralShoveMps);
+                    Drive.TyreHealth = FMath::Max(0.0, Drive.TyreHealth - 12);
+                    ImpactSound = .28;
+                }
                 LapClean = false; LapState.MarkDirty("contact");
-                ImpactSound = Contacts.State.TyresBroken ? 1 : .4;
                 ++TestContacts;
-                UE_LOG(LogTemp, Display, TEXT("VROOM: Scenery impact speed=%.1f km/h s=%.2f lateral=%.2f broken=%d"),
-                    Hit.RelativeSpeedMps * 3.6, Drive.State.DistanceM, Drive.State.LateralM, Contacts.State.TyresBroken);
+                UE_LOG(LogTemp, Display, TEXT("VROOM: Scenery impact kind=%d speed=%.1f km/h s=%.2f lateral=%.2f"),
+                    static_cast<int32>(Hit.Kind), Hit.RelativeSpeedMps * 3.6, Drive.State.DistanceM, Drive.State.LateralM);
             }
         }
     }

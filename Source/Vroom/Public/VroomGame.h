@@ -5,7 +5,7 @@
 // Version affichee dans le HUD et le journal : le seul temoin de build fiable.
 namespace Vroom
 {
-inline constexpr const TCHAR* AppVersion = TEXT("0.31");
+inline constexpr const TCHAR* AppVersion = TEXT("0.32");
 }
 #include "GameFramework/Pawn.h"
 #include "GameFramework/HUD.h"
@@ -110,7 +110,7 @@ private:
     TArray<double> RenderedOpponentS;
     TArray<double> RenderedOpponentLanes;
     TArray<double> OpponentVisualYaw;
-    TArray<FTransform> RenderedOpponentTransforms[5];
+    TArray<FTransform> RenderedOpponentTransforms[4];
     // Longueur du spline mise en cache : LengthM() est appelee des dizaines de
     // fois par image (courbure, positions, adversaires, HUD). Evite de
     // retraverser le spline a chaque appel, surtout sensible en virage ou les
@@ -120,7 +120,7 @@ private:
     float CurvatureSampleSpacing = 2.f;
     void RefreshLengthCache();
     void RebuildCurvatureCache();
-    TArray<FTransform> NextOpponentTransforms[5];
+    TArray<FTransform> NextOpponentTransforms[4];
     bool OpponentMotionNeedsReset = false;
     bool LoadTracks();
     void BuildSurface();

@@ -567,8 +567,9 @@ void AVroomHUD::DrawHUD()
     FString Alert;
     if(Car->Pit.Servicing)Alert=FString::Printf(TEXT("STAND · %s · %.1f s"),Car->Pit.NeedTyres&&Car->Pit.NeedFuel?TEXT("PNEUS + ESSENCE"):Car->Pit.NeedTyres?TEXT("PNEUS"):TEXT("ESSENCE"),Car->Pit.Remaining);
     else if(!Car->Session.Solo()&&Car->Pit.Available)Alert=FString::Printf(TEXT("STAND · %s PNEUS · %s ESSENCE · %s : LES DEUX"),*Vroom::Settings::BindingLabel(Vroom::Action::Tyres),*Vroom::Settings::BindingLabel(Vroom::Action::Refuel),Car->MouseSteer?TEXT("A / CLIC SOURIS"):TEXT("A"));
-    else if(!Car->Session.Solo()&&Car->Pit.InLane)Alert=TEXT("STANDS · S’ARRÊTER DANS L’EMPLACEMENT");
+    else if(!Car->Session.Solo()&&Car->Pit.InLane)Alert=Car->Drive.State.SpeedMps>16?TEXT("STANDS · LIMITEUR 60 KM/H"):TEXT("STANDS · S’ARRÊTER DANS L’EMPLACEMENT");
     else if(!Car->Session.Solo()&&(Fuel<.22f||Tyres<.3f))Alert=FString::Printf(TEXT("%s%sSTANDS À DROITE APRÈS LA LIGNE"),Fuel<.22f?TEXT("ESSENCE BASSE · "):TEXT(""),Tyres<.3f?TEXT("PNEUS USÉS · "):TEXT(""));
+    else if(Car->Drive.Slipstream>0.45)Alert=TEXT("ASPIRATION");
     if(!Alert.IsEmpty()){Rounded(W*.5f-335,114,670,32,8,Panel);Text(Alert,W*.5f,121,13,Car->Pit.InLane?Ice:RacingRed,true);}
     if(Car->Session.Mode==Vroom::SessionMode::Arcade)
     {

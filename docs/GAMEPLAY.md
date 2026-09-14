@@ -1,4 +1,4 @@
-# Jeu, courses et stands — 0.31
+# Jeu, courses et stands — 0.32
 
 Cette version ajoute des épreuves terminées, une progression, un trafic réactif et des arrêts au stand. Les règles ci-dessous décrivent le remake réellement codé. La référence choisie reste Vroom Amiga ; une ressemblance de fonction n'établit pas une reproduction exacte de son programme.
 
@@ -8,9 +8,11 @@ Le menu propose **Arcade**, **Grand Prix** et **Chrono**, les six circuits et tr
 
 Chaque départ comporte un décompte de trois secondes, sonorisé : **rouge**, puis **orange**, puis **vert** exactement lorsque le chrono, le peloton et le joueur sont libérés. Chaque signal n'est émis qu'une fois, au volume des effets. Couper le son ou relancer pendant le décompte réinitialise la séquence. Pendant ce décompte, la voiture reste à l'arrêt. Maintenir l'accélérateur prépare le départ ; le remake ne sanctionne pas cette commande comme un faux départ.
 
+Un léger contact avec le décor (moins de 60 km/h) rebondit sans recentrage forcé ; au-dessus, la casse et le retour sur la piste restent en vigueur.
+
 Un tour n'est enregistré comme record, fantôme ou qualification que s'il est propre. Huit points de passage ordonnés interdisent de valider un tour en coupant, en reculant ou en franchissant la ligne sans avoir parcouru le circuit. Un léger débordement salit le chrono sans retirer le tour de course ; la voie des stands n'est pas une coupe. L'interface affiche la raison (`coupe de circuit`, `passage manqué`, `sens inverse`, `sortie de piste`, `contact`). Un tour déjà validé n'est pas retiré.
 
-| Mode | Déroulement de la 0.31 | Fin de l'épreuve |
+| Mode | Déroulement de la 0.32 | Fin de l'épreuve |
 |---|---|---|
 | Arcade | Trois tours, du trafic renouvelé et un quota net de dépassements | Réussite au passage de la ligne du troisième tour si le quota est atteint ; échec si le quota manque, si le temps expire avant l'arrivée, ou après immobilisation sans essence |
 | Grand Prix | Un tour qualificatif en solitaire, une grille de treize voitures puis trois tours de course | Classement du joueur à l'arrivée et points de championnat ; panne sèche à l'arrêt traitée comme un abandon sans point |
@@ -62,7 +64,7 @@ Les six livrées conservent leur couleur d'origine. L'Amiga ne documentait pas u
 | Violet | Le Technicien | 0,97 | 1,24 | 0,82 | 1,22 | 1,26 | 0,88 | 0,90 |
 | Orange | Le Vétéran | 1,01 | 1,05 | 1,08 | 1,04 | 1,08 | 0,86 | 0,88 |
 
-Ils anticipent la courbure à 25, 90 et 140 m, freinent derrière un rival tant que la voie n'est pas libre, et prennent la voie des stands lorsqu'il leur reste moins de 18 % d'essence ou 420 unités de pneus. L'arrêt les immobilise 7 s, comme un service complet du joueur. Aucun rattrapage artificiel n'est ajouté.
+Ils anticipent la courbure à 25, 90 et 140 m, freinent derrière un rival tant que la voie n'est pas libre, et prennent la voie des stands lorsqu'il leur reste moins de 18 % d'essence ou 420 unités de pneus. L'arrêt les immobilise 7 s, comme un service complet du joueur. Une voiture dans le sillage d'une autre (2 à 16 m, même file) subit moins de traînée : c'est de l'aspiration, pas un rattrapage artificiel. Dans la voie des stands, un limiteur coupe l'allure vers 60 km/h. Pendant le décompte, l'accélérateur monte le régime sans avancer.
 
 En Grand Prix, les adversaires gardent leur progression de course. En Arcade, une voiture située plus de 100 m derrière le joueur est replacée entre 230 et 494 m devant lui pour alimenter le trafic. Son historique de dépassement et ses positions précédentes sont réinitialisés. Le Chrono et la qualification masquent entièrement le peloton et ses contacts.
 

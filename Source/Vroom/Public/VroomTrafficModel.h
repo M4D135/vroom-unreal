@@ -144,6 +144,8 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
             if (Gap > 0 && Gap < Ahead && std::abs(Other.Lateral - Old.Lateral) < Width)
             { Ahead = Gap; AheadSpeed = Other.Speed; }
         });
+        if (Ahead > 8.0 && Ahead < 16.0)
+            Desired = std::min(Desired + 2.2 * (1.0 - Ahead / 16.0), 72.0);
 
         if (NeedPit)
         {

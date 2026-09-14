@@ -35,6 +35,8 @@ public:
     // the original mild consumption by accident.
     double FuelBurnPerThrottleSecond = 0.00055;
     double TyreWearPerMetre = 0;
+    // 0..1: reduced drag when following a car. Not a rubber-band catch-up.
+    double Slipstream = 0;
     bool Skidding = false;
     double SkidAmount = 0;
     bool Drifting = false;
@@ -411,7 +413,8 @@ private:
         double rollingMoment = airborne ? 4.0 : 10.0 + 198.0 * edgeBlend;
         if (Skidding && !airborne)
             rollingMoment += 320.0 - 180.0 * DriftBlend;
-        const double airMoment = internalSpeed * internalSpeed / (airborne ? 780.0 : 468.0);
+        const double airMoment = internalSpeed * internalSpeed / (airborne ? 780.0 : 468.0)
+            * (1.0 - 0.30 * std::clamp(Slipstream, 0.0, 1.0));
         const double brakePedal = input.Brake * (1.0 - 0.78 * DriftBlend);
         const double brakeMoment = std::pow(94.0 * brakePedal, 2) / 16.0 * grip;
         const double torque = (ShiftDelay > 0 || wheelRpm >= MaxRpm) ? 0.0 : TorqueAt(State.Rpm) * input.Throttle;

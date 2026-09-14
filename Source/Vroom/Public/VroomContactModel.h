@@ -285,6 +285,30 @@ public:
         return result;
     }
 
+    // Slow scenery contact: bounce instead of a full return-to-track penalty.
+    ContactResult ForceObjectGraze(double playerSpeedMps, int impactSide)
+    {
+        const double Speed = SafeSpeed(playerSpeedMps);
+        if (Speed > ObjectBigCrashMps)
+            return ForceObjectCrash(Speed, impactSide);
+        ContactResult result;
+        if ((State.Phase != ContactPhase::Driving && State.Phase != ContactPhase::Airborne)
+            || State.InvulnerabilityRemaining > 0 || RespawnPending)
+            return result;
+        result.Kind = ContactKind::SlowImpact;
+        result.RelativeSpeedMps = Speed;
+        result.SpeedAfterMps = Speed * 0.42;
+        result.ImpactSide = std::clamp(impactSide, -1, 1);
+        result.LateralShoveMps = 4.5 * result.ImpactSide;
+        State.LastKind = ContactKind::SlowImpact;
+        State.RelativeSpeedMps = Speed;
+        State.ImpactSide = result.ImpactSide;
+        State.ImpactFlash = 0.22;
+        RecoverOntoRoad = false;
+        AirSteer = false;
+        return result;
+    }
+
     // Sweep a point through a box already expanded by the car's projected
     // half-extents. Call in the obstacle's local frame; testing all axes over
     // the same interval prevents tunnelling and diagonal near-miss false hits.
