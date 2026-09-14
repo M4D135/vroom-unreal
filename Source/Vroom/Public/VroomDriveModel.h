@@ -31,6 +31,10 @@ public:
     // TIRUSE 2048..0 (vr2.asm). Fresh tyres raise the skid threshold (LIMCRI).
     double TyreHealth = 2048;
     double Fuel = 1;
+    // Session-owned rates. Reset() keeps them so a restart does not restore
+    // the original mild consumption by accident.
+    double FuelBurnPerThrottleSecond = 0.00055;
+    double TyreWearPerMetre = 0;
     bool Skidding = false;
     double SkidAmount = 0;
     bool Drifting = false;
@@ -376,7 +380,7 @@ private:
             Skidding = true;
             SkidAmount = 0.85;
         }
-        Fuel = std::max(0.0, Fuel - input.Throttle * h * 0.00055);
+        Fuel = std::max(0.0, Fuel - input.Throttle * h * std::max(0.0, FuelBurnPerThrottleSecond));
 
         const int vaco = ArcadeVaco(curvature);
         double wash = ArcadeWashLatMps(speed, curvature);
@@ -385,6 +389,13 @@ private:
         wash *= 1.0 - 0.58 * DriftBlend;
         const double fullSteerLat = std::max(std::abs(ArcadeSteerLatMps(1.0, speed)), 0.35);
         const double demanded = std::abs(wash) / fullSteerLat;
+
+        if (!airborne && TyreWearPerMetre > 0)
+        {
+            const double Corner = 1.0 + 18.0 * std::abs(curvature);
+            TyreHealth = std::max(0.0, TyreHealth - TyreWearPerMetre * speed * h * Corner);
+        }
+
         if (!airborne && ((vaco >= 0 && internalSpeed >= CriVirInternal[vaco] * grip) || demanded > 0.48 * grip))
         {
             Skidding = true;

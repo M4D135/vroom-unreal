@@ -1,4 +1,4 @@
-# Jeu, courses et stands — 0.30
+# Jeu, courses et stands — 0.31
 
 Cette version ajoute des épreuves terminées, une progression, un trafic réactif et des arrêts au stand. Les règles ci-dessous décrivent le remake réellement codé. La référence choisie reste Vroom Amiga ; une ressemblance de fonction n'établit pas une reproduction exacte de son programme.
 
@@ -6,9 +6,11 @@ Cette version ajoute des épreuves terminées, une progression, un trafic réact
 
 Le menu propose **Arcade**, **Grand Prix** et **Chrono**, les six circuits et trois difficultés. Les boutons partagent leurs rectangles avec le traitement des clics. Les flèches ou la croix directionnelle déplacent la sélection, Entrée ou A la valident. Le changement de mode vers Arcade ou Grand Prix replace la sélection au Japon ; sélectionner ensuite un circuit permet de commencer à cette étape de la progression.
 
-Chaque départ comporte un décompte de trois secondes. Pendant ce décompte, la voiture reste à l'arrêt et le chronomètre de course ne compte pas ces secondes. Maintenir l'accélérateur prépare le départ ; le remake ne sanctionne pas cette commande comme un faux départ.
+Chaque départ comporte un décompte de trois secondes, sonorisé : **rouge**, puis **orange**, puis **vert** exactement lorsque le chrono, le peloton et le joueur sont libérés. Chaque signal n'est émis qu'une fois, au volume des effets. Couper le son ou relancer pendant le décompte réinitialise la séquence. Pendant ce décompte, la voiture reste à l'arrêt. Maintenir l'accélérateur prépare le départ ; le remake ne sanctionne pas cette commande comme un faux départ.
 
-| Mode | Déroulement de la 0.30 | Fin de l'épreuve |
+Un tour n'est enregistré comme record, fantôme ou qualification que s'il est propre. Huit points de passage ordonnés interdisent de valider un tour en coupant, en reculant ou en franchissant la ligne sans avoir parcouru le circuit. Un léger débordement salit le chrono sans retirer le tour de course ; la voie des stands n'est pas une coupe. L'interface affiche la raison (`coupe de circuit`, `passage manqué`, `sens inverse`, `sortie de piste`, `contact`). Un tour déjà validé n'est pas retiré.
+
+| Mode | Déroulement de la 0.31 | Fin de l'épreuve |
 |---|---|---|
 | Arcade | Trois tours, du trafic renouvelé et un quota net de dépassements | Réussite au passage de la ligne du troisième tour si le quota est atteint ; échec si le quota manque, si le temps expire avant l'arrivée, ou après immobilisation sans essence |
 | Grand Prix | Un tour qualificatif en solitaire, une grille de treize voitures puis trois tours de course | Classement du joueur à l'arrivée et points de championnat ; panne sèche à l'arrêt traitée comme un abandon sans point |
@@ -49,6 +51,19 @@ Le peloton compte douze voitures adverses. Le calcul de trafic est indépendant 
 
 Les multiplicateurs d'allure valent **0,83 / 0,96 / 1,07** en Facile / Normal / Expert. Un contact diminue la vitesse de l'adversaire et réduit temporairement sa vitesse cible ; la durée dépend de l'importance du choc, entre 0,5 et 3 secondes. Il ne s'agit pas d'une simulation de dégâts complète pour chaque rival.
 
+Les six livrées conservent leur couleur d'origine. L'Amiga ne documentait pas un caractère par couleur : la table suivante est donc une règle explicite du remake. La couleur choisit le profil ; la difficulté générale multiplie encore l'allure.
+
+| Livrée | Profil | Allure | Trajectoire | Dépassement | Prudence | Régularité | Usure pneus | Essence |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| Bleu | Le Professeur | 0,98 | 1,20 | 0,88 | 1,18 | 1,22 | 0,86 | 0,92 |
+| Rouge | L'Attaquant | 1,03 | 0,92 | 1,28 | 0,82 | 0,84 | 1,22 | 1,12 |
+| Jaune | Le Sprinteur | 1,06 | 0,84 | 1,12 | 0,90 | 0,72 | 1,18 | 1,08 |
+| Vert | Le Stratège | 1,00 | 1,08 | 1,00 | 1,12 | 1,10 | 0,80 | 0,84 |
+| Violet | Le Technicien | 0,97 | 1,24 | 0,82 | 1,22 | 1,26 | 0,88 | 0,90 |
+| Orange | Le Vétéran | 1,01 | 1,05 | 1,08 | 1,04 | 1,08 | 0,86 | 0,88 |
+
+Ils anticipent la courbure à 25, 90 et 140 m, freinent derrière un rival tant que la voie n'est pas libre, et prennent la voie des stands lorsqu'il leur reste moins de 18 % d'essence ou 420 unités de pneus. L'arrêt les immobilise 7 s, comme un service complet du joueur. Aucun rattrapage artificiel n'est ajouté.
+
 En Grand Prix, les adversaires gardent leur progression de course. En Arcade, une voiture située plus de 100 m derrière le joueur est replacée entre 230 et 494 m devant lui pour alimenter le trafic. Son historique de dépassement et ses positions précédentes sont réinitialisés. Le Chrono et la qualification masquent entièrement le peloton et ses contacts.
 
 Le rendu interpole les positions longitudinales **et latérales**. L'angle visible associé au changement de voie suit un amortissement exponentiel à 12/s, sans modifier les positions testées par le modèle de trafic. Cet amortissement se fige pendant la pause. L'IA ne reproduit pas les routines historiques ; ses lignes de course, réservations de voie et règles de freinage sont une adaptation.
@@ -59,7 +74,17 @@ L'état des pneus varie de 2 048 à zéro. Il agit désormais sur trois élémen
 
 Une sollicitation excessive en virage retire 12 unités de pneu par seconde. Certains chocs en retirent aussi. La 0.30 conserve une usure simplifiée : le freinage seul ne possède pas encore sa propre usure, et arriver à zéro ne provoque pas automatiquement l'éclatement historique. Le remplacement aux stands restaure le coefficient à 1.
 
-L'essence diminue avec l'accélérateur, à raison de `0,00055 × accélérateur × secondes` de réservoir. Le plein représente donc environ trente minutes à pleine commande théorique ; une course courte n'impose pas systématiquement un ravitaillement. À zéro, l'accélérateur ne fournit plus de couple. En Grand Prix, l'immobilisation qui suit termine la course comme un abandon ; en Arcade, elle termine l'étape comme un échec. Le Chrono permet toujours de recommencer depuis le menu.
+L'essence diminue avec l'accélérateur. En **course** (Arcade et Grand Prix hors qualification), la consommation et l'usure sont dimensionnées sur la longueur du circuit et la difficulté pour qu'un départ plein/pneus neufs n'aille pas au bout de trois tours sans un arrêt. Le Chrono et la qualification conservent l'ancienne consommation douce (`0,00055` par seconde à pleine commande).
+
+Autonomie visée, en tours, à ~48 m/s et 78 % d'accélérateur :
+
+| Difficulté | Essence (tours) | Pneus (tours) | Arrêts observés (3 tours, 48 m/s, 78 % gaz) |
+|---|---:|---:|---|
+| Facile | 1,85 | 1,90 | 1 sur les six circuits |
+| Normal | 1,55 | 1,60 | 2 sur les six circuits |
+| Expert | 1,35 | 1,40 | 2 sur les six circuits |
+
+Les calculs sont dans `VroomRaceRules.h`. Ils ne dépendent pas du nombre d'images par seconde. Un bandeau prévient sous 22 % d'essence ou 30 % de pneus. À zéro, l'accélérateur ne fournit plus de couple. En Grand Prix, l'immobilisation qui suit termine la course comme un abandon ; en Arcade, elle termine l'étape comme un échec.
 
 Les calculs précis et les différences avec les sources de 1991 figurent dans [DRIVING.md](DRIVING.md).
 
@@ -95,7 +120,7 @@ Le format moderne de trois tours, les quotas selon difficulté, le délai Arcade
 
 ## Vérifications reproductibles
 
-`python3 Tools/test_portable.py` découvre les suites C++ et Python. Les nouveaux tests gameplay contrôlent les transitions de modes, la qualification, les points accordés une seule fois, les six étapes, la panne sèche, le quota à l'arrivée, la durée de service, la réduction d'adhérence/freinage, le dépassement d'une voiture arrêtée et un peloton simulé pendant soixante secondes.
+`python3 Tools/test_portable.py` découvre les suites C++ et Python. Les tests gameplay contrôlent les transitions de modes, la qualification, les points accordés une seule fois, les six étapes, la panne sèche, le quota à l'arrivée, la durée de service, la réduction d'adhérence/freinage, le dépassement d'une voiture arrêtée et un peloton simulé pendant soixante secondes. `Tests/race_rules_test.cpp` ajoute les feux rouge/orange/vert, l'invalidation des tours, l'obligation d'un arrêt sur les six circuits et les trois difficultés, et les profils d'IA par couleur.
 
 `-VroomPitTest -VroomVerify -VroomExitAfter=9` active un essai d'intégration : service complet réel avec accélérateur maintenu, contrôle de l'immobilisation pendant sept secondes, restauration du plein/pneus, puis vérification du redémarrage et de l'avancement du chrono et des concurrents. Il doit produire `VROOM-PIT` puis `Verification PASS` ; le drapeau seul ne constitue pas une validation.
 

@@ -2,12 +2,15 @@
 #include "VroomProceduralMeshComponent.h"
 #include "VroomTrackPreview.h"
 #include "VroomEnvironment.h"
+#include "VroomPlayerSettings.h"
+#include "VroomRaceRules.h"
 #include "TimerManager.h"
 #include "VroomGraphicsSettings.h"
 #include "Components/SplineComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "Components/AudioComponent.h"
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
 #include "Materials/MaterialInterface.h"
@@ -19,6 +22,7 @@
 #include "Misc/Parse.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
+#include "Sound/SoundWaveProcedural.h"
 
 namespace
 {
@@ -44,6 +48,19 @@ FTransform OpponentPartTransform(int32)
 {
     return FTransform::Identity; // Mesh positions are authored at full car scale.
 }
+FTransform OpponentWishboneTransform(const Vroom::Wishbone& Bar)
+{
+    const FVector Chassis(Bar.ChassisX, Bar.ChassisY, Bar.ChassisZ);
+    const FVector Hub(Bar.HubX, Bar.HubY, Bar.HubZ);
+    const FVector Delta = Hub - Chassis;
+    const float Length = Delta.Size();
+    FTransform Pose;
+    Pose.SetLocation((Chassis + Hub) * 0.5f);
+    Pose.SetScale3D(FVector(0.038f, 0.038f, FMath::Max(0.02f, Length * 0.01f)));
+    if (Length > 1.f)
+        Pose.SetRotation(FQuat::FindBetweenNormals(FVector::UpVector, Delta / Length));
+    return Pose;
+}
 }
 
 AVroomCircuit::AVroomCircuit()
@@ -57,6 +74,11 @@ AVroomCircuit::AVroomCircuit()
     Terrain = CreateDefaultSubobject<UVroomProceduralMeshComponent>(TEXT("CircuitTerrain"));
     Terrain->SetupAttachment(RootComponent);
     Terrain->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    // Start light sounds
+    StartLightAudio = CreateDefaultSubobject<UAudioComponent>(TEXT("StartLightAudio"));
+    StartLightAudio->SetupAttachment(RootComponent);
+    StartLightAudio->bAutoActivate = false;
+    StartLightAudio->SetVolumeMultiplier(1.0f);
 }
 
 bool AVroomCircuit::LoadTracks()
@@ -312,7 +334,14 @@ void AVroomCircuit::BuildTerrain()
             const float Key = Spline->FindInputKeyClosestToWorldLocation(P);
             const FVector Road = Spline->GetLocationAtSplineInputKey(Key, ESplineCoordinateSpace::World);
             const float S = Spline->GetDistanceAlongSplineAtSplineInputKey(Key) / 100;
-            const double Distance = FVector::Dist2D(P, Road) / 100;
+            double Distance = FVector::Dist2D(P, Road) / 100;
+            const FVector Right = Spline->GetRightVectorAtSplineInputKey(Key, ESplineCoordinateSpace::World);
+            const double LateralM = FVector::DotProduct(P - Road, Right) / 100.0;
+            const double Bend = Curvature(S);
+            // Hairpin islands sit a few metres from two stretches of tarmac.
+            // Treat that infield as countryside so it does not rise with the road.
+            if (std::abs(Bend) > 0.008 && Bend * LateralM < 0 && Distance > HalfWidthM + 1.2 && Distance < 22.0)
+                Distance = 80.0;
             P.Z = Vroom::Environment::HeightM(TrackIndex, P, Distance, Elevation(S).HeightM, Minimum) * 100;
             V.Add(P); UV.Add(FVector2D(P.X / 1600, P.Y / 1600));
             const float Variation = .92f + .11f * FMath::Sin(P.X * .00047 + P.Y * .00023)
@@ -429,6 +458,7 @@ void AVroomCircuit::BuildScenery()
     StartLights->ComponentTags.Add(FName(TEXT("VroomStartLights")));
     StartLights->SetNumCustomDataFloats(1);
     StartLightStage = -1;
+    StartSignalPlayed = -2;
 
     // All structures use metre-sized primitives; their placements are in cm.
     // Buildings remain upright instead of banking with the road spline.
@@ -800,6 +830,51 @@ void AVroomCircuit::BuildScenery()
         Billboard(P(-.17,0,7.0), -F.GetRotation().GetForwardVector(), 8, 2, I + 2, false);
     }
 
+    auto OverheadGantry = [&](float S, double Span, double Height, int32 Artwork, bool FaceOncoming)
+    {
+        const FTransform F = Frame(S, 0);
+        auto P = [&](double X, double Y, double Z) { return F.TransformPosition(FVector(X,Y,Z) * 100); };
+        for (double Side : {-1.0, 1.0})
+        {
+            Pole(P(0, Side * Span, 0), P(0, Side * Span, Height), .18);
+            LocalBox(White, F, FVector(0, Side * Span, .14), FVector(.52,.52,.28));
+        }
+        Beam(Metal, P(0,-Span,Height), P(0,Span,Height), .16);
+        const FVector Face = FaceOncoming ? -F.GetRotation().GetForwardVector() : F.GetRotation().GetForwardVector();
+        Billboard(P(0, 0, Height - 1.05), Face, Span * 1.45, 2.15, Artwork, false);
+    };
+    // Timing line: a real overhead gantry, poles off the racing surface.
+    OverheadGantry(0.f, 9.6, 7.4, 0, true);
+    // Pit entry / exit bridges, distinct from the advertising pair at 32 % / 66 %.
+    OverheadGantry(48.f, 9.2, 6.2, 1, true);
+    OverheadGantry(198.f, 9.2, 6.2, 2, true);
+    if (LengthM() > 4200.f)
+        OverheadGantry(LengthM() * 0.48f, 8.8, 6.4, 3, true);
+
+    auto TracksideBoardSafe = [&](float S, float Side, int32 Artwork, float Width, float Height)
+    {
+        const float Lateral = Side * (HalfWidthM + 3.6f);
+        const FVector MarkerPos = Position(S, Lateral);
+        const float Key = Spline->FindInputKeyClosestToWorldLocation(MarkerPos);
+        const FVector Closest = Spline->GetLocationAtSplineInputKey(Key, ESplineCoordinateSpace::World);
+        if (FVector::Dist2D(MarkerPos, Closest) < (HalfWidthM + 2.4f) * 100.f) return;
+        const FTransform F = Frame(S, Lateral);
+        Billboard(F.TransformPosition(FVector(0, Side * 20.f, Height * 50.f)),
+            -F.GetRotation().GetForwardVector(), Width, Height, Artwork, true);
+    };
+    TracksideBoardSafe(40.f, 1.f, 1, 3.2f, 1.6f);
+    TracksideBoardSafe(70.f, 1.f, 1, 3.2f, 1.6f);
+    for (int32 SampleIdx = 0; SampleIdx < 10; ++SampleIdx)
+    {
+        const float S = LengthM() * (SampleIdx + 1) / 11.0f;
+        if (FMath::Abs(Curvature(S)) < 0.012f) continue;
+        const float MarkerS = S - 70.f;
+        if (MarkerS < 220.f) continue;
+        const double Sign = Curvature(S) > 0 ? -1.0 : 1.0;
+        TracksideBoardSafe(MarkerS, Sign, 3, 2.4f, 1.2f);
+        TracksideBoardSafe(MarkerS + 22.f, Sign, 3, 2.2f, 1.1f);
+    }
+
     // Isolated 8x2-m adverts, never a continuous wall. The first pair is visible
     // from the starting area. Later boards are separated by hundreds of metres.
     auto TracksideBoard = [&](float S, float Side, int32 Artwork)
@@ -1041,17 +1116,19 @@ void AVroomCircuit::BuildOpponents()
     OpponentRecycled.Init(false, 12);
     OpponentFinishTimes.Init(0, 12); RaceFinishDistance = 0;
     OpponentMotionNeedsReset = false;
-    static const TCHAR* Materials[] = { TEXT("M_F1Paint"), TEXT("M_F1Pearl"), TEXT("M_F1Carbon"), TEXT("M_F1Rubber") };
+    static const TCHAR* Materials[] = { TEXT("M_F1Paint"), TEXT("M_F1Pearl"), TEXT("M_F1Carbon"), TEXT("M_F1Rubber"), TEXT("M_F1Carbon") };
     static const TCHAR* MeshNames[] = { TEXT("SM_F1OpponentPaint"), TEXT("SM_F1OpponentTrim"),
-        TEXT("SM_F1OpponentCarbon"), TEXT("SM_F1OpponentWheels") };
-    for (int32 Group = 0; Group < 4; ++Group)
+        TEXT("SM_F1OpponentCarbon"), TEXT("SM_F1OpponentWheels"), TEXT("Cylinder") };
+    for (int32 Group = 0; Group < 5; ++Group)
     {
-        RenderedOpponentTransforms[Group].Reset(12);
-        NextOpponentTransforms[Group].Reset(12);
+        RenderedOpponentTransforms[Group].Reset(Group == 4 ? 96 : 12);
+        NextOpponentTransforms[Group].Reset(Group == 4 ? 96 : 12);
         auto C = NewObject<UInstancedStaticMeshComponent>(this);
         C->SetupAttachment(RootComponent);
         C->SetMobility(EComponentMobility::Movable);
-        const FString MeshPath = FString::Printf(TEXT("/Game/Meshes/%s.%s"), MeshNames[Group], MeshNames[Group]);
+        const FString MeshPath = Group == 4
+            ? FString::Printf(TEXT("/Engine/BasicShapes/%s.%s"), MeshNames[Group], MeshNames[Group])
+            : FString::Printf(TEXT("/Game/Meshes/%s.%s"), MeshNames[Group], MeshNames[Group]);
         C->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, *MeshPath));
         C->SetMaterial(0, Mat(Materials[Group]));
         if (Group == 0) C->SetNumCustomDataFloats(3);
@@ -1077,11 +1154,17 @@ void AVroomCircuit::BuildOpponents()
         OpponentSpeeds.Add(0);
         Vroom::TrafficCar Agent;
         Agent.Distance = OpponentS.Last(); Agent.Lateral = Agent.TargetLane = OpponentLanes.Last();
+        Agent.Fuel = 1.0;
+        Agent.TyreHealth = 2048.0;
+        Agent.Pitting = false;
+        Agent.PitTimer = 0.0;
+        Agent.LiveryIndex = (I / 2) % 6;
+        Agent.Personality = Vroom::PersonalityByLivery(Agent.LiveryIndex);
         Traffic.push_back(Agent);
         static const FLinearColor Liveries[] = { FLinearColor(.012f,.075f,.65f), FLinearColor(.72f,.012f,.018f),
             FLinearColor(.91f,.60f,.012f), FLinearColor(.02f,.35f,.13f),
             FLinearColor(.33f,.025f,.57f), FLinearColor(.88f,.19f,.012f) };
-        const FLinearColor Colour = Liveries[(I / 2) % UE_ARRAY_COUNT(Liveries)];
+        const FLinearColor Colour = Liveries[Agent.LiveryIndex];
         for (int32 J = 0; J < 4; ++J)
         {
             auto* Mesh = OpponentMeshes[OpponentPartGroup(I, J)].Get();
@@ -1093,6 +1176,11 @@ void AVroomCircuit::BuildOpponents()
                 Mesh->SetCustomDataValue(Instance, 2, Colour.B, false);
             }
         }
+        int32 WishboneCount = 0;
+        const Vroom::Wishbone* Wishbones = Vroom::CarWishbones(WishboneCount);
+        auto* Bars = OpponentMeshes[4].Get();
+        for (int32 Bar = 0; Bar < WishboneCount; ++Bar)
+            Bars->AddInstance(OpponentWishboneTransform(Wishbones[Bar]), true);
     }
     PreviousOpponentS = OpponentS;
     PreviousOpponentLanes = OpponentLanes;
@@ -1126,15 +1214,54 @@ void AVroomCircuit::AdvanceRace(float H)
     PreviousOpponentLanes = OpponentLanes;
     for (int32 I = 0; I < OpponentRecycled.Num(); ++I) OpponentRecycled[I] = false;
     RaceClock += H;
-    const int32 LightStage = RaceClock < 0
-        ? FMath::Clamp(FMath::CeilToInt((3.0 + RaceClock) * 5.0 / 3.0), 1, 5) : 0;
+    const Vroom::StartSignal Signal = Vroom::StartSignalFromClock(RaceClock);
+    const int32 LightStage = Vroom::GantryColumnsLit(Signal);
     if (StartLights && LightStage != StartLightStage)
     {
         for (int32 I = 0; I < StartLights->GetInstanceCount(); ++I)
             StartLights->SetCustomDataValue(I, 0, I / 2 < LightStage ? 1.f : 0.f, false);
         StartLights->MarkRenderStateDirty();
         StartLightStage = LightStage;
-        UE_LOG(LogTemp, Display, TEXT("VROOM: Start lights columns=%d raceClock=%.3f"), LightStage, RaceClock);
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Start lights columns=%d signal=%d raceClock=%.3f"),
+            LightStage, static_cast<int32>(Signal), RaceClock);
+    }
+    const int32 SignalId = static_cast<int32>(Signal);
+    if (SignalId != StartSignalPlayed && Signal != Vroom::StartSignal::Idle && Signal != Vroom::StartSignal::Racing)
+    {
+        const Vroom::StartBeep Beep = Vroom::BeepFor(Signal);
+        const float Volume = static_cast<float>(Beep.Volume)
+            * Vroom::Settings::Get().MasterVolume * Vroom::Settings::Get().EffectsVolume;
+        if (StartLightAudio && Beep.Frequency > 0 && Volume > 0.01f)
+        {
+            if (!StartLightWave)
+            {
+                StartLightWave = NewObject<USoundWaveProcedural>(this);
+                StartLightWave->SetSampleRate(48000);
+                StartLightWave->NumChannels = 1;
+                StartLightWave->SoundGroup = SOUNDGROUP_Default;
+                StartLightAudio->SetSound(StartLightWave);
+            }
+            StartLightWave->Duration = Beep.Duration;
+            StartLightWave->ResetAudio();
+            TArray<int16> Samples;
+            const int32 NumSamples = FMath::Max(1, FMath::RoundToInt(Beep.Duration * 48000));
+            Samples.SetNumUninitialized(NumSamples);
+            const double PhaseInc = UE_TWO_PI * Beep.Frequency / 48000.0;
+            double Phase = 0.0;
+            for (int32 Sample = 0; Sample < NumSamples; ++Sample)
+            {
+                float Envelope = 1.0f;
+                if (Sample < NumSamples * 0.05f) Envelope = Sample / (NumSamples * 0.05f);
+                else if (Sample > NumSamples * 0.88f) Envelope = (NumSamples - Sample) / (NumSamples * 0.12f);
+                Samples[Sample] = static_cast<int16>(FMath::Sin(Phase) * 18000.0f * Envelope);
+                Phase += PhaseInc;
+            }
+            StartLightWave->QueueAudio(reinterpret_cast<const uint8*>(Samples.GetData()), NumSamples * sizeof(int16));
+            StartLightAudio->SetVolumeMultiplier(Volume);
+            StartLightAudio->Play();
+        }
+        StartSignalPlayed = SignalId;
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Start signal %d volume=%.2f"), SignalId, Volume);
     }
     if (RaceClock < 0 || !OpponentsVisible) return;
     if (ReactiveTraffic && Traffic.size() == static_cast<std::size_t>(OpponentS.Num()))
@@ -1155,6 +1282,7 @@ void AVroomCircuit::AdvanceRace(float H)
                 Agent.Distance = TrafficPlayer.Distance + 230 + I * 24;
                 Agent.Lateral = Agent.TargetLane = I % 2 ? 2.4 : -2.4;
                 Agent.Speed = FMath::Max(20.0, TrafficPlayer.Speed * .72);
+                Agent.Fuel = 1.0; Agent.TyreHealth = 2048.0; Agent.Pitting = false; Agent.PitTimer = 0.0;
                 PreviousOpponentS[I] = Agent.Distance;
                 PreviousOpponentLanes[I] = Agent.Lateral;
                 OpponentRecycled[I] = true;
@@ -1180,7 +1308,7 @@ void AVroomCircuit::AdvanceRace(float H)
 
 void AVroomCircuit::RenderOpponents(float Alpha)
 {
-    if (OpponentMeshes.Num() != 4 || PreviousOpponentS.Num() != OpponentS.Num()) return;
+    if (OpponentMeshes.Num() != 5 || PreviousOpponentS.Num() != OpponentS.Num()) return;
     Alpha = FMath::Clamp(Alpha, 0.0f, 1.0f);
     bool Changed = RenderedOpponentS.Num() != OpponentS.Num() || RenderedOpponentLanes.Num() != OpponentS.Num();
     // The traffic planner can choose a lane in one simulation step. Ease only
@@ -1205,7 +1333,7 @@ void AVroomCircuit::RenderOpponents(float Alpha)
         {
             // Clear the last frame's velocity once when stopping or pausing;
             // otherwise a skipped update leaves stale motion vectors in TSR.
-            for (int32 Group = 0; Group < 4; ++Group)
+            for (int32 Group = 0; Group < OpponentMeshes.Num(); ++Group)
                 OpponentMeshes[Group]->BatchUpdateInstancesTransforms(0,
                     RenderedOpponentTransforms[Group], RenderedOpponentTransforms[Group], true, false, false);
             OpponentMotionNeedsReset = false;
@@ -1230,8 +1358,12 @@ void AVroomCircuit::RenderOpponents(float Alpha)
         const FTransform Base(Facing, Position(Distance, Lane));
         for (int32 J = 0; J < 4; ++J)
             NextOpponentTransforms[OpponentPartGroup(I, J)].Add(OpponentPartTransform(J) * Base);
+        int32 WishboneCount = 0;
+        const Vroom::Wishbone* Wishbones = Vroom::CarWishbones(WishboneCount);
+        for (int32 Bar = 0; Bar < WishboneCount; ++Bar)
+            NextOpponentTransforms[4].Add(OpponentWishboneTransform(Wishbones[Bar]) * Base);
     }
-    for (int32 Group = 0; Group < 4; ++Group)
+    for (int32 Group = 0; Group < OpponentMeshes.Num(); ++Group)
     {
         auto& Current = NextOpponentTransforms[Group];
         auto& Previous = RenderedOpponentTransforms[Group];

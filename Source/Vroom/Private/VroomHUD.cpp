@@ -551,10 +551,19 @@ void AVroomHUD::DrawHUD()
         Text(Record.Best>0?LapTime(Record.Best):TEXT("PREMIER RECORD"),PassX,46,20,Ice);
         Text(Record.Ghost.Num()>1&&Vroom::Settings::Get().GhostEnabled?TEXT("FANTÔME DU MEILLEUR TOUR"):TEXT("ENCHAÎNER LES TOURS PROPRES"),PassX,79,10,Silver);
     }
-    const float FuelX=W-177;const float Fuel=FMath::Clamp(static_cast<float>(Car->Drive.Fuel),0.f,1.f);
-    Text(TEXT("ESSENCE"),FuelX,29,9,Silver);Text(FString::Printf(TEXT("%d %%"),FMath::RoundToInt(Fuel*100)),FuelX-1,43,26);
-    Fill(FuelX,81,116,4,Fuel,Fuel<.22f?RacingRed:Ice);
+    const float Fuel=FMath::Clamp(static_cast<float>(Car->Drive.Fuel),0.f,1.f);
     const float Tyres=FMath::Clamp(static_cast<float>(Car->Drive.TyreHealth/2048.),0.f,1.f);
+    const float TyreX=W-175;
+    const float FuelX=W-90;
+    const FLinearColor Amber(.96f,.67f,.23f,1);
+    const FLinearColor TyreColor = Tyres < .15f ? RacingRed : (Tyres < .3f ? Amber : Ice);
+    const FLinearColor FuelColor = Fuel < .22f ? RacingRed : Ice;
+    Text(Tyres < .15f ? TEXT("PNEUS CRITIQUES") : TEXT("PNEUS"), TyreX, 29, 9, TyreColor);
+    Text(FString::Printf(TEXT("%d %%"), FMath::RoundToInt(Tyres*100)), TyreX-1, 43, 22, TyreColor);
+    Fill(TyreX, 81, 72, 4, Tyres, TyreColor);
+    Text(TEXT("ESSENCE"), FuelX, 29, 9, Silver);
+    Text(FString::Printf(TEXT("%d %%"), FMath::RoundToInt(Fuel*100)), FuelX-1, 43, 22, FuelColor);
+    Fill(FuelX, 81, 72, 4, Fuel, FuelColor);
     FString Alert;
     if(Car->Pit.Servicing)Alert=FString::Printf(TEXT("STAND · %s · %.1f s"),Car->Pit.NeedTyres&&Car->Pit.NeedFuel?TEXT("PNEUS + ESSENCE"):Car->Pit.NeedTyres?TEXT("PNEUS"):TEXT("ESSENCE"),Car->Pit.Remaining);
     else if(!Car->Session.Solo()&&Car->Pit.Available)Alert=FString::Printf(TEXT("STAND · %s PNEUS · %s ESSENCE · %s : LES DEUX"),*Vroom::Settings::BindingLabel(Vroom::Action::Tyres),*Vroom::Settings::BindingLabel(Vroom::Action::Refuel),Car->MouseSteer?TEXT("A / CLIC SOURIS"):TEXT("A"));
@@ -568,16 +577,21 @@ void AVroomHUD::DrawHUD()
         Text(LapTime(Car->Session.RemainingSeconds(Circuit->RaceClock)).Left(5),W-315,79,10,Silver);
     }
 
-    if (Circuit->RaceClock < 0)
+    if (Circuit->RaceClock < 0 || Vroom::StartSignalFromClock(Circuit->RaceClock) == Vroom::StartSignal::Green)
     {
-        const int32 Countdown = FMath::Clamp(FMath::CeilToInt(-Circuit->RaceClock), 1, 3);
+        const Vroom::StartSignal Signal = Vroom::StartSignalFromClock(Circuit->RaceClock);
         const float Y = 154.f;
         Rect(W * .5f - 125, Y, 250, 72, Panel);
-        Text(FString::Printf(TEXT("DÉPART DANS %d"), Countdown), W * .5f, Y + 10, 17, Paper, true);
+        const TCHAR* Caption = Signal == Vroom::StartSignal::Green ? TEXT("DÉPART")
+            : Signal == Vroom::StartSignal::Orange ? TEXT("PRÊT") : TEXT("ATTENTION");
+        Text(Caption, W * .5f, Y + 10, 17, Paper, true);
+        const FLinearColor Lit[] = {RacingRed, FLinearColor(.96f,.55f,.08f,1), FLinearColor(.12f,.72f,.18f,1)};
+        const FLinearColor Off(.16f, .018f, .012f, 1);
+        const int32 LitCount = Signal == Vroom::StartSignal::Green ? 3 : Signal == Vroom::StartSignal::Orange ? 2 : 1;
         for (int32 I = 0; I < 3; ++I)
         {
             FCanvasNGonItem Lamp(FVector2D((W * .5f - 46 + I * 46) * Scale, (Y + 49) * Scale),
-                FVector2D(10 * Scale), 24, I < 4 - Countdown ? RacingRed : FLinearColor(.16f, .018f, .012f, 1));
+                FVector2D(10 * Scale), 24, I < LitCount ? Lit[I] : Off);
             Canvas->DrawItem(Lamp);
         }
     }
@@ -593,8 +607,14 @@ void AVroomHUD::DrawHUD()
     const double LapDistance=Car->Drive.State.DistanceM-(Car->Lap-1)*Circuit->LengthM();
     const auto Delta=Vroom::Progress::LapDelta(Circuit->TrackIndex,static_cast<int>(Car->Session.Mode),LapDistance,FMath::Max(0.,Circuit->RaceClock-Car->LapStart));
     if(Delta.IsSet()&&Car->LapClean)Text(FString::Printf(TEXT("%+.3f s"),Delta.GetValue()),225,H-58,17,Delta.GetValue()>0?RacingRed:Ice);
-    Text(FString::Printf(TEXT("PNEUS %d %%"),FMath::RoundToInt(Tyres*100)),24,H-116,11,Tyres<.3f?RacingRed:Muted);
-    if (!Car->LapClean) Text(TEXT("TOUR INVALIDÉ"), 24, H - 90, 12, RacingRed);
+    if (!Car->LapClean)
+    {
+        const FString Why = Car->LapInvalidReason.IsEmpty() ? TEXT("TOUR INVALIDÉ")
+            : FString::Printf(TEXT("TOUR INVALIDÉ · %s"), *Car->LapInvalidReason.ToUpper());
+        Text(Why, 24, H - 90, 12, RacingRed);
+    }
+    if (Car->LastLapInvalidated && !Car->LastLapInvalidReason.IsEmpty())
+        Text(FString::Printf(TEXT("TOUR PRÉCÉDENT : %s"), *Car->LastLapInvalidReason.ToUpper()), 24, H - 112, 10, RacingRed);
 
     // The cockpit has its own physical speed, gear and RPM instruments.
     if (Car->ChaseCamera)

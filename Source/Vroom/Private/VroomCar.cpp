@@ -26,6 +26,36 @@
 
 namespace
 {
+UStaticMesh* Shape(const TCHAR* Name)
+{
+    const FString Path = FString::Printf(TEXT("/Engine/BasicShapes/%s.%s"), Name, Name);
+    return LoadObject<UStaticMesh>(nullptr, *Path);
+}
+UMaterialInterface* Mat(const TCHAR* Name)
+{
+    const FString Path = FString::Printf(TEXT("/Game/Materials/%s.%s"), Name, Name);
+    return LoadObject<UMaterialInterface>(nullptr, *Path);
+}
+FTransform WishboneTransform(const FVector& Chassis, const FVector& Hub)
+{
+    const FVector Delta = Hub - Chassis;
+    const float Length = Delta.Size();
+    FTransform Pose;
+    Pose.SetLocation((Chassis + Hub) * 0.5f);
+    Pose.SetScale3D(FVector(0.038f, 0.038f, FMath::Max(0.02f, Length * 0.01f)));
+    if (Length > 1.f)
+        Pose.SetRotation(FQuat::FindBetweenNormals(FVector::UpVector, Delta / Length));
+    return Pose;
+}
+int32 WishboneWheelSlot(int32 Bar)
+{
+    static const int32 Slots[] = {0, 0, 2, 2, 1, 1, 3, 3};
+    return Slots[FMath::Clamp(Bar, 0, 7)];
+}
+}
+
+namespace
+{
 float CockpitCameraSteeringYaw()
 {
     static float Value = -0.40f;
@@ -186,6 +216,31 @@ void AVroomCar::BeginPlay()
         Part(TEXT("SM_F1WheelFront"),TEXT("M_F1Rubber"),FVector(128,Side*91,35),true);
         Part(TEXT("SM_F1WheelRear"),TEXT("M_F1Rubber"),FVector(-115,Side*96,38),true);
     }
+    int32 WishboneCount = 0;
+    const Vroom::Wishbone* Wishbones = Vroom::CarWishbones(WishboneCount);
+    for (int32 I = 0; I < WishboneCount; ++I)
+    {
+        const FVector Chassis(Wishbones[I].ChassisX, Wishbones[I].ChassisY, Wishbones[I].ChassisZ);
+        const FVector Hub(Wishbones[I].HubX, Wishbones[I].HubY, Wishbones[I].HubZ);
+        auto C = NewObject<UStaticMeshComponent>(this);
+        C->SetupAttachment(RootComponent);
+        C->SetMobility(EComponentMobility::Movable);
+        C->SetStaticMesh(Shape(TEXT("Cylinder")));
+        C->SetMaterial(0, Mat(TEXT("M_F1Carbon")));
+        C->SetRelativeTransform(WishboneTransform(Chassis, Hub));
+        C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        C->SetCanEverAffectNavigation(false);
+#if PLATFORM_MAC
+        C->SetAffectDistanceFieldLighting(false);
+        C->SetAffectDynamicIndirectLighting(false);
+#endif
+        C->RegisterComponent();
+        SuspensionBars.Add(C);
+        SuspensionChassis.Add(Chassis);
+        SuspensionHubs.Add(Hub);
+        SuspensionSteers.Add(Wishbones[I].Steers ? 1 : 0);
+        SuspensionWheelIndex.Add(WishboneWheelSlot(I));
+    }
     BuildCockpit();
     BuildMirrors();
     BuildCrashDebris();
@@ -243,6 +298,8 @@ void AVroomCar::ResetCar()
     InputSteering = CockpitSteering = VisualSteering = 0;
     PendingShiftUp = PendingShiftDown = false;
     Lap = 1; LapStart = 0; LastLap = 0; LapClean = LastLapClean = true;
+    LastLapInvalidated = false; LastLapInvalidReason.Empty(); LapInvalidReason.Empty();
+    ValidLaps = 0; LapState.Reset();
     CarsPassed = 0; Score = 0; ScoreFrac = 0;
     OvertakeSides.Empty();
     MouseTarget = 0;
@@ -290,6 +347,23 @@ void AVroomCar::StartSession()
         && Session.QualificationComplete && Session.QualifyingRun && Session.Phase == Vroom::SessionPhase::Finished;
     ResetCar(); Circuit->SelectTrack(Session.TrackIndex);
     Session.Begin(Circuit->LengthM(), AfterQualifying);
+    const bool RaceResources = !Session.Solo();
+    const Vroom::ResourceBudget Budget = Vroom::MakeResourceBudget(
+        RaceResources, Session.Difficulty, Circuit->LengthM(), Session.LapTarget);
+    Drive.FuelBurnPerThrottleSecond = Budget.FuelPerThrottleSecond;
+    Drive.TyreWearPerMetre = Budget.TyreWearPerMetre;
+    for (auto& Agent : Circuit->Traffic)
+    {
+        Agent.Personality = Vroom::PersonalityByLivery(Agent.LiveryIndex);
+        Agent.Fuel = 1.0;
+        Agent.TyreHealth = 2048.0;
+        Agent.FuelBurn = Budget.FuelPerThrottleSecond;
+        Agent.TyreWearPerMetre = Budget.TyreWearPerMetre;
+        Agent.Pitting = false;
+        Agent.PitTimer = 0.0;
+    }
+    Circuit->StartLightStage = -1;
+    Circuit->StartSignalPlayed = -2;
     Circuit->ConfigureTraffic(!Session.Solo(), Session.Mode == Vroom::SessionMode::Arcade, Session.Difficulty);
     Circuit->RaceFinishDistance = Session.Mode == Vroom::SessionMode::GrandPrix && !Session.QualifyingRun
         ? Circuit->LengthM() * Session.LapTarget : 0;
@@ -476,7 +550,7 @@ void AVroomCar::UpdateSessionRules()
             / FMath::Max(.0001, Drive.State.DistanceM - PreviousDrive.DistanceM), 0.0, 1.0);
         ResultClock -= Vroom::FrameTiming::StepSeconds * (1.0 - Fraction);
     }
-    Session.Tick(ResultClock, Lap - 1, CarsPassed, Position, Drive.Fuel, Drive.State.SpeedMps);
+    Session.Tick(ResultClock, ValidLaps, CarsPassed, Position, Drive.Fuel, Drive.State.SpeedMps);
     if (Session.Phase == Vroom::SessionPhase::Finished && Before != Session.Phase)
     {
         if (Session.Mode == Vroom::SessionMode::GrandPrix && !Session.QualifyingRun)
@@ -1007,7 +1081,7 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
                 Drive.SetVelocityHeading(Drive.State.HeadingRad);
                 Contacts.PrepareRoadRecovery(Drive.State.LateralM, Half);
                 Drive.TyreHealth = FMath::Max(0.0, Drive.TyreHealth - (Contacts.State.TyresBroken ? 180 : 40));
-                LapClean = false;
+                LapClean = false; LapState.MarkDirty("contact");
                 ImpactSound = Contacts.State.TyresBroken ? 1 : .4;
                 ++TestContacts;
                 UE_LOG(LogTemp, Display, TEXT("VROOM: Scenery impact speed=%.1f km/h s=%.2f lateral=%.2f broken=%d"),
@@ -1055,8 +1129,34 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
         UE_LOG(LogTemp, Display, TEXT("VROOM: Control restored s=%.2f lateral=%.2f"), Drive.State.DistanceM, Drive.State.LateralM);
     }
 
-    if (std::abs(Drive.State.LateralM) > Circuit->HalfWidthM) LapClean = false;
     const double Len = Circuit->LengthM();
+    const int32 PreviousPhysical = LapState.PhysicalLaps;
+    LapState.Observe(Drive.State.DistanceM, Drive.State.LateralM, Len, Circuit->HalfWidthM, Pit.InLane);
+    LapClean = !LapState.Dirty && !LapState.Invalid;
+    LapInvalidReason = LapState.Invalid ? FString(LapState.Reason)
+        : (LapState.Dirty ? FString(LapState.Reason) : FString());
+    if (LapState.PhysicalLaps > PreviousPhysical)
+    {
+        LastLapClean = LapState.LastCompletedClean;
+        LastLapInvalidated = LapState.LastCompletedInvalid || !LastLapClean;
+        LastLapInvalidReason = LastLapInvalidated ? FString(LapState.LastCompletedReason) : FString();
+        LastLap = Circuit->RaceClock - LapStart;
+        ValidLaps = LapState.ValidLaps;
+        if (LastLapClean && (BestLap <= 0 || LastLap < BestLap)) BestLap = LastLap;
+        if (!AutoDemo && Session.QualifyingRun && Session.Active())
+        {
+            Session.CompleteQualification(LastLap, LastLapClean, QualificationBenchmark());
+            Circuit->Paused = true;
+            if (auto* PC = Cast<APlayerController>(GetController())) PC->bShowMouseCursor = true;
+            UE_LOG(LogTemp, Display, TEXT("VROOM: Qualification time=%.3f clean=%d grid=%d"), LastLap, LastLapClean, Session.QualificationPosition);
+        }
+        LapStart = Circuit->RaceClock;
+        Lap = LapState.PhysicalLaps;
+        LapClean = !Contacts.State.ControlsLocked;
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Lap %d time %.3f clean=%d valid=%d reason=%s"),
+            Lap - 1, LastLap, LastLapClean, ValidLaps, *LastLapInvalidReason);
+    }
+
     if (Circuit->RaceClock > 0 && !Wrecked)
     {
         // vr2.asm SCORV: +1..+5 per VBL above internal 300/400/450/475/487.
@@ -1123,25 +1223,9 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
         }
         else if (std::abs(Hit.LateralShoveMps) > 0.05)
             Drive.Shove(Hit.LateralShoveMps);
-        LapClean = false; ++TestContacts;
+        LapClean = false; LapState.MarkDirty("contact"); ++TestContacts;
         ImpactSound = Hit.Kind == Vroom::ContactKind::SlowImpact ? .35 : 1;
         UE_LOG(LogTemp, Display, TEXT("VROOM: Contact kind=%d relative=%.2f km/h speedAfter=%.2f km/h"), static_cast<int32>(Hit.Kind), Hit.RelativeSpeedMps * 3.6, Hit.SpeedAfterMps * 3.6);
-    }
-    const int32 NewLap = 1 + FMath::FloorToInt(Drive.State.DistanceM / Len);
-    if (NewLap > Lap)
-    {
-        LastLapClean = LapClean;
-        LastLap = Circuit->RaceClock - LapStart;
-        if (LapClean && (BestLap <= 0 || LastLap < BestLap)) BestLap = LastLap;
-        if (!AutoDemo && Session.QualifyingRun && Session.Active())
-        {
-            Session.CompleteQualification(LastLap, LapClean, QualificationBenchmark());
-            Circuit->Paused = true;
-            if (auto* PC = Cast<APlayerController>(GetController())) PC->bShowMouseCursor = true;
-            UE_LOG(LogTemp, Display, TEXT("VROOM: Qualification time=%.3f clean=%d grid=%d"), LastLap, LapClean, Session.QualificationPosition);
-        }
-        LapStart = Circuit->RaceClock; Lap = NewLap; LapClean = !Contacts.State.ControlsLocked;
-        UE_LOG(LogTemp, Display, TEXT("VROOM: Lap %d time %.3f"), Lap - 1, LastLap);
     }
     UpdateSessionRules();
 }
@@ -1190,7 +1274,32 @@ void AVroomCar::UpdatePresentation(double Alpha)
     FTransform Nose = BodyBaseTransforms[2];
     if (Broken) Nose.SetRotation(FRotator(-18, 9, 12).Quaternion());
     BodyParts[2]->SetRelativeTransform(Nose);
+
     const bool Blink = Contacts.State.InvulnerabilityRemaining > 0 && FMath::Fmod(Contacts.State.InvulnerabilityRemaining, .2) < .08;
+    const float SteerYaw = SmoothedSteering * CockpitWheelSteeringScale()
+        / (1 + Drive.State.SpeedMps / CockpitWheelSteeringDamping());
+    for (int32 I = 0; I < SuspensionBars.Num(); ++I)
+    {
+        UStaticMeshComponent* Bar = SuspensionBars[I];
+        if (!Bar || !SuspensionChassis.IsValidIndex(I) || !SuspensionHubs.IsValidIndex(I)) continue;
+        const FVector Chassis = SuspensionChassis[I];
+        FVector Hub = SuspensionHubs[I];
+        const int32 Slot = SuspensionWheelIndex.IsValidIndex(I) ? SuspensionWheelIndex[I] : INDEX_NONE;
+        if (TyrePartIndices.IsValidIndex(Slot) && BodyParts.IsValidIndex(TyrePartIndices[Slot]) && BodyParts[TyrePartIndices[Slot]])
+        {
+            const FVector Wheel = BodyParts[TyrePartIndices[Slot]]->GetRelativeLocation();
+            const FVector Inner(0.f, Wheel.Y >= 0.f ? -16.f : 16.f, Hub.Z - Wheel.Z);
+            Hub = Wheel + Inner;
+            if (!Broken && SuspensionSteers.IsValidIndex(I) && SuspensionSteers[I])
+            {
+                const float Cos = FMath::Cos(SteerYaw), Sin = FMath::Sin(SteerYaw);
+                Hub = Wheel + FVector(Inner.X * Cos - Inner.Y * Sin, Inner.X * Sin + Inner.Y * Cos, Inner.Z);
+            }
+        }
+        Bar->SetRelativeTransform(WishboneTransform(Chassis, Hub));
+        const bool Front = SuspensionSteers.IsValidIndex(I) && SuspensionSteers[I];
+        Bar->SetVisibility(!Blink && (ChaseCamera || Front));
+    }
     for (int32 I = 0; I < BodyParts.Num(); ++I)
     {
         const bool FrontTyre = TyrePartIndices.Contains(I) && BodyBaseTransforms[I].GetLocation().X > 0;

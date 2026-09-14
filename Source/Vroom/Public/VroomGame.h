@@ -5,7 +5,7 @@
 // Version affichee dans le HUD et le journal : le seul temoin de build fiable.
 namespace Vroom
 {
-inline constexpr const TCHAR* AppVersion = TEXT("0.30");
+inline constexpr const TCHAR* AppVersion = TEXT("0.31");
 }
 #include "GameFramework/Pawn.h"
 #include "GameFramework/HUD.h"
@@ -14,6 +14,7 @@ inline constexpr const TCHAR* AppVersion = TEXT("0.30");
 #include "VroomContactModel.h"
 #include "VroomElevationProfile.h"
 #include "VroomFrameTiming.h"
+#include "VroomRaceRules.h"
 #include "VroomSession.h"
 #include "VroomTrafficModel.h"
 #include "VroomGame.generated.h"
@@ -77,7 +78,10 @@ public:
     UPROPERTY() TArray<TObjectPtr<UInstancedStaticMeshComponent>> OpponentMeshes;
     UPROPERTY() TArray<TObjectPtr<UInstancedStaticMeshComponent>> Scenery;
     UPROPERTY() TObjectPtr<UInstancedStaticMeshComponent> StartLights;
+    UPROPERTY() TObjectPtr<UAudioComponent> StartLightAudio;
+    UPROPERTY() TObjectPtr<USoundWaveProcedural> StartLightWave;
     int32 StartLightStage = -1;
+    int32 StartSignalPlayed = -2;
     TArray<FVroomTrack> Tracks;
     int32 TrackIndex = 0;
     double RaceClock = 0;
@@ -106,7 +110,7 @@ private:
     TArray<double> RenderedOpponentS;
     TArray<double> RenderedOpponentLanes;
     TArray<double> OpponentVisualYaw;
-    TArray<FTransform> RenderedOpponentTransforms[4];
+    TArray<FTransform> RenderedOpponentTransforms[5];
     // Longueur du spline mise en cache : LengthM() est appelee des dizaines de
     // fois par image (courbure, positions, adversaires, HUD). Evite de
     // retraverser le spline a chaque appel, surtout sensible en virage ou les
@@ -116,7 +120,7 @@ private:
     float CurvatureSampleSpacing = 2.f;
     void RefreshLengthCache();
     void RebuildCurvatureCache();
-    TArray<FTransform> NextOpponentTransforms[4];
+    TArray<FTransform> NextOpponentTransforms[5];
     bool OpponentMotionNeedsReset = false;
     bool LoadTracks();
     void BuildSurface();
@@ -184,6 +188,11 @@ public:
     double LastLap = 0;
     bool LapClean = true;
     bool LastLapClean = true;
+    bool LastLapInvalidated = false;
+    FString LastLapInvalidReason;
+    FString LapInvalidReason;
+    int32 ValidLaps = 0;
+    Vroom::LapValidator LapState;
     // Arcade banner (vr2.asm CAAPAS / ASCORE): 27 slots, +500 per pass.
     int32 CarsPassed = 0;
     int32 Score = 0;
@@ -206,6 +215,11 @@ public:
     TArray<FTransform> BodyBaseTransforms;
     TArray<int8> OvertakeSides;
     TArray<int32> TyrePartIndices;
+    TArray<TObjectPtr<UStaticMeshComponent>> SuspensionBars;
+    TArray<FVector> SuspensionChassis;
+    TArray<FVector> SuspensionHubs;
+    TArray<int32> SuspensionWheelIndex;
+    TArray<int8> SuspensionSteers;
     Vroom::FrameTiming FrameTiming;
     double AudioPhase = 0;
     double AudioClock = 0;
