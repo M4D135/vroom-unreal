@@ -648,7 +648,7 @@ void AVroomCar::BuildCockpit()
     FCockpitGeometry Carbon, Trim, Coaming, Fasteners;
     // Low side rails, a finished tub floor and a shallow coaming.
     Carbon.Panel(FVector(123, 0, 43), 37, 3.5, 6, 2.5);
-    Carbon.Panel(FVector(78, 0, 8), 48, 28, 3.2, 4.0);
+    Carbon.Panel(FVector(168, 0, 14), 22, 20, 7.5, 5.0);
     Coaming.Panel(FVector(119.7, 0, 43.8), 35.8, 2.55, .5, 1.8);
     Coaming.Panel(FVector(70, 0, 18), 22, 4.2, 2.4, 1.6);
     Trim.Tube({FVector(118.7, -35, 46.4), FVector(118.7, 0, 46.4), FVector(118.7, 35, 46.4)}, {.55, .55, .55});
@@ -718,7 +718,8 @@ float AVroomCar::UpdateCockpit(float Steering)
         // Keep the grip attached even when it moves below the camera crop.
         const bool HandVisible = Visible;
         CockpitMeshes[LeftGlove + I]->SetVisibility(HandVisible);
-        Arm->SetVisibility(HandVisible);
+        // Amiga crops the forearms; only the gloves sit on the rim.
+        Arm->SetVisibility(false);
         CockpitMeshes[LeftGlove + I]->SetRelativeTransform(FTransform(Hand.Rotation, Hand.Wrist, FVector(Hand.Scale)));
         const auto& Previous = Arm->GetCustomPrimitiveData().Data;
         if (Previous.Num() < 1 || FMath::Abs(Previous[0] - HandSteering) > 0.00001f)

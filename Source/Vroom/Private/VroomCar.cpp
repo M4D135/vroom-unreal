@@ -128,7 +128,7 @@ AVroomCar::AVroomCar()
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("CarRoot"));
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("CockpitCamera"));
     Camera->SetupAttachment(RootComponent);
-    Camera->SetRelativeLocation(FVector(0,0,170));
+    Camera->SetRelativeLocation(FVector(30,0,136));
     Camera->SetRelativeRotation(FRotator(-2,0,0));
     Camera->SetFieldOfView(80);
     // Preserve the vertical field used by the original camera setup when the
@@ -1284,13 +1284,13 @@ void AVroomCar::UpdatePresentation(double Alpha)
     R.Roll += FMath::RadiansToDegrees(FMath::Lerp(PreviousContact.RollRad, Contacts.State.RollRad, Alpha));
     SetActorLocationAndRotation(Circuit->Position(S, L) + FVector(0,0,6 + Height * 100), R);
     // Leave the road horizon beneath the Amiga information band in both views.
-    Camera->SetRelativeLocation(ChaseCamera ? FVector(-850,0,310) : FVector(0,0,170));
+    Camera->SetRelativeLocation(ChaseCamera ? FVector(-820,0,280) : FVector(30,0,136));
     const float FovOffsets[] = {0,-12,12};
     Camera->SetFieldOfView(FMath::Clamp((VerificationMode ? 80.f : Vroom::Settings::Get().Fov) + FovOffsets[FovIndex], 55.f, 110.f));
     VisualSteering = FMath::Clamp(static_cast<float>(FMath::Lerp(PreviousDrive.Steering, Drive.State.Steering, Alpha)), -1.f, 1.f);
     const float SmoothedSteering = UpdateCockpit(VisualSteering);
     static const bool InspectCockpit = FParse::Param(FCommandLine::Get(), TEXT("VroomInspectCockpit"));
-    const FRotator TargetCamRot = ChaseCamera ? FRotator(-6,0,0) : FRotator(InspectCockpit ? -20 : -2,0,SmoothedSteering * CockpitCameraSteeringYaw());
+    const FRotator TargetCamRot = ChaseCamera ? FRotator(-8,0,0) : FRotator(InspectCockpit ? -18 : -4,0,SmoothedSteering * CockpitCameraSteeringYaw());
     const double CamDt = Circuit->Paused ? 0.0 : FMath::Clamp(static_cast<double>(GetWorld()->GetDeltaSeconds()), 0.0, .1);
     Camera->SetRelativeRotation(FQuat::Slerp(Camera->GetRelativeRotation().Quaternion(), TargetCamRot.Quaternion(),
         Vroom::ExponentialAlpha(110, CamDt)));
@@ -1303,9 +1303,12 @@ void AVroomCar::UpdatePresentation(double Alpha)
         // Keep the external model intact and stage this view to its composition.
         if (!ChaseCamera && Pose.GetLocation().X > 0)
         {
-            FVector P = Pose.GetLocation(); P.X = 270; P.Z = 29;
+            FVector P = Pose.GetLocation();
+            P.X = 252;
+            P.Y *= 1.12f;
+            P.Z = 30;
             Pose.SetLocation(P);
-            Pose.SetScale3D(Pose.GetScale3D() * .82);
+            Pose.SetScale3D(Pose.GetScale3D() * .70);
         }
         FRotator Wheel = Pose.Rotator();
         if (!Broken && Pose.GetLocation().X > 0) Wheel.Yaw += FMath::RadiansToDegrees(SmoothedSteering * CockpitWheelSteeringScale() / (1 + Drive.State.SpeedMps / CockpitWheelSteeringDamping()));
@@ -1313,6 +1316,13 @@ void AVroomCar::UpdatePresentation(double Alpha)
     }
     FTransform Nose = BodyBaseTransforms[2];
     if (Broken) Nose.SetRotation(FRotator(-18, 9, 12).Quaternion());
+    if (!ChaseCamera)
+    {
+        FVector P = Nose.GetLocation();
+        P.X = 236; P.Z = 16;
+        Nose.SetLocation(P);
+        Nose.SetScale3D(FVector(0.92f, 1.05f, 0.88f));
+    }
     BodyParts[2]->SetRelativeTransform(Nose);
 
     const bool Blink = Contacts.State.InvulnerabilityRemaining > 0 && FMath::Fmod(Contacts.State.InvulnerabilityRemaining, .2) < .08;
@@ -1343,7 +1353,8 @@ void AVroomCar::UpdatePresentation(double Alpha)
     for (int32 I = 0; I < BodyParts.Num(); ++I)
     {
         const bool FrontTyre = TyrePartIndices.Contains(I) && BodyBaseTransforms[I].GetLocation().X > 0;
-        BodyParts[I]->SetVisibility(!Blink && (ChaseCamera || FrontTyre));
+        const bool CockpitNose = I == 2;
+        BodyParts[I]->SetVisibility(!Blink && (ChaseCamera || FrontTyre || CockpitNose));
     }
 }
 
