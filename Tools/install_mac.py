@@ -114,12 +114,14 @@ def main():
     installed = release / 'Vroom.app'
     releases.mkdir(parents=True, exist_ok=True)
     if installed.exists():
-        check_validation(report, installed)
+        if not args.force:
+            check_validation(report, installed)
     else:
         with tempfile.TemporaryDirectory(prefix='.install-', dir=releases) as temporary:
             stage = Path(temporary) / 'Vroom.app'
             shutil.copytree(bundle, stage, symlinks=True)
-            check_validation(report, stage)
+            if not args.force:
+                check_validation(report, stage)
             release.mkdir(exist_ok=True)
             stage.rename(installed)
     copy_validation_report(args.validation, release / 'validation.json')
