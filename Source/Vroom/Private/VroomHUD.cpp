@@ -234,44 +234,37 @@ void AVroomHUD::DrawHUD()
 
     if (Car->PreparingCircuit)
     {
+        const FLinearColor PrepBg(.012f, .019f, .024f, 1);
+        Rect(0, 0, W, H, PrepBg);
         if (!CanvasWarmupSubmitted && Canvas->Canvas)
         {
-            // SimpleElement/Canvas has no native graphics PSO collector in 5.8.
-            // Exercise the actual HUD primitives on its actual render target,
-            // gamma and font path, then cover them with the preparation screen.
-            // Offscreen/transparent dummy geometry can be culled and is not a
-            // substitute for issuing these real draws.
-            Rect(4, 4, 28, 20, Paper);
-            Rect(36, 4, 28, 20, FLinearColor(1, 1, 1, .55f));
-            Rounded(68, 4, 36, 24, 7, Paper);
-            Rounded(108, 4, 36, 24, 7, Panel);
-            // Start lights use an opaque triangle batch, unlike rounded panels
-            // and the line quads. Warm that exact path explicitly as well.
+            // Warm the HUD paths in the same dark colour so the first frame
+            // never flashes alphabet soup or white boxes before the title.
+            Rect(4, 4, 28, 20, PrepBg);
+            Rect(36, 4, 28, 20, PrepBg);
+            Rounded(68, 4, 36, 24, 7, PrepBg);
+            Rounded(108, 4, 36, 24, 7, PrepBg);
             FCanvasNGonItem Lamp(FVector2D(160 * Scale, 16 * Scale),
-                FVector2D(8 * Scale), 24, RacingRed);
+                FVector2D(8 * Scale), 24, PrepBg);
             Lamp.BlendMode = SE_BLEND_Opaque;
             Canvas->DrawItem(Lamp);
             for (float Thickness : {1.f, 1.6f, 4.f, 8.f})
             {
                 const float Y = 34 + Thickness * 7;
-                Line(FVector2D(4, Y), FVector2D(100, Y + 2), Paper, Thickness);
-                Line(FVector2D(110, Y), FVector2D(206, Y + 2), Muted, Thickness);
+                Line(FVector2D(4, Y), FVector2D(100, Y + 2), PrepBg, Thickness);
+                Line(FVector2D(110, Y), FVector2D(206, Y + 2), PrepBg, Thickness);
             }
             const FString Glyphs = TEXT("0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz ÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŸ àâäçéèêëîïôöùûüÿ °%+−=:.,/()·—…←→↑↓");
             for (float Size : {10.f, 12.f, 16.f, 24.f, 32.f, 52.f})
-                Text(Glyphs, 4, 72 + Size * 2, Size, Paper);
-            Text(Glyphs, 4, 205, 18, Muted);
-            // Force submission before the opaque covering panel, so Canvas
-            // sorting cannot put the samples above it. The RHI fence includes
-            // parallel command translation and the runtime PSO compilation.
-            Canvas->Canvas->Flush_GameThread(true);
+                Text(Glyphs, 4, 72 + Size * 2, Size, PrepBg);
+            Text(Glyphs, 4, 205, 18, PrepBg);
             CanvasWarmupFence = MakeUnique<FRenderCommandFence>();
             CanvasWarmupFence->BeginFence(FRenderCommandFence::ESyncDepth::RHIThread);
             CanvasWarmupSubmitted = true;
             UE_LOG(LogTemp, Display, TEXT("VROOM: Canvas PSO preparation submitted output=%dx%d"),
                 FMath::RoundToInt(Canvas->ClipX), FMath::RoundToInt(Canvas->ClipY));
         }
-        Rect(0, 0, W, H, FLinearColor(.012f, .019f, .024f, 1));
+        Rect(0, 0, W, H, PrepBg);
         const float X = W * .5f, Y = H * .5f;
         Text(TEXT("VROOM"), X, Y - 96, 19, RacingRed, true);
         Text(TEXT("PRÉPARATION DU CIRCUIT"), X, Y - 44, 32, Paper, true);
