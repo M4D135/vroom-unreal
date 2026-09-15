@@ -717,7 +717,7 @@ void AVroomCar::Tick(float Dt)
     Circuit->UpdateVegetation();
     // This is also used by verification: CSV capture still starts at frame 0,
     // with the same hard frame-time gates and warmup as an ordinary launch.
-    if (UpdateCircuitPreparation()) return;
+    if (UpdateCircuitPreparation()) { UpdateDiagnostics(Dt); return; }
     if (!VerificationMode && !Vroom::Graphics::IsOpen())
     {
         const bool WasControlsOpen = Vroom::Settings::IsOpen();
