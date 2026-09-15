@@ -2,15 +2,12 @@
 #include "VroomProceduralMeshComponent.h"
 #include "VroomTrackPreview.h"
 #include "VroomEnvironment.h"
-#include "VroomPlayerSettings.h"
-#include "VroomRaceRules.h"
 #include "TimerManager.h"
 #include "VroomGraphicsSettings.h"
 #include "Components/SplineComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
-#include "Components/AudioComponent.h"
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
 #include "Materials/MaterialInterface.h"
@@ -22,7 +19,6 @@
 #include "Misc/Parse.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
-#include "Sound/SoundWaveProcedural.h"
 
 namespace
 {
@@ -61,11 +57,6 @@ AVroomCircuit::AVroomCircuit()
     Terrain = CreateDefaultSubobject<UVroomProceduralMeshComponent>(TEXT("CircuitTerrain"));
     Terrain->SetupAttachment(RootComponent);
     Terrain->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    // Start light sounds
-    StartLightAudio = CreateDefaultSubobject<UAudioComponent>(TEXT("StartLightAudio"));
-    StartLightAudio->SetupAttachment(RootComponent);
-    StartLightAudio->bAutoActivate = false;
-    StartLightAudio->SetVolumeMultiplier(1.0f);
 }
 
 bool AVroomCircuit::LoadTracks()
@@ -292,8 +283,7 @@ void AVroomCircuit::BuildSurface()
     Ribbon(3, HalfWidthM, HalfWidthM + .7f, 5, TEXT("M_Curb"), false);
     Ribbon(4, -HalfWidthM + .12f, -HalfWidthM + .25f, 6, TEXT("M_White"), false);
     Ribbon(5, HalfWidthM - .25f, HalfWidthM - .12f, 6, TEXT("M_White"), false);
-    Ribbon(6, -HalfWidthM - 8.f, HalfWidthM + 8.f, -2, TEXT("M_Grass"), false);
-    Ribbon(7, -HalfWidthM - 2.2f, HalfWidthM + 2.2f, -90, TEXT("M_Dark"), false);
+    Ribbon(6, -24, 24, -1, TEXT("M_Grass"), false);
 }
 
 void AVroomCircuit::BuildTerrain()
@@ -439,7 +429,6 @@ void AVroomCircuit::BuildScenery()
     StartLights->ComponentTags.Add(FName(TEXT("VroomStartLights")));
     StartLights->SetNumCustomDataFloats(1);
     StartLightStage = -1;
-    StartSignalPlayed = -2;
 
     // All structures use metre-sized primitives; their placements are in cm.
     // Buildings remain upright instead of banking with the road spline.
@@ -811,51 +800,6 @@ void AVroomCircuit::BuildScenery()
         Billboard(P(-.17,0,7.0), -F.GetRotation().GetForwardVector(), 8, 2, I + 2, false);
     }
 
-    auto OverheadGantry = [&](float S, double Span, double Height, int32 Artwork, bool FaceOncoming)
-    {
-        const FTransform F = Frame(S, 0);
-        auto P = [&](double X, double Y, double Z) { return F.TransformPosition(FVector(X,Y,Z) * 100); };
-        for (double Side : {-1.0, 1.0})
-        {
-            Pole(P(0, Side * Span, 0), P(0, Side * Span, Height), .18);
-            LocalBox(White, F, FVector(0, Side * Span, .14), FVector(.52,.52,.28));
-        }
-        Beam(Metal, P(0,-Span,Height), P(0,Span,Height), .16);
-        const FVector Face = FaceOncoming ? -F.GetRotation().GetForwardVector() : F.GetRotation().GetForwardVector();
-        Billboard(P(0, 0, Height - 1.05), Face, Span * 1.45, 2.15, Artwork, false);
-    };
-    // Timing line: a real overhead gantry, poles off the racing surface.
-    OverheadGantry(0.f, 9.6, 7.4, 0, true);
-    // Pit entry / exit bridges, distinct from the advertising pair at 32 % / 66 %.
-    OverheadGantry(48.f, 9.2, 6.2, 1, true);
-    OverheadGantry(198.f, 9.2, 6.2, 2, true);
-    if (LengthM() > 4200.f)
-        OverheadGantry(LengthM() * 0.48f, 8.8, 6.4, 3, true);
-
-    auto TracksideBoardSafe = [&](float S, float Side, int32 Artwork, float Width, float Height)
-    {
-        const float Lateral = Side * (HalfWidthM + 3.6f);
-        const FVector MarkerPos = Position(S, Lateral);
-        const float Key = Spline->FindInputKeyClosestToWorldLocation(MarkerPos);
-        const FVector Closest = Spline->GetLocationAtSplineInputKey(Key, ESplineCoordinateSpace::World);
-        if (FVector::Dist2D(MarkerPos, Closest) < (HalfWidthM + 2.4f) * 100.f) return;
-        const FTransform F = Frame(S, Lateral);
-        Billboard(F.TransformPosition(FVector(0, Side * 20.f, Height * 50.f)),
-            -F.GetRotation().GetForwardVector(), Width, Height, Artwork, true);
-    };
-    TracksideBoardSafe(40.f, 1.f, 1, 3.2f, 1.6f);
-    TracksideBoardSafe(70.f, 1.f, 1, 3.2f, 1.6f);
-    for (int32 SampleIdx = 0; SampleIdx < 10; ++SampleIdx)
-    {
-        const float S = LengthM() * (SampleIdx + 1) / 11.0f;
-        if (FMath::Abs(Curvature(S)) < 0.012f) continue;
-        const float MarkerS = S - 70.f;
-        if (MarkerS < 220.f) continue;
-        const double Sign = Curvature(S) > 0 ? -1.0 : 1.0;
-        TracksideBoardSafe(MarkerS, Sign, 3, 2.4f, 1.2f);
-        TracksideBoardSafe(MarkerS + 22.f, Sign, 3, 2.2f, 1.1f);
-    }
-
     // Isolated 8x2-m adverts, never a continuous wall. The first pair is visible
     // from the starting area. Later boards are separated by hundreds of metres.
     auto TracksideBoard = [&](float S, float Side, int32 Artwork)
@@ -1133,17 +1077,11 @@ void AVroomCircuit::BuildOpponents()
         OpponentSpeeds.Add(0);
         Vroom::TrafficCar Agent;
         Agent.Distance = OpponentS.Last(); Agent.Lateral = Agent.TargetLane = OpponentLanes.Last();
-        Agent.Fuel = 1.0;
-        Agent.TyreHealth = 2048.0;
-        Agent.Pitting = false;
-        Agent.PitTimer = 0.0;
-        Agent.LiveryIndex = (I / 2) % 6;
-        Agent.Personality = Vroom::PersonalityByLivery(Agent.LiveryIndex);
         Traffic.push_back(Agent);
         static const FLinearColor Liveries[] = { FLinearColor(.012f,.075f,.65f), FLinearColor(.72f,.012f,.018f),
             FLinearColor(.91f,.60f,.012f), FLinearColor(.02f,.35f,.13f),
             FLinearColor(.33f,.025f,.57f), FLinearColor(.88f,.19f,.012f) };
-        const FLinearColor Colour = Liveries[Agent.LiveryIndex];
+        const FLinearColor Colour = Liveries[(I / 2) % UE_ARRAY_COUNT(Liveries)];
         for (int32 J = 0; J < 4; ++J)
         {
             auto* Mesh = OpponentMeshes[OpponentPartGroup(I, J)].Get();
@@ -1188,59 +1126,15 @@ void AVroomCircuit::AdvanceRace(float H)
     PreviousOpponentLanes = OpponentLanes;
     for (int32 I = 0; I < OpponentRecycled.Num(); ++I) OpponentRecycled[I] = false;
     RaceClock += H;
-    const Vroom::StartSignal Signal = Vroom::StartSignalFromClock(RaceClock);
-    const int32 LightStage = Vroom::GantryColumnsLit(Signal);
+    const int32 LightStage = RaceClock < 0
+        ? FMath::Clamp(FMath::CeilToInt((3.0 + RaceClock) * 5.0 / 3.0), 1, 5) : 0;
     if (StartLights && LightStage != StartLightStage)
     {
         for (int32 I = 0; I < StartLights->GetInstanceCount(); ++I)
             StartLights->SetCustomDataValue(I, 0, I / 2 < LightStage ? 1.f : 0.f, false);
         StartLights->MarkRenderStateDirty();
         StartLightStage = LightStage;
-        UE_LOG(LogTemp, Display, TEXT("VROOM: Start lights columns=%d signal=%d raceClock=%.3f"),
-            LightStage, static_cast<int32>(Signal), RaceClock);
-    }
-    const int32 SignalId = static_cast<int32>(Signal);
-    const bool CountdownBeep =
-        (Signal == Vroom::StartSignal::Red && StartSignalPlayed < 0) ||
-        (Signal == Vroom::StartSignal::Orange && StartSignalPlayed == static_cast<int32>(Vroom::StartSignal::Red)) ||
-        (Signal == Vroom::StartSignal::Green && (StartSignalPlayed == static_cast<int32>(Vroom::StartSignal::Orange)
-            || StartSignalPlayed == static_cast<int32>(Vroom::StartSignal::Red)));
-    if (SignalId != StartSignalPlayed && Signal != Vroom::StartSignal::Idle && Signal != Vroom::StartSignal::Racing)
-    {
-        const Vroom::StartBeep Beep = Vroom::BeepFor(Signal);
-        const float Volume = CountdownBeep ? static_cast<float>(Beep.Volume)
-            * Vroom::Settings::Get().MasterVolume * Vroom::Settings::Get().EffectsVolume : 0.f;
-        if (CountdownBeep && StartLightAudio && Beep.Frequency > 0 && Volume > 0.01f)
-        {
-            if (!StartLightWave)
-            {
-                StartLightWave = NewObject<USoundWaveProcedural>(this);
-                StartLightWave->SetSampleRate(48000);
-                StartLightWave->NumChannels = 1;
-                StartLightWave->SoundGroup = SOUNDGROUP_Default;
-                StartLightAudio->SetSound(StartLightWave);
-            }
-            StartLightWave->Duration = Beep.Duration;
-            StartLightWave->ResetAudio();
-            TArray<int16> Samples;
-            const int32 NumSamples = FMath::Max(1, FMath::RoundToInt(Beep.Duration * 48000));
-            Samples.SetNumUninitialized(NumSamples);
-            const double PhaseInc = UE_TWO_PI * Beep.Frequency / 48000.0;
-            double Phase = 0.0;
-            for (int32 Sample = 0; Sample < NumSamples; ++Sample)
-            {
-                float Envelope = 1.0f;
-                if (Sample < NumSamples * 0.05f) Envelope = Sample / (NumSamples * 0.05f);
-                else if (Sample > NumSamples * 0.88f) Envelope = (NumSamples - Sample) / (NumSamples * 0.12f);
-                Samples[Sample] = static_cast<int16>(FMath::Sin(Phase) * 18000.0f * Envelope);
-                Phase += PhaseInc;
-            }
-            StartLightWave->QueueAudio(reinterpret_cast<const uint8*>(Samples.GetData()), NumSamples * sizeof(int16));
-            StartLightAudio->SetVolumeMultiplier(Volume);
-            StartLightAudio->Play();
-        }
-        StartSignalPlayed = SignalId;
-        UE_LOG(LogTemp, Display, TEXT("VROOM: Start signal %d volume=%.2f"), SignalId, Volume);
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Start lights columns=%d raceClock=%.3f"), LightStage, RaceClock);
     }
     if (RaceClock < 0 || !OpponentsVisible) return;
     if (ReactiveTraffic && Traffic.size() == static_cast<std::size_t>(OpponentS.Num()))
@@ -1261,7 +1155,6 @@ void AVroomCircuit::AdvanceRace(float H)
                 Agent.Distance = TrafficPlayer.Distance + 230 + I * 24;
                 Agent.Lateral = Agent.TargetLane = I % 2 ? 2.4 : -2.4;
                 Agent.Speed = FMath::Max(20.0, TrafficPlayer.Speed * .72);
-                Agent.Fuel = 1.0; Agent.TyreHealth = 2048.0; Agent.Pitting = false; Agent.PitTimer = 0.0;
                 PreviousOpponentS[I] = Agent.Distance;
                 PreviousOpponentLanes[I] = Agent.Lateral;
                 OpponentRecycled[I] = true;
@@ -1312,7 +1205,7 @@ void AVroomCircuit::RenderOpponents(float Alpha)
         {
             // Clear the last frame's velocity once when stopping or pausing;
             // otherwise a skipped update leaves stale motion vectors in TSR.
-            for (int32 Group = 0; Group < OpponentMeshes.Num(); ++Group)
+            for (int32 Group = 0; Group < 4; ++Group)
                 OpponentMeshes[Group]->BatchUpdateInstancesTransforms(0,
                     RenderedOpponentTransforms[Group], RenderedOpponentTransforms[Group], true, false, false);
             OpponentMotionNeedsReset = false;
@@ -1338,7 +1231,7 @@ void AVroomCircuit::RenderOpponents(float Alpha)
         for (int32 J = 0; J < 4; ++J)
             NextOpponentTransforms[OpponentPartGroup(I, J)].Add(OpponentPartTransform(J) * Base);
     }
-    for (int32 Group = 0; Group < OpponentMeshes.Num(); ++Group)
+    for (int32 Group = 0; Group < 4; ++Group)
     {
         auto& Current = NextOpponentTransforms[Group];
         auto& Previous = RenderedOpponentTransforms[Group];

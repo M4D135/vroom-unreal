@@ -33,13 +33,11 @@ inline double HeightM(int Track, const FVector& Point, double DistanceM, double 
 {
     const auto& P = Profile(Track);
     const double X = Point.X / 100.0, Y = Point.Y / 100.0;
-    // Keep the verge at road height so the ribbon does not float. Relief
-    // starts only once the ground has left the kerb, never under the tarmac.
-    const double Away = FMath::SmoothStep(12.0, 55.0, DistanceM);
-    const double Far = FMath::SmoothStep(90.0, 320.0, DistanceM);
+    const double Blend = FMath::SmoothStep(30.0, 145.0, DistanceM);
     const double Undulation = .42 + .25 * FMath::Sin(X * .0035 + Track * .7)
         + .18 * FMath::Cos(Y * .0041 - X * .0011) + .12 * FMath::Sin((X + Y) * .009);
-    const double Base = FMath::Lerp(RoadHeightM - 0.05, MinimumM - 1.8, Far);
-    return Base + P.ReliefM * Away * Undulation * 0.38;
+    const double Base = FMath::Lerp(RoadHeightM - 2.5, MinimumM - 5.0,
+        FMath::SmoothStep(240.0, 620.0, DistanceM));
+    return Base + P.ReliefM * Blend * Undulation;
 }
 }

@@ -553,23 +553,22 @@ void AVroomHUD::DrawHUD()
     }
     const float Fuel=FMath::Clamp(static_cast<float>(Car->Drive.Fuel),0.f,1.f);
     const float Tyres=FMath::Clamp(static_cast<float>(Car->Drive.TyreHealth/2048.),0.f,1.f);
-    const float TyreX=W-175;
-    const float FuelX=W-90;
+    const float SlotX=W-177;
+    const float TyreX=SlotX;
+    const float FuelX=SlotX+70;
     const FLinearColor Amber(.96f,.67f,.23f,1);
     const FLinearColor TyreColor = Tyres < .15f ? RacingRed : (Tyres < .3f ? Amber : Ice);
-    const FLinearColor FuelColor = Fuel < .22f ? RacingRed : Ice;
-    Text(Tyres < .15f ? TEXT("PNEUS CRITIQUES") : TEXT("PNEUS"), TyreX, 29, 9, TyreColor);
-    Text(FString::Printf(TEXT("%d %%"), FMath::RoundToInt(Tyres*100)), TyreX-1, 43, 22, TyreColor);
-    Fill(TyreX, 81, 72, 4, Tyres, TyreColor);
-    Text(TEXT("ESSENCE"), FuelX, 29, 9, Silver);
-    Text(FString::Printf(TEXT("%d %%"), FMath::RoundToInt(Fuel*100)), FuelX-1, 43, 22, FuelColor);
-    Fill(FuelX, 81, 72, 4, Fuel, FuelColor);
+    Text(TEXT("PNEUS"),TyreX,29,9,Silver);
+    Text(FString::Printf(TEXT("%d%%"),FMath::RoundToInt(Tyres*100)),TyreX,43,16,TyreColor);
+    Fill(TyreX,81,58,4,Tyres,TyreColor);
+    Text(TEXT("ESSENCE"),FuelX,29,9,Silver);
+    Text(FString::Printf(TEXT("%d%%"),FMath::RoundToInt(Fuel*100)),FuelX,43,16,Fuel<.22f?RacingRed:Ice);
+    Fill(FuelX,81,58,4,Fuel,Fuel<.22f?RacingRed:Ice);
     FString Alert;
     if(Car->Pit.Servicing)Alert=FString::Printf(TEXT("STAND · %s · %.1f s"),Car->Pit.NeedTyres&&Car->Pit.NeedFuel?TEXT("PNEUS + ESSENCE"):Car->Pit.NeedTyres?TEXT("PNEUS"):TEXT("ESSENCE"),Car->Pit.Remaining);
     else if(!Car->Session.Solo()&&Car->Pit.Available)Alert=FString::Printf(TEXT("STAND · %s PNEUS · %s ESSENCE · %s : LES DEUX"),*Vroom::Settings::BindingLabel(Vroom::Action::Tyres),*Vroom::Settings::BindingLabel(Vroom::Action::Refuel),Car->MouseSteer?TEXT("A / CLIC SOURIS"):TEXT("A"));
-    else if(!Car->Session.Solo()&&Car->Pit.InLane)Alert=Car->Drive.State.SpeedMps>16?TEXT("STANDS · LIMITEUR 60 KM/H"):TEXT("STANDS · S’ARRÊTER DANS L’EMPLACEMENT");
+    else if(!Car->Session.Solo()&&Car->Pit.InLane)Alert=TEXT("STANDS · S’ARRÊTER DANS L’EMPLACEMENT");
     else if(!Car->Session.Solo()&&(Fuel<.22f||Tyres<.3f))Alert=FString::Printf(TEXT("%s%sSTANDS À DROITE APRÈS LA LIGNE"),Fuel<.22f?TEXT("ESSENCE BASSE · "):TEXT(""),Tyres<.3f?TEXT("PNEUS USÉS · "):TEXT(""));
-    else if(Car->Drive.Slipstream>0.45)Alert=TEXT("ASPIRATION");
     if(!Alert.IsEmpty()){Rounded(W*.5f-335,114,670,32,8,Panel);Text(Alert,W*.5f,121,13,Car->Pit.InLane?Ice:RacingRed,true);}
     if(Car->Session.Mode==Vroom::SessionMode::Arcade)
     {

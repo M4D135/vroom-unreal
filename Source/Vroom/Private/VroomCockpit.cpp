@@ -522,17 +522,17 @@ void AVroomCar::BuildCockpit()
     };
 
     auto* WheelMesh = Mesh(TEXT("SteeringWheel"), SteeringPivot);
-    FCockpitGeometry Rim; Rim.Torus(WheelRadius, WheelTube + .18); Rim.Commit(WheelMesh, 0, TEXT("M_Dark"));
+    FCockpitGeometry Rim; Rim.Torus(WheelRadius, WheelTube); Rim.Commit(WheelMesh, 0, TEXT("M_WheelNavy"));
     FCockpitGeometry Metal, Hub, Rivets;
     for (double Angle : {0.0, double(UE_PI), UE_PI * 1.5})
     {
         const FQuat Q(FVector::ForwardVector, Angle);
-        Metal.Prism({{3.2, -.72}, {17.6, -.48}, {17.6, .48}, {3.2, .72}}, .62, FVector(.12, 0, 0), Q);
-        for (double Y : {9.0, 14.2})
-            Hub.Ellipsoid(Q.RotateVector(FVector(-.18, Y, 0)), FVector(.04, .9, .28), Q, 6, 12);
+        Metal.Prism({{2.5, -1.0}, {17.75, -.72}, {17.75, .72}, {2.5, 1.0}}, .75, FVector(.2, 0, 0), Q);
+        for (double Y : {8.2, 12.0})
+            Hub.Ellipsoid(Q.RotateVector(FVector(-.22, Y, 0)), FVector(.045, 1.35, .32), Q, 6, 12);
     }
-    Metal.Disc(FVector(-.15, 0, 0), 3.2, .85);
-    Metal.Commit(WheelMesh, 1, TEXT("M_Dark"));
+    Metal.Disc(FVector(-.15, 0, 0), 3.55, 1.0);
+    Metal.Commit(WheelMesh, 1, TEXT("M_F1Carbon"));
     Hub.Disc(FVector(-.87, 0, 0), 2.56, .55);
     Hub.Torus(WheelRadius - .30, .035, FVector(-WheelTube + .06, 0, 0));
     Hub.Commit(WheelMesh, 2, TEXT("M_Dashboard"));
@@ -594,9 +594,7 @@ void AVroomCar::BuildCockpit()
             const FVector T = (U[I] - N * FVector::DotProduct(N, U[I])).GetSafeNormal();
             Hands.Tangents[I] = FProcMeshTangent(T, FVector::DotProduct(FVector::CrossProduct(N, T), V[I]) < 0);
         }
-            const FLinearColor AmigaGold(0.98f, 0.57f, 0.06f, 1.f);
-            for (FLinearColor& C : Hands.Colors) C = AmigaGold;
-            Hands.Commit(Side < 0 ? LeftHandMesh : RightHandMesh, 0, TEXT("M_GaugeAmber"));
+            Hands.Commit(Side < 0 ? LeftHandMesh : RightHandMesh, 0, TEXT("M_RacingGlove"));
             (Side < 0 ? LeftHandMesh : RightHandMesh)->SetTextureForceResidentFlag(true);
         }
         UE_LOG(LogTemp, Display, TEXT("Gloves loaded: %d vertices, %d triangles"), Positions.Num() * 2, Indices.Num() * 2 / 3);
@@ -648,25 +646,24 @@ void AVroomCar::BuildCockpit()
 
     auto* SurroundMesh = Mesh(TEXT("CockpitMonocoque"), CockpitRoot);
     FCockpitGeometry Carbon, Trim, Coaming, Fasteners;
-    // Low side rails, a finished tub floor and a shallow coaming.
+    // Low side rails and a shallow coaming, never a tall modern dashboard.
     Carbon.Panel(FVector(123, 0, 43), 37, 3.5, 6, 2.5);
-    Carbon.Panel(FVector(168, 0, 14), 22, 20, 7.5, 5.0);
+    // A low carbon top and rounded padding give the original red surround
+    // a finished edge without raising it into the road view.
     Coaming.Panel(FVector(119.7, 0, 43.8), 35.8, 2.55, .5, 1.8);
-    Coaming.Panel(FVector(70, 0, 18), 22, 4.2, 2.4, 1.6);
-    Trim.Tube({FVector(118.7, -35, 46.4), FVector(118.7, 0, 46.4), FVector(118.7, 35, 46.4)}, {.55, .55, .55});
+    Trim.Tube({FVector(118.7, -35, 46.4), FVector(118.7, 0, 46.4), FVector(118.7, 35, 46.4)}, {.45, .45, .45});
     for (float Side : {-1.f, 1.f})
     {
         const FVector N(0, Side, .35);
-        Carbon.Face({FVector(18, Side * 38, 10), FVector(130, Side * 37, 44),
-            FVector(146, Side * 46, 34), FVector(16, Side * 46, 8)}, N);
-        Carbon.Face({FVector(18, Side * 38, 10), FVector(130, Side * 37, 44),
-            FVector(128, Side * 32, 38), FVector(20, Side * 32, 12)}, -N);
-        Coaming.Face({FVector(22, Side * 37.2, 18.5), FVector(130, Side * 36.4, 44.4),
-            FVector(130, Side * 40.2, 43.2), FVector(22, Side * 41.0, 16.8)}, FVector::UpVector);
-        Trim.Tube({FVector(22, Side * 36.4, 19), FVector(80, Side * 36.2, 34), FVector(129, Side * 36.0, 44.6)}, {.85, .8, .65});
-        Trim.Tube({FVector(24, Side * 28, 12), FVector(90, Side * 30, 22), FVector(120, Side * 31, 36)}, {.45, .4, .35});
-        for (double Y : {27.2, 32.4, 36.6})
-            Fasteners.Disc(FVector(119.32, Side * Y, 43.9), .3, .12, 10);
+        Carbon.Face({FVector(25, Side * 36, 20), FVector(130, Side * 36, 44),
+            FVector(143, Side * 43, 35), FVector(20, Side * 43, 12)}, N);
+        Carbon.Face({FVector(25, Side * 36, 20), FVector(130, Side * 36, 44),
+            FVector(128, Side * 33, 38), FVector(25, Side * 33, 15)}, -N);
+        Coaming.Face({FVector(25, Side * 36, 20.2), FVector(130, Side * 36, 44.2),
+            FVector(130, Side * 39, 43.2), FVector(25, Side * 39, 18.2)}, FVector::UpVector);
+        Trim.Tube({FVector(25, Side * 35.7, 21), FVector(80, Side * 35.7, 34), FVector(129, Side * 35.7, 44.4)}, {.7, .7, .6});
+        for (double Y : {28.5, 33.5})
+            Fasteners.Disc(FVector(119.32, Side * Y, 43.9), .28, .11, 10);
     }
     Carbon.Commit(SurroundMesh, 0, TEXT("M_F1Paint")); Trim.Commit(SurroundMesh, 1, TEXT("M_Dashboard"));
     Coaming.Commit(SurroundMesh, 2, TEXT("M_F1Carbon")); Fasteners.Commit(SurroundMesh, 3, TEXT("M_BrushedMetal"));
@@ -720,8 +717,7 @@ float AVroomCar::UpdateCockpit(float Steering)
         // Keep the grip attached even when it moves below the camera crop.
         const bool HandVisible = Visible;
         CockpitMeshes[LeftGlove + I]->SetVisibility(HandVisible);
-        // Amiga crops the forearms; only the gloves sit on the rim.
-        Arm->SetVisibility(false);
+        Arm->SetVisibility(HandVisible);
         CockpitMeshes[LeftGlove + I]->SetRelativeTransform(FTransform(Hand.Rotation, Hand.Wrist, FVector(Hand.Scale)));
         const auto& Previous = Arm->GetCustomPrimitiveData().Data;
         if (Previous.Num() < 1 || FMath::Abs(Previous[0] - HandSteering) > 0.00001f)
