@@ -232,7 +232,7 @@ void AVroomHUD::DrawHUD()
     const FString TrackName = Track ? Track->Name.ToUpper() : TEXT("CIRCUIT");
     const FString Distance = FString::Printf(TEXT("%.2f KM"), Circuit->LengthM() / 1000.0f);
 
-    if (Car->PreparingCircuit)
+    if (Car->PreparingCircuit && Car->Session.Phase != Vroom::SessionPhase::Menu)
     {
         const FLinearColor PrepBg(.012f, .019f, .024f, 1);
         Rect(0, 0, W, H, PrepBg);

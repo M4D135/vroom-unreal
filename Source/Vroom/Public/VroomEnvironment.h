@@ -33,11 +33,11 @@ inline double HeightM(int Track, const FVector& Point, double DistanceM, double 
 {
     const auto& P = Profile(Track);
     const double X = Point.X / 100.0, Y = Point.Y / 100.0;
-    const double Away = FMath::SmoothStep(12.0, 48.0, DistanceM);
-    const double Far = FMath::SmoothStep(80.0, 280.0, DistanceM);
+    const double Blend = FMath::SmoothStep(30.0, 145.0, DistanceM);
     const double Undulation = .42 + .25 * FMath::Sin(X * .0035 + Track * .7)
         + .18 * FMath::Cos(Y * .0041 - X * .0011) + .12 * FMath::Sin((X + Y) * .009);
-    const double Base = FMath::Lerp(RoadHeightM - 0.05, MinimumM - 1.8, Far);
-    return Base + P.ReliefM * Away * Undulation;
+    const double Base = FMath::Lerp(RoadHeightM - 2.5, MinimumM - 5.0,
+        FMath::SmoothStep(240.0, 620.0, DistanceM));
+    return Base + P.ReliefM * Blend * Undulation;
 }
 }
