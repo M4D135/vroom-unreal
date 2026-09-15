@@ -294,40 +294,6 @@ void AVroomCircuit::BuildSurface()
     Ribbon(5, HalfWidthM - .25f, HalfWidthM - .12f, 6, TEXT("M_White"), false);
     Ribbon(6, -HalfWidthM - 8.f, HalfWidthM + 8.f, -2, TEXT("M_Grass"), false);
     Ribbon(7, -HalfWidthM - 2.2f, HalfWidthM + 2.2f, -90, TEXT("M_Dark"), false);
-    auto Wall = [&](int32 Section, float Lateral, float ZTop, float ZBot, const TCHAR* Material)
-    {
-        TArray<FVector> V, Normals;
-        TArray<int32> T;
-        TArray<FVector2D> UV;
-        TArray<FLinearColor> Colors;
-        TArray<FProcMeshTangent> Tangents;
-        const FVector Out = Rotation(0).RotateVector(FVector::RightVector) * FMath::Sign(Lateral);
-        for (int32 I = 0; I <= Count; ++I)
-        {
-            const float S = I * LengthM() / Count;
-            const FVector Base = Position(S, Lateral);
-            V.Add(Base + FVector(0, 0, ZTop));
-            V.Add(Base + FVector(0, 0, ZBot));
-            const FVector N = Rotation(S).RotateVector(FVector::RightVector) * FMath::Sign(Lateral);
-            for (int32 J = 0; J < 2; ++J)
-            {
-                Normals.Add(N);
-                UV.Add(FVector2D(J, S / 6));
-                Colors.Add(FLinearColor::White);
-                Tangents.Add(FProcMeshTangent(Rotation(S).Vector(), false));
-            }
-            if (I < Count)
-            {
-                const int32 K = I * 2;
-                T.Append({K, K + 1, K + 2, K + 1, K + 3, K + 2});
-            }
-        }
-        Surface->CreateMeshSection_LinearColor(Section, V, T, Normals, UV, Colors, Tangents, false);
-        Surface->SetMaterial(Section, Mat(Material));
-        (void)Out;
-    };
-    Wall(8, -HalfWidthM - 1.6f, 5, -90, TEXT("M_Dark"));
-    Wall(9, HalfWidthM + 1.6f, 5, -90, TEXT("M_Dark"));
 }
 
 void AVroomCircuit::BuildTerrain()

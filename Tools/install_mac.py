@@ -90,10 +90,23 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--validation', required=True, type=Path)
     parser.add_argument('--bundle', type=Path, default=ROOT / 'Saved/Packages/Mac/Vroom.app')
+    parser.add_argument('--force', action='store_true',
+                        help='install this bundle even if soak/perf gates failed')
     args = parser.parse_args()
     report = json.loads(args.validation.read_text())
     bundle = args.bundle.resolve()
-    check_validation(report, bundle)
+    if args.force:
+        print('WARNING: installing without a completed soak (--force).', flush=True)
+        if not (bundle / 'Contents/MacOS/Vroom').is_file():
+            raise ValueError('Package executable missing')
+        paks = bundle / 'Contents/UE/Vroom/Content/Paks'
+        if not paks.is_dir() or not list(paks.glob('*.ucas')):
+            raise ValueError('Incomplete packaged game: cooked data missing')
+        report['executable_sha256'] = sha256(bundle / 'Contents/MacOS/Vroom')
+        report['package_data_sha256'] = {path: sha256(bundle / path) for path in sorted(package_data_paths(bundle))}
+        report['forced'] = True
+    else:
+        check_validation(report, bundle)
     storage = Path.home() / 'Library/Application Support/Vroom'
     releases = storage / 'Releases'
     artifact = hashlib.sha256(json.dumps([report['executable_sha256'], report.get('package_data_sha256')], sort_keys=True).encode()).hexdigest()
