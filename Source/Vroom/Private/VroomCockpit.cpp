@@ -522,17 +522,17 @@ void AVroomCar::BuildCockpit()
     };
 
     auto* WheelMesh = Mesh(TEXT("SteeringWheel"), SteeringPivot);
-    FCockpitGeometry Rim; Rim.Torus(WheelRadius, WheelTube); Rim.Commit(WheelMesh, 0, TEXT("M_WheelNavy"));
+    FCockpitGeometry Rim; Rim.Torus(WheelRadius, WheelTube + .18); Rim.Commit(WheelMesh, 0, TEXT("M_Dark"));
     FCockpitGeometry Metal, Hub, Rivets;
     for (double Angle : {0.0, double(UE_PI), UE_PI * 1.5})
     {
         const FQuat Q(FVector::ForwardVector, Angle);
-        Metal.Prism({{2.4, -1.35}, {17.9, -.95}, {17.9, .95}, {2.4, 1.35}}, 1.05, FVector(.15, 0, 0), Q);
-        for (double Y : {7.4, 11.6, 15.4})
-            Hub.Ellipsoid(Q.RotateVector(FVector(-.18, Y, 0)), FVector(.05, 1.15, .38), Q, 6, 12);
+        Metal.Prism({{3.2, -.72}, {17.6, -.48}, {17.6, .48}, {3.2, .72}}, .62, FVector(.12, 0, 0), Q);
+        for (double Y : {9.0, 14.2})
+            Hub.Ellipsoid(Q.RotateVector(FVector(-.18, Y, 0)), FVector(.04, .9, .28), Q, 6, 12);
     }
-    Metal.Disc(FVector(-.15, 0, 0), 3.55, 1.0);
-    Metal.Commit(WheelMesh, 1, TEXT("M_F1Carbon"));
+    Metal.Disc(FVector(-.15, 0, 0), 3.2, .85);
+    Metal.Commit(WheelMesh, 1, TEXT("M_Dark"));
     Hub.Disc(FVector(-.87, 0, 0), 2.56, .55);
     Hub.Torus(WheelRadius - .30, .035, FVector(-WheelTube + .06, 0, 0));
     Hub.Commit(WheelMesh, 2, TEXT("M_Dashboard"));
