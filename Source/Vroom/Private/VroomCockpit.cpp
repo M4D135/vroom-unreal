@@ -594,7 +594,7 @@ void AVroomCar::BuildCockpit()
             const FVector T = (U[I] - N * FVector::DotProduct(N, U[I])).GetSafeNormal();
             Hands.Tangents[I] = FProcMeshTangent(T, FVector::DotProduct(FVector::CrossProduct(N, T), V[I]) < 0);
         }
-            Hands.Commit(Side < 0 ? LeftHandMesh : RightHandMesh, 0, TEXT("M_RacingGlove"));
+            Hands.Commit(Side < 0 ? LeftHandMesh : RightHandMesh, 0, TEXT("M_Black"));
             (Side < 0 ? LeftHandMesh : RightHandMesh)->SetTextureForceResidentFlag(true);
         }
         UE_LOG(LogTemp, Display, TEXT("Gloves loaded: %d vertices, %d triangles"), Positions.Num() * 2, Indices.Num() * 2 / 3);
