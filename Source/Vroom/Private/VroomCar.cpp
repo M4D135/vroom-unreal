@@ -360,7 +360,21 @@ bool AVroomCar::UpdateCircuitPreparation()
     Circuit->RenderOpponents(Alpha);
     UpdateMirrors(0);
     EngineAudio->SetVolumeMultiplier(0);
-    if (PreparationReadyFrames < 3) return true;
+    if (PreparationReadyFrames < 3)
+    {
+        // La préparation n'est qu'un préchauffage anti-saccades : elle ne doit
+        // jamais bloquer le menu ou la course si le backend de rendu cale.
+        if (FPlatformTime::Seconds() - PreparationStartTime > 8.0)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("VROOM: Circuit preparation timed out track=%d pending=%u, continuing without warmup"),
+                Circuit->TrackIndex, PendingRenderJobs);
+            PreparingCircuit = false;
+            PreparationHoldsPause = false;
+            Circuit->Paused = PreparationPauseBefore;
+            return false;
+        }
+        return true;
+    }
     PreparingCircuit = false;
     PreparationHoldsPause = false;
     Circuit->Paused = PreparationPauseBefore;

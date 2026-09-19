@@ -149,7 +149,7 @@ public:
     void SetDifficulty(Vroom::RaceDifficulty Difficulty);
     void SelectSessionTrack(int32 Index);
     void HandleAction(Vroom::Action Action);
-    bool PreparingCircuit = true;
+    bool PreparingCircuit = false;
     uint32 PendingRenderJobs = 0;
     UPROPERTY() TObjectPtr<USceneComponent> MirrorRoot;
     UPROPERTY() TObjectPtr<USceneCaptureComponent2D> MirrorCapture;

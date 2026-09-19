@@ -63,7 +63,7 @@ FDrivingHandPose DrivingHandPose(float Side, float Steering)
     // original low camera crop; camera height is not changed to reveal it.
     const double Turn = -FMath::Clamp(double(Steering / CockpitSteeringInputMax), -1.0, 1.0)
         * CockpitSteeringVisualAngleDeg();
-    static double NeutralAngle = 30.0, GripDepth = -2.5, GripReach = 19.1, Scale = 1.05, WristTilt = 80.0;
+    static double NeutralAngle = 30.0, GripDepth = -2.5, GripReach = 19.1, Scale = 1.05, WristTilt = 80.0, GripHeight = -3.9;
     static bool Init = false;
     if (!Init)
     {
@@ -85,6 +85,7 @@ FDrivingHandPose DrivingHandPose(float Side, float Steering)
         FParse::Value(FCommandLine::Get(), TEXT("VroomGripAngle="), NeutralAngle);
         FParse::Value(FCommandLine::Get(), TEXT("VroomGripDepth="), GripDepth);
         FParse::Value(FCommandLine::Get(), TEXT("VroomGripReach="), GripReach);
+        FParse::Value(FCommandLine::Get(), TEXT("VroomGripHeight="), GripHeight);
         FParse::Value(FCommandLine::Get(), TEXT("VroomGripScale="), Scale);
         FParse::Value(FCommandLine::Get(), TEXT("VroomWristTilt="), WristTilt);
         Init = true;
@@ -95,7 +96,7 @@ FDrivingHandPose DrivingHandPose(float Side, float Steering)
     // and Z spans the four fingers. Align that span with the rim tangent.
     const FQuat Rotation = FQuat(FVector::ForwardVector, Angle - UE_PI)
         * FQuat(FVector::UpVector, FMath::DegreesToRadians(WristTilt));
-    const FVector Grip = FVector(GripDepth, GripReach, -5.4) - GloveCuff;
+    const FVector Grip = FVector(GripDepth, GripReach, GripHeight) - GloveCuff;
     const FVector MirroredGrip(Grip.X, Grip.Y, -Side * Grip.Z);
     return {Contact - Rotation.RotateVector(MirroredGrip) * Scale, Rotation, Scale};
 }
