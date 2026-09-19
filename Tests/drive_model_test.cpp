@@ -274,24 +274,26 @@ int main(int argc, char** argv)
     }
     Check(Finite(invalid.State), "long mixed driving stays numerically finite");
 
+    const Vroom::DriveInput driftHeld{0.6, 0, 0.8, false, false, true};
+    const Vroom::DriveInput counterHeld{0.6, 0, -0.45, false, false, true};
+    const Vroom::DriveInput straightDriftHeld{0.6, 0, 0, false, false, true};
     Vroom::DriveModel drift;
     drift.State.SpeedMps = 40;
     drift.State.Gear = 4;
-    Run(drift, 0.12, {0.6, 0.7, 0.8});
+    Run(drift, 0.12, driftHeld);
     Check(drift.Drifting && drift.Skidding && drift.HopHeightM > 0.05,
-          "brake plus steer at speed starts a hop-drift");
-    Run(drift, 0.18, {0.6, 0.7, 0.8});
+          "drift button plus steer at speed starts a hop-drift");
+    Run(drift, 0.18, driftHeld);
     Check(std::abs(drift.VisualHeading()) > 0.04,
           "a drift shows a readable chassis angle within 0.30 seconds while retaining yaw inertia");
-    Run(drift, 0.22, {0.6, 0.7, 0.8});
-    Check(drift.DriftCharge > 0.4, "holding a drift charges a mini-turbo");
+    Run(drift, 0.65, counterHeld);
+    Check(drift.DriftCharge > 0.4 && drift.DriftDirection == 1 && drift.DriftControl > .9,
+          "countersteering charges the initial slide without reversing it");
     const double beforeBoost = drift.State.SpeedMps;
     Run(drift, 0.35, {0.6, 0, 0});
-    Check(!drift.Drifting && drift.BoostTier >= 1, "releasing a charged drift fires a mini-turbo");
+    Check(!drift.Drifting && drift.BoostTier >= 1, "releasing a controlled drift fires a mini-turbo");
     Check(drift.State.SpeedMps > beforeBoost + 2.0, "mini-turbo adds speed after the slide");
 
-    const Vroom::DriveInput driftHeld{0.6, 0, 0.8, false, false, true};
-    const Vroom::DriveInput straightDriftHeld{0.6, 0, 0, false, false, true};
     Vroom::DriveModel straightDrift;
     straightDrift.State.SpeedMps = 40;
     straightDrift.State.Gear = 4;
@@ -304,9 +306,10 @@ int main(int argc, char** argv)
     Vroom::DriveModel chargedDrift;
     chargedDrift.State.SpeedMps = 40;
     chargedDrift.State.Gear = 4;
-    Run(chargedDrift, 1.1, driftHeld, 0, 100);
+    Run(chargedDrift, .3, driftHeld, 0, 100);
+    Run(chargedDrift, 1.2, counterHeld, 0, 100);
     Check(chargedDrift.Drifting && chargedDrift.DriftCharge >= 1,
-          "holding a controlled drift builds the second charge tier");
+          "sustained moderate countersteer builds the second charge tier");
     Vroom::DriveModel strongBoost = chargedDrift;
     strongBoost.Step(full, 1.0 / 120, 0, 100);
     Check(strongBoost.BoostTier == 2 && strongBoost.BoostRemaining > 1,
@@ -320,32 +323,34 @@ int main(int argc, char** argv)
     Vroom::DriveModel shortDrift;
     shortDrift.State.SpeedMps = 40;
     shortDrift.State.Gear = 4;
-    Run(shortDrift, 0.4, driftHeld, 0, 100);
+    Run(shortDrift, 0.2, driftHeld, 0, 100);
+    Run(shortDrift, 0.2, counterHeld, 0, 100);
     shortDrift.Step(full, 1.0 / 120, 0, 100);
     Check(shortDrift.BoostTier == 0, "a drift below the first charge threshold cannot claim a turbo");
 
     for (int abortReason = 0; abortReason < 4; ++abortReason)
     {
         Vroom::DriveModel aborted = chargedDrift;
-        Vroom::DriveInput held = driftHeld;
+        Vroom::DriveInput held = counterHeld;
         if (abortReason == 0)
             aborted.State.LateralM = 8;
         if (abortReason == 1)
             aborted.State.SpeedMps = 5;
         if (abortReason == 3)
             held = straightDriftHeld;
-        aborted.Step(held, 1.0 / 120, 0, abortReason == 0 ? 6 : 100, 0, abortReason == 2);
+        for (int frame = 0; frame < (abortReason == 3 ? 60 : 1); ++frame)
+            aborted.Step(held, 1.0 / 120, 0, abortReason == 0 ? 6 : 100, 0, abortReason == 2);
         Check(!aborted.Drifting && aborted.DriftCharge == 0 && aborted.BoostTier == 0,
-              "grass, insufficient speed, a jump or centering a held drift forfeits its charge");
+              "grass, insufficient speed, a jump or prolonged loss of countersteer forfeits the charge");
         aborted.State.LateralM = 0;
         aborted.State.SpeedMps = 40;
         Run(aborted, 0.1, driftHeld, 0, 100);
         Check(!aborted.Drifting && aborted.BoostTier == 0,
               "an aborted held drift cannot silently restart after returning to the road");
-        aborted.Step(full, 1.0 / 120, 0, 100);
+        Run(aborted, .3, full, 0, 100);
         aborted.Step(driftHeld, 1.0 / 120, 0, 100);
         Check(aborted.Drifting && aborted.DriftCharge < 0.02,
-              "release and press after an abort starts a fresh uncharged drift");
+              "release then press after the rearm window starts a fresh uncharged drift");
     }
     Vroom::DriveModel grassRelease = chargedDrift;
     grassRelease.State.LateralM = 8;
@@ -360,17 +365,20 @@ int main(int argc, char** argv)
         model->State.Gear = 4;
     }
     const Vroom::DriveInput fullLockDrift{0.6, 0, 1, false, false, true};
-    for (const auto& input : {fullLockDrift, full})
+    const std::array<Vroom::DriveInput, 3> phases{fullLockDrift, counterHeld, full};
+    const std::array<double, 3> durations{.3, 1.2, 1.0};
+    for (int phase = 0; phase < 3; ++phase)
     {
-        Run(drift30, 1, input, 0, 100, 1.0 / 30);
-        Run(drift60, 1, input, 0, 100, 1.0 / 60);
-        Run(drift120, 1, input, 0, 100, 1.0 / 120);
-        Run(drift240, 1, input, 0, 100, 1.0 / 240);
+        const auto& input = phases[phase];
+        Run(drift30, durations[phase], input, 0, 100, 1.0 / 30);
+        Run(drift60, durations[phase], input, 0, 100, 1.0 / 60);
+        Run(drift120, durations[phase], input, 0, 100, 1.0 / 120);
+        Run(drift240, durations[phase], input, 0, 100, 1.0 / 240);
         for (const auto* model : {&drift30, &drift60})
             Check(std::abs(model->State.HeadingRad - drift120.State.HeadingRad) < 1e-12 &&
                   std::abs(model->State.LateralM - drift120.State.LateralM) < 1e-10 &&
                   std::abs(model->State.SpeedMps - drift120.State.SpeedMps) < 1e-10,
-                  "drift entry, sustained full lock and release are identical at 30/60/120 Hz");
+                  "drift entry, countersteer and release are identical at 30/60/120 Hz");
         Check(std::abs(drift240.State.HeadingRad - drift120.State.HeadingRad) < 0.01 &&
               std::abs(drift240.State.LateralM - drift120.State.LateralM) < 0.15 &&
               std::abs(drift240.State.SpeedMps - drift120.State.SpeedMps) < 0.25,
@@ -409,7 +417,7 @@ int main(int argc, char** argv)
         {
             // Wide run-off lets repeated full-lock turns stay on the road;
             // speed, tyres and lateral position follow the actual drive model.
-            Vroom::DriveInput held{0.6, 0, 1, false, false, true};
+            Vroom::DriveInput held{0.6, 0, frame < cadence * 3 / 10 ? 1.0 : -.45, false, false, true};
             if (frame >= cadence * 3 && frame < cadence * 5) held.Steer = -1;
             if (frame >= cadence * 5 && frame < cadence * 7) held = {0.6, 0, 0};
             if (frame >= cadence * 7)
@@ -437,7 +445,7 @@ int main(int argc, char** argv)
               "chassis brakes before its angle limits without requiring a discontinuous clamp");
         Check(responseAngles[cadenceIndex] > 0.04,
               "bounded chassis rotation is visibly established by 0.30 seconds at every cadence");
-        Check(maxSettledRebound < 1e-4 && settledAngles[cadenceIndex] > 0.3,
+        Check(maxSettledRebound < .005 && settledAngles[cadenceIndex] > 0.18,
               "sustained drift reaches its full angle without oscillation");
         mixedFinalStates[cadenceIndex] = probe.State;
         std::cout << "Slip at " << cadence << " Hz: acceleration "

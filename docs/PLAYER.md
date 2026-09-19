@@ -1,4 +1,4 @@
-# Jouer à Vroom 0.30
+# Jouer à Vroom 0.33
 
 Cette version propose trois formats de course, des commandes configurables et des records locaux. Les règles ajoutées sont des adaptations du prototype inspiré de Vroom ; elles ne constituent pas une restitution intégrale des règles Amiga.
 
@@ -39,7 +39,7 @@ Ces affectations sont les valeurs initiales. **Commandes et son** permet de les 
 | Haut, Z ou W | Accélérer |
 | Bas, S ou Espace | Freiner |
 | Gauche/droite, Q/D ou A/D | Braquer |
-| Maj gauche/droite | Déraper en maintenant le braquage à vitesse suffisante |
+| Maj gauche/droite | Entrer en glisse avec le braquage, maintenir en dosant le contre-braquage, relâcher pour le bonus gagné |
 | E / X | Monter / descendre d'un rapport en boîte manuelle |
 | G | Basculer boîte automatique/manuelle |
 | C | Changer entre cockpit et poursuite |
@@ -49,14 +49,14 @@ Ces affectations sont les valeurs initiales. **Commandes et son** permet de les 
 | Échap | Menu |
 | O ou F7 | Graphismes |
 | F8 | Commandes et son |
-| T / F | Demander les pneus / le plein, à l'arrêt dans l'emplacement des stands |
-| Entrée | Valider au menu ; demander le service complet dans l'emplacement des stands |
+| T / F | Demander les pneus / le plein, à l'arrêt dans l’allée des stands |
+| Entrée | Valider au menu ; demander le service complet dans l’allée des stands |
 | F1…F6 | Sélectionner Autriche, France, USA, Suède, Japon ou Royaume-Uni |
 | Page suivante / précédente | Circuit suivant / précédent au menu |
 | Tab / H | Mode / difficulté suivante au menu |
 | F10 | Alterner le FOV préféré, sa variante −12° et sa variante +12° |
 
-Les variantes F10 sont temporaires ; le FOV de base se règle et se sauvegarde dans **Commandes et son**. Les ajustements des mains, des roues et des supports de rétroviseurs conservent la position de caméra et la plage de braquage ; les captures normales du package final montrent les pneus fermés et les mains sur la jante au neutre et en braquage. Les bornes finales de caméra sont 55° à 110°.
+Les variantes F10 sont temporaires ; le FOV de base se règle et se sauvegarde dans **Commandes et son**. Le cockpit garde les gants blancs, la rotation des poignets et le cadrage bas de la 0.30, avec une prise resserrée d’environ **3 mm**. Les vues normales neutre/gauche/droite du package 0.33 ont été inspectées dans la validation visible. Les bornes de caméra sont 55° à 110°.
 
 ## Souris et manette
 
@@ -66,12 +66,12 @@ En conduite souris, le déplacement horizontal règle une position de volant con
 |---|---|
 | Stick gauche | Direction |
 | Gâchette droite / gauche | Accélérateur / frein |
-| LB ou RB | Maintenir le dérapage |
+| LB ou RB | Entrer en dérapage avec le stick, maintenir en contre-braquant, relâcher pour le bonus gagné |
 | Y / X | Rapport supérieur / inférieur |
 | Start | Pause ; appliquer les préférences dans Commandes et son |
 | Back / Select | Changer de vue |
 | Croix directionnelle | Parcourir les menus ; changer une option avec gauche/droite |
-| A / B | Valider / revenir ; A demande le service complet lorsque la voiture est arrêtée dans son emplacement |
+| A / B | Valider / revenir ; A demande le service complet lorsque la voiture est arrêtée dans l’allée des stands |
 
 Le remappage proposé concerne les touches du clavier. Les raccourcis manette restent fixes. Pour ouvrir les réglages sans clavier, mettre en pause puis choisir **Commandes et son** ; les graphismes sont accessibles depuis le menu principal.
 
@@ -85,9 +85,13 @@ Dans la page des commandes, Entrée lance la saisie d'une touche lorsque la sél
 
 ## Déraper, passer au stand et récupérer après un choc
 
-Maintenir Maj ou LB/RB en braquant à plus d'environ 44 km/h sur la route. Frein et braquage permettent aussi d'entrer en glisse. Le retour à l'écran indique la charge ; relâcher volontairement le dérapage après le premier ou le second seuil déclenche une poussée courte. Une sortie de route, un saut ou un ralentissement annule la charge, et le frein coupe la poussée. Ce mécanisme est une adaptation ludique du prototype.
+À plus d’environ **44 km/h** sur la route, appuyer sur **Maj** ou **LB/RB** en braquant dans le sens du virage. Garder le bouton enfoncé, puis **contre-braquer modérément** pour tenir la glisse. Au clavier, alterner de brèves pressions sur la direction opposée et de courts relâchements ; à la manette, doser le stick. Le retour à l’écran indique la charge réellement gagnée par ce contrôle.
 
-Les pneus s'usent et l'essence baisse. Le bandeau avertit lorsque les réserves deviennent faibles. **Les stands se trouvent à droite après la ligne chronométrée.** Entrer dans l'allée, puis s'arrêter dans l'emplacement marqué. L'aide de service apparaît quand la voiture est correctement placée et presque immobile.
+Relâcher Maj ou LB/RB pour libérer le bonus : **niveau 1, poussée de 0,55 s ; niveau 2, poussée de 1,15 s**. Relâcher trop tôt ne donne rien. Tenir toujours la direction d’entrée ou rester trop longtemps à fond dans la direction opposée fait perdre le contrôle et la charge. Le frein ne provoque pas automatiquement la glisse : il l’annule et coupe une poussée en cours. Un contact, l’herbe, un saut physique, une panne sèche ou une vitesse insuffisante annulent aussi la charge. Après une annulation, relâcher le bouton avant de tenter une nouvelle glisse. Ce mécanisme est une adaptation ludique du prototype.
+
+Un petit frottement de roues avec un concurrent peut faire bondir brièvement la voiture. Corriger dans le sens opposé à la poussée reçue aide à la poser : si le choc vous pousse à gauche, corriger à droite, et inversement. Une réception bien corrigée conserve **100 %** de la vitesse d’arrivée, une commande neutre **97 %**, une mauvaise correction **94 %**. Ce rattrapage ne donne aucun boost et ne protège pas d’un second choc sévère.
+
+Les pneus s'usent et l'essence baisse. Le bandeau avertit lorsque les réserves deviennent faibles. **Les stands se trouvent à droite après la ligne chronométrée.** Entrer dans l'allée, puis s’arrêter dans l’allée, près des garages ; la petite case n’est plus obligatoire. L'aide de service apparaît quand la voiture est correctement placée et presque immobile.
 
 - Pneus : T, immobilisation de 4 secondes.
 - Essence : F, immobilisation de 3 secondes.
@@ -122,16 +126,18 @@ Depuis la racine du dépôt :
 ```sh
 Tools/build_mac.command --package
 python3 Tools/test_portable.py
-python3 Tools/verify_mac.py --profile --soak
-python3 Tools/install_mac.py --validation "Saved/Validation/v0.30.0/DOSSIER-DE-LA-SERIE/results.json"
+python3 Tools/verify_mac.py --visible --graphics-preset performance --profile --soak
+python3 Tools/install_mac.py --validation "CHEMIN-ANNONCE-PAR-LE-VERIFICATEUR/results.json"
 ```
 
-Remplacer le chemin de la dernière commande par celui annoncé par le vérificateur. Ce n'est pas un fichier fixe : chaque série crée son propre dossier daté. Le vérificateur capture les écrans, contrôle les scénarios et mesure les deux définitions ainsi que les six circuits complets. L'installation exige le rapport réussi correspondant au binaire et aux données cuisinées ; elle refuse un package incomplet ou différent.
+Remplacer le chemin de la dernière commande par celui annoncé par le vérificateur. Ce n'est pas un fichier fixe : chaque série crée son propre dossier daté. `--visible` affiche et active la fenêtre pour chaque scénario ; `--graphics-preset performance` applique temporairement le profil Performance, sans changer les préférences sauvegardées. `--profile` mesure les deux définitions et `--soak` parcourt les six circuits complets. L'installation exige le rapport réussi correspondant au binaire et aux données cuisinées ; elle refuse un package incomplet ou différent.
 
 L'application de lancement stable est `~/Applications/Vroom.app`. Le manifeste actif est `~/Library/Application Support/Vroom/active.json` ; les versions installées et leurs rapports restent dans `~/Library/Application Support/Vroom/Releases/`. Les anciennes versions sont conservées pour un retour arrière. Une compilation seule laisse la version active inchangée.
 
 ## Périmètre de validation
 
-Le package Mac 0.30 passe la série automatisée du **13 septembre 2026** : 31 cas réussis, huit profils de cadence, les six circuits parcourus entièrement et 21 contrôles portables. Le profil Performance à 70 % interne atteint environ 59,98–59,99 images/s en moyenne sur le Mac Apple M5 24 Go, avec un maximum mesuré de 22,83 ms par image. Ces mesures ont été effectuées sous verrouillage du Mac ; elles ne remplacent pas une session de jeu interactive. **Cette version est installée** ; le lanceur natif et le raccourci du Bureau ont chacun démarré la 0.30, passé le contrôle interne et fermé normalement.
+Les tests portables ciblés de conduite, de contre-braquage et de reprise hors piste ont été exécutés. Ils vérifient les règles du modèle, pas la fluidité affichée. **La série du 19 septembre 2026 passe ses 45 contrôles visibles, huit profils et six parcours complets en profil Performance à 70 % interne.** Le [rapport 0.33](FINALISATION_033.md) consigne leur avancement ; compiler ne vaut pas installation.
+
+Les mesures historiques du package Mac 0.30, datées du **13 septembre 2026**, restent disponibles : 31 cas, huit profils, six circuits complets et 21 contrôles portables. Le profil Performance à 70 % interne atteignait environ 59,98–59,99 images/s sur le Mac Apple M5 24 Go, avec un maximum mesuré de 22,83 ms par image. Ces mesures sous verrouillage du Mac ne certifient ni la version 0.33 ni une session de jeu interactive.
 
 Les essais et mesures réellement effectués sont consignés dans [VALIDATION.md](VALIDATION.md). Une vérification d'actions et de rectangles ne remplace pas un essai matériel de manette ou une session de jeu complète avec chaque périphérique. **Le build Windows et l'activation DLSS sur une carte NVIDIA restent non validés.** Le Mac utilise Metal et ne propose pas le DLSS. Les circuits et leurs décors restent des interprétations ; le prototype ne revendique pas une copie intégrale de Vroom.

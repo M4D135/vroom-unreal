@@ -20,22 +20,26 @@ struct ResourceBudget
 };
 
 // Race sessions are sized so a standing start with a full tank and new tyres
-// cannot finish three laps without one stop. Solo sessions keep the original
-// mild consumption so a clean timed lap does not require the pits.
+// cannot finish at normal race pace without one stop. Fuel range is measured
+// in laps at 60 m/s and 78% throttle, not at full throttle. The supported race
+// distance starts at two laps; a one-lap qualification has no useful pit window.
 inline ResourceBudget MakeResourceBudget(bool Race, RaceDifficulty Difficulty, double LengthM, int Laps)
 {
     ResourceBudget Budget;
-    if (!Race || Laps <= 0 || !std::isfinite(LengthM) || LengthM < 500.0)
+    if (!Race || Laps <= 1 || !std::isfinite(LengthM) || LengthM < 500.0)
         return Budget;
-    const double FuelLaps = Difficulty == RaceDifficulty::Easy ? 1.85
-        : Difficulty == RaceDifficulty::Hard ? 1.35 : 1.55;
-    const double TyreLaps = Difficulty == RaceDifficulty::Easy ? 1.90
-        : Difficulty == RaceDifficulty::Hard ? 1.40 : 1.60;
-    const double PaceMps = 48.0;
+    const double FuelShare = Difficulty == RaceDifficulty::Easy ? .65
+        : Difficulty == RaceDifficulty::Hard ? .52 : .58;
+    const double FuelLaps = std::max(1.35, Laps * FuelShare);
+    const double TyreLaps = FuelLaps + .12;
+    const double PaceMps = 60.0;
     const double MeanThrottle = 0.78;
-    const double FuelSeconds = FuelLaps * (LengthM / PaceMps) / MeanThrottle;
+    const double FuelSeconds = FuelLaps * (LengthM / PaceMps) * MeanThrottle;
     Budget.FuelPerThrottleSecond = 1.0 / std::max(40.0, FuelSeconds);
     Budget.TyreWearPerMetre = 2048.0 / std::max(500.0, TyreLaps * LengthM);
+    // Warn before passing the only pit entry for another full lap.
+    Budget.CriticalFuel = std::clamp(1.12 / FuelLaps, .22, .85);
+    Budget.CriticalTyres = std::clamp(1.15 / TyreLaps, .30, .85);
     return Budget;
 }
 
@@ -120,6 +124,36 @@ inline StartBeep BeepFor(StartSignal Signal)
     }
 }
 
+// A single preallocated voice, mixed into the existing race audio stream.
+// The short fades avoid clicks and require neither a new sound object nor a
+// PCM allocation when a light changes.
+struct StartToneVoice
+{
+    static constexpr int SampleRate = 48000;
+    StartBeep Beep{};
+    int Sample = 0, SampleCount = 0;
+    double Phase = 0;
+
+    void Trigger(StartSignal Signal)
+    {
+        Beep = BeepFor(Signal);
+        Sample = 0;
+        SampleCount = static_cast<int>(std::round(Beep.Duration * SampleRate));
+        Phase = 0;
+    }
+
+    double NextSample()
+    {
+        if (Sample >= SampleCount) return 0;
+        constexpr double Tau = 6.28318530717958647692;
+        const double Fade = std::min({1.0, Sample / 240.0, (SampleCount - 1 - Sample) / 480.0});
+        const double Value = std::sin(Phase) * Beep.Volume * Fade;
+        Phase = std::fmod(Phase + Tau * Beep.Frequency / SampleRate, Tau);
+        ++Sample;
+        return Value;
+    }
+};
+
 struct Wishbone
 {
     double ChassisX = 0, ChassisY = 0, ChassisZ = 0;
@@ -187,10 +221,16 @@ struct LapValidator
 
     void Observe(double Distance, double Lateral, double Length, double HalfWidth, bool InPit)
     {
-        if (!std::isfinite(Distance) || !std::isfinite(Length) || Length < 100)
+        if (!std::isfinite(Distance) || !std::isfinite(Lateral) || !std::isfinite(Length)
+            || !std::isfinite(HalfWidth) || Length < 100 || HalfWidth <= 0)
+        {
+            MarkInvalid("position invalide");
             return;
-        if (LastDistance >= 0 && Distance + 2.0 < LastDistance)
+        }
+        if (LastDistance >= 0 && Distance + .01 < LastDistance)
             MarkInvalid("sens inverse");
+        if (LastDistance >= 0 && Distance - LastDistance > Length / CheckpointCount)
+            MarkInvalid("passage manqué");
 
         const bool Off = !InPit && std::abs(Lateral) > HalfWidth;
         const bool Cut = !InPit && std::abs(Lateral) > HalfWidth + 6.0;

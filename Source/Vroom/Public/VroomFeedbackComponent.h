@@ -1,6 +1,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "VroomRaceRules.h"
 #include "VroomFeedbackComponent.generated.h"
 
 // A bounded pool of world-space tyre strips / smoke and a stereo race mix.
@@ -24,6 +25,8 @@ private:
     TArray<FStrip> Strips;
     TArray<FPuff> Puffs;
     TArray<double> Phases;
+    TArray<int16> AudioSamples;
+    Vroom::StartToneVoice StartTone;
     double Clock = 0, VisualClock = 0, NoisePhase = 0, LastMarkClock = 0;
     double ShiftEnvelope = 0, CueEnvelope = 0, CuePhase = 0;
     int32 StripCursor = 0, PuffCursor = 0, LastGear = 1, LastChargeTier = 0, LastTrack = -1;

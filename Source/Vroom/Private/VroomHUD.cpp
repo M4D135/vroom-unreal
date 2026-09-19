@@ -232,7 +232,7 @@ void AVroomHUD::DrawHUD()
     const FString TrackName = Track ? Track->Name.ToUpper() : TEXT("CIRCUIT");
     const FString Distance = FString::Printf(TEXT("%.2f KM"), Circuit->LengthM() / 1000.0f);
 
-    if (Car->PreparingCircuit && Car->Session.Phase != Vroom::SessionPhase::Menu)
+    if (Car->PreparingCircuit)
     {
         const FLinearColor PrepBg(.012f, .019f, .024f, 1);
         Rect(0, 0, W, H, PrepBg);
@@ -264,6 +264,8 @@ void AVroomHUD::DrawHUD()
             UE_LOG(LogTemp, Display, TEXT("VROOM: Canvas PSO preparation submitted output=%dx%d"),
                 FMath::RoundToInt(Canvas->ClipX), FMath::RoundToInt(Canvas->ClipY));
         }
+        if (Car->Session.Phase != Vroom::SessionPhase::Menu || Car->AutoDemo)
+        {
         Rect(0, 0, W, H, PrepBg);
         const float X = W * .5f, Y = H * .5f;
         Text(TEXT("VROOM"), X, Y - 96, 19, RacingRed, true);
@@ -274,8 +276,9 @@ void AVroomHUD::DrawHUD()
         Rect(X - 120, Y + 105, 240, 3, FLinearColor(.1f, .15f, .18f, 1));
         Rect(X - 120 + Phase * 180, Y + 105, 60, 3, RacingRed);
         return;
+        }
     }
-    if (CanvasWarmupSubmitted)
+    if (CanvasWarmupSubmitted && !Car->PreparingCircuit)
     {
         // This preparation is complete. Arm a fresh pass for the next circuit
         // or graphics change, releasing the completed fence immediately.
@@ -514,7 +517,7 @@ void AVroomHUD::DrawHUD()
     Text(Car->Session.Mode==Vroom::SessionMode::GrandPrix?TEXT("POINTS"):TEXT("SCORE"),460,29,9,Silver);
     Text(FString::Printf(TEXT("%05d"),FMath::Clamp(Car->Session.Mode==Vroom::SessionMode::GrandPrix?Car->Session.ChampionshipPoints:Car->Score,0,99999)),458,43,26);
     Text(TEXT("STAGE"),598,29,9,Silver);Text(FString::Printf(TEXT("%02d"),Car->Session.Stage+1),597,43,26);
-    Text(TEXT("TOUR"),674,29,9,Silver);Text(Car->Session.LapTarget>0?FString::Printf(TEXT("%d/%d"),FMath::Min(Car->Lap,Car->Session.LapTarget),Car->Session.LapTarget):FString::Printf(TEXT("%02d"),Car->Lap),673,43,26);
+    Text(TEXT("TOUR"),674,29,9,Silver);Text(Car->Session.LapTarget>0?FString::Printf(TEXT("%d/%d"),FMath::Min(Car->ValidLaps+1,Car->Session.LapTarget),Car->Session.LapTarget):FString::Printf(TEXT("%02d"),Car->Lap),673,43,26);
     const FString Status=NeedsRecovery?TEXT("RETOUR EN PISTE"):Car->Session.QualifyingRun?TEXT("QUALIFICATION")
         :Car->Session.Solo()?TEXT("CONTRE LA MONTRE"):FString::Printf(TEXT("POSITION %02d / 13"),Car->Session.Position);
     Text(Status,461,79,10,NeedsRecovery?RacingRed:Ice);
@@ -556,22 +559,26 @@ void AVroomHUD::DrawHUD()
     }
     const float Fuel=FMath::Clamp(static_cast<float>(Car->Drive.Fuel),0.f,1.f);
     const float Tyres=FMath::Clamp(static_cast<float>(Car->Drive.TyreHealth/2048.),0.f,1.f);
+    const auto Budget=Vroom::MakeResourceBudget(!Car->Session.Solo(),Car->Session.Difficulty,
+        Circuit->LengthM(),Car->Session.LapTarget);
+    const bool FuelWarning=Fuel<Budget.CriticalFuel, TyreWarning=Tyres<Budget.CriticalTyres;
     const float SlotX=W-177;
     const float TyreX=SlotX;
     const float FuelX=SlotX+70;
     const FLinearColor Amber(.96f,.67f,.23f,1);
-    const FLinearColor TyreColor = Tyres < .15f ? RacingRed : (Tyres < .3f ? Amber : Ice);
+    const FLinearColor TyreColor = Tyres < .15f ? RacingRed : (TyreWarning ? Amber : Ice);
+    const FLinearColor FuelColor = Fuel < .15f ? RacingRed : (FuelWarning ? Amber : Ice);
     Text(TEXT("PNEUS"),TyreX,29,9,Silver);
     Text(FString::Printf(TEXT("%d%%"),FMath::RoundToInt(Tyres*100)),TyreX,43,16,TyreColor);
     Fill(TyreX,81,58,4,Tyres,TyreColor);
     Text(TEXT("ESSENCE"),FuelX,29,9,Silver);
-    Text(FString::Printf(TEXT("%d%%"),FMath::RoundToInt(Fuel*100)),FuelX,43,16,Fuel<.22f?RacingRed:Ice);
-    Fill(FuelX,81,58,4,Fuel,Fuel<.22f?RacingRed:Ice);
+    Text(FString::Printf(TEXT("%d%%"),FMath::RoundToInt(Fuel*100)),FuelX,43,16,FuelColor);
+    Fill(FuelX,81,58,4,Fuel,FuelColor);
     FString Alert;
     if(Car->Pit.Servicing)Alert=FString::Printf(TEXT("STAND · %s · %.1f s"),Car->Pit.NeedTyres&&Car->Pit.NeedFuel?TEXT("PNEUS + ESSENCE"):Car->Pit.NeedTyres?TEXT("PNEUS"):TEXT("ESSENCE"),Car->Pit.Remaining);
     else if(!Car->Session.Solo()&&Car->Pit.Available)Alert=FString::Printf(TEXT("STAND · %s PNEUS · %s ESSENCE · %s : LES DEUX"),*Vroom::Settings::BindingLabel(Vroom::Action::Tyres),*Vroom::Settings::BindingLabel(Vroom::Action::Refuel),Car->MouseSteer?TEXT("A / CLIC SOURIS"):TEXT("A"));
-    else if(!Car->Session.Solo()&&Car->Pit.InLane)Alert=TEXT("STANDS · S’ARRÊTER DANS L’EMPLACEMENT");
-    else if(!Car->Session.Solo()&&(Fuel<.22f||Tyres<.3f))Alert=FString::Printf(TEXT("%s%sSTANDS À DROITE APRÈS LA LIGNE"),Fuel<.22f?TEXT("ESSENCE BASSE · "):TEXT(""),Tyres<.3f?TEXT("PNEUS USÉS · "):TEXT(""));
+    else if(!Car->Session.Solo()&&Car->Pit.InLane)Alert=TEXT("STANDS · S’ARRÊTER DANS L’ALLÉE");
+    else if(!Car->Session.Solo()&&(FuelWarning||TyreWarning))Alert=FString::Printf(TEXT("%s%sSTANDS À DROITE APRÈS LA LIGNE"),FuelWarning?TEXT("PRÉVOIR ESSENCE · "):TEXT(""),TyreWarning?TEXT("PRÉVOIR PNEUS · "):TEXT(""));
     if(!Alert.IsEmpty()){Rounded(W*.5f-335,114,670,32,8,Panel);Text(Alert,W*.5f,121,13,Car->Pit.InLane?Ice:RacingRed,true);}
     if(Car->Session.Mode==Vroom::SessionMode::Arcade)
     {
@@ -631,7 +638,16 @@ void AVroomHUD::DrawHUD()
             static_cast<float>(Car->Drive.State.Rpm / Vroom::DriveModel::MaxRpm), RacingRed);
     }
 
-    if (!NeedsRecovery && (Car->Drive.Drifting || Car->Drive.BoostRemaining > 0))
+    const FLinearColor LandingAmber(.97f, .73f, .32f, 1.f);
+    if (!NeedsRecovery && Contact.ControlledTyreHop)
+    {
+        Text(TEXT("STABILISE LA RÉCEPTION"), W * .5f, H * .57f, 17, LandingAmber, true);
+        Fill(W * .5f - 100, H * .57f + 29, 200, 5, static_cast<float>(Contact.LandingControl), LandingAmber);
+    }
+    else if (!NeedsRecovery && Car->GetLandingFeedbackTime() > 0)
+        Text(Car->GetLandingQuality() >= .8 ? TEXT("RÉCEPTION PROPRE") : TEXT("RÉCEPTION À STABILISER"),
+            W * .5f, H * .57f, 17, Car->GetLandingQuality() >= .8 ? Ice : LandingAmber, true);
+    else if (!NeedsRecovery && (Car->Drive.Drifting || Car->Drive.BoostRemaining > 0))
     {
         const bool Boost = Car->Drive.BoostRemaining > 0 && !Car->Drive.Drifting;
         const FLinearColor Accent = Boost ? FLinearColor(.35f, 1.f, .88f, 1.f)
@@ -640,13 +656,16 @@ void AVroomHUD::DrawHUD()
         const float Charge = static_cast<float>(Car->Drive.DriftCharge);
         FString Feedback = TEXT("DÉRAPAGE");
         if (Boost) Feedback = Car->Drive.BoostTier >= 2 ? TEXT("SUPER BOOST") : TEXT("BOOST");
+        else if (Car->Drive.DriftControl < .35)
+            Feedback = Car->Drive.DriftDirection > 0 ? TEXT("CONTRE-BRAQUE À GAUCHE") : TEXT("CONTRE-BRAQUE À DROITE");
         else if (Charge >= 1.f) Feedback = TEXT("RELÂCHE : SUPER BOOST");
-        else if (Charge >= .4f) Feedback = TEXT("RELÂCHE : BOOST");
+        else if (Charge >= .42f) Feedback = TEXT("RELÂCHE : BOOST");
+        else Feedback = TEXT("GLISSE MAÎTRISÉE");
         Text(Feedback, W * .5f, Y, 17, Accent, true);
         Fill(X, Y + 29, 260, 5, Boost ? static_cast<float>(Car->Drive.BoostRemaining / (Car->Drive.BoostTier >= 2 ? 1.15 : .55))
             : Charge / 1.35f, Accent);
         if (!Boost)
-            for (float Threshold : {.4f, 1.f})
+            for (float Threshold : {.42f, 1.f})
                 Rect(X + 260 * Threshold / 1.35f, Y + 27, 2, 9, Paper);
     }
 }

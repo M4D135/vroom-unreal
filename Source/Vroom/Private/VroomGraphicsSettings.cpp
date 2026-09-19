@@ -9,6 +9,8 @@
 #include "HAL/IConsoleManager.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/ConfigCacheIni.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Modules/ModuleManager.h"
 #include "SceneUtils.h"
 
@@ -342,6 +344,17 @@ void Initialize()
     Applied.FrameCap = 2;
 #endif
     Load(Applied);
+    // Reproducible visible validation without modifying the player's saved profile.
+    int32 PreviewPreset = -1;
+    if (FParse::Value(FCommandLine::Get(), TEXT("VroomGraphicsPreset="), PreviewPreset)
+        && PreviewPreset >= 0 && PreviewPreset <= 3)
+    {
+        SetPreset(Applied, PreviewPreset);
+        Applied.FrameCap = 1;
+        Applied.VSync = true;
+        Applied.DLSSMode = 0;
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Temporary graphics preset=%d (preferences preserved)"), PreviewPreset);
+    }
     Pending = Applied;
     bInitialized = true;
     ApplyToEngine(Applied, false);

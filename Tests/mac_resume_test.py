@@ -51,6 +51,15 @@ class ResumeIdentityTests(unittest.TestCase):
         self.previous.update(completed=False, cases=[], failures=[{'name': 'left'}])
         verify_mac.validate_resume_identity(self.previous, self.current)
 
+    def test_different_graphics_profiles_cannot_reuse_validation(self):
+        self.previous['graphics_preset'] = 'performance'
+        self.current['graphics_preset'] = 'high'
+        self.assert_rejected()
+
+    def test_explicit_profile_cannot_reuse_implicit_player_settings(self):
+        self.current['graphics_preset'] = 'performance'
+        self.assert_rejected()
+
     def test_version_change_rejects_resume(self):
         self.previous['version'] = '0.29.0'
         self.assert_rejected()
@@ -142,11 +151,13 @@ class ResumeCaseTests(unittest.TestCase):
         self.previous = identity()
         self.previous.update(completed=False, cases=[])
 
-    def make_case(self, name='neutral', *, legacy=False, capture=False,
+    def make_case(self, name='neutral', *, legacy=False, capture=False, visible=False,
                   flags=None, seconds=5, resolution=(1440, 900), capture_after=3):
         request = dict(flags=list(flags or ['-VroomAutoDemo', '-VroomStartSpeed=0']),
                        seconds=seconds, capture=capture,
                        resolution=list(resolution), capture_after=capture_after)
+        if visible:
+            request.update(visible=True, offscreen=False)
         relative = Path('Saved/Validation') / (name + '.log')
         log = self.root / relative
         log.parent.mkdir(parents=True, exist_ok=True)
@@ -155,8 +166,9 @@ class ResumeCaseTests(unittest.TestCase):
                      f'-ResY={resolution[1]}', '-VroomVerify',
                      f'-abslog={log}', f'-VroomExitAfter={seconds}']
         if capture:
-            arguments += ['-RenderOffScreen', '-MetalOffscreenOnly', '-unattended',
-                          f'-VroomCapture={png}', f'-VroomCaptureAfter={capture_after}']
+            if not visible:
+                arguments += ['-RenderOffScreen', '-MetalOffscreenOnly', '-unattended']
+            arguments += [f'-VroomCapture={png}', f'-VroomCaptureAfter={capture_after}']
         arguments += request['flags']
         def log_argument(argument):
             if ' ' in argument:
@@ -167,10 +179,10 @@ class ResumeCaseTests(unittest.TestCase):
         log.write_text('LogInit: Command Line: ' + ' '.join(map(log_argument, arguments))
                        + '\nLogTemp: Display: VROOM: Version 0.30.0\n'
                        + 'LogTemp: Display: ' + check + '\n')
-        row = dict(name=name, exit=0, checks=[check], log=str(relative), offscreen=capture)
+        row = dict(name=name, exit=0, checks=[check], log=str(relative), offscreen=capture and not visible)
         if not legacy:
             row.update(status='PASS', request=copy.deepcopy(request))
-        if name.startswith(('perf-', 'soak-')) or name == 'motion':
+        if visible or name.startswith(('perf-', 'soak-')) or name == 'motion':
             status = 'foreground_before=0 foreground_after=1'
             row['foreground'] = (dict(exit=0, status=status) if legacy
                                  else dict(exit=0, stdout=status, stderr=''))
@@ -189,6 +201,35 @@ class ResumeCaseTests(unittest.TestCase):
                 self.previous['cases'].clear()
                 row, request, _ = self.make_case(legacy=legacy)
                 self.assertEqual(self.reusable(row, request), row)
+
+    def test_visible_capture_with_active_foreground_is_reusable(self):
+        row, request, log = self.make_case(capture=True, visible=True)
+        self.assertFalse(row['offscreen'])
+        self.assertTrue(request['visible'])
+        self.assertNotIn('-RenderOffScreen', log.read_text())
+        self.assertEqual(self.reusable(row, request), row)
+
+    def test_visible_capture_requires_successful_foreground_evidence(self):
+        row, request, _ = self.make_case(capture=True, visible=True)
+        for evidence in (None, {}, dict(exit=4, stdout='foreground_after=0', stderr='')):
+            with self.subTest(evidence=evidence):
+                row.pop('foreground', None)
+                if evidence is not None:
+                    row['foreground'] = evidence
+                self.assertIsNone(self.reusable(row, request))
+
+    def test_offscreen_capture_cannot_be_relabelled_visible(self):
+        row, request, log = self.make_case(capture=True, visible=True)
+        row['offscreen'] = True
+        self.assertIsNone(self.reusable(row, request))
+        row['offscreen'] = False
+        original = log.read_text()
+        # Recheck the command actually executed, not only mutable report labels.
+        for flag in ('-RenderOffScreen', '-MetalOffscreenOnly'):
+            with self.subTest(flag=flag):
+                log.write_text(original.replace('LogInit: Command Line: ',
+                                                f'LogInit: Command Line: {flag} '))
+                self.assertIsNone(self.reusable(row, request))
 
     def test_missing_case_is_not_reusable(self):
         _, request, _ = self.make_case()
@@ -532,12 +573,28 @@ class ResumeMainEvidenceTests(unittest.TestCase):
                 values = dict(argument.split('=', 1)
                               for argument in command[1:] if '=' in argument)
                 log = Path(values['-abslog'])
+                start_events = ''
+                if '-VroomStartTest' in command:
+                    def countdown(signals=(0, 1, 2)):
+                        clocks, columns = (-2.992, -1.992, .008), (2, 4, 5)
+                        return ''.join(
+                            f'VROOM: Start lights columns={columns[signal]} raceClock={clocks[signal]:.3f} signal={signal}\n'
+                            f'VROOM: Start beep signal={signal} frequency=880 duration=.20 raceClock={clocks[signal]:.3f}\n'
+                            for signal in signals)
+                    scenario = values.get('-VroomStartScenario')
+                    if scenario == 'restart':
+                        start_events += countdown((0, 1)) + 'VROOM: Start test restarted during countdown\n'
+                    start_events += countdown()
+                    if scenario == 'pause':
+                        start_events += 'VROOM: Start test resumed after pause\n'
                 log.write_text('LogInit: Command Line: ' + ' '.join(command[1:]) + '\n'
                                'LogTemp: Display: VROOM: Version 0.30.0\n'
                                'LogTemp: Display: VROOM: Verification PASS scenario=fixture\n'
                                'Progress self-test PASS\nMenu self-test PASS\n'
-                               'Settings self-test PASS\nDrift feedback PASS\n'
-                               'Graphics preview PASS\n')
+                               'Settings self-test PASS\nDrift feedback PASS\nDrift skill denied PASS\n'
+                               'Controlled landing quality=1.0\n'
+                               'Graphics preview PASS\nOffroad restart PASS\n'
+                               'Start integration PASS\nTrack geometry PASS\n' + start_events)
                 kwargs['stdout'].write('fake child stdout preserved\n')
                 if '-VroomCapture' in values:
                     Path(values['-VroomCapture']).write_bytes(png_bytes(

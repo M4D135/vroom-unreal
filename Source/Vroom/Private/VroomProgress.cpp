@@ -1,4 +1,5 @@
 #include "VroomProgress.h"
+#include "VroomGhostLap.h"
 #include "VroomGame.h"
 #include "VroomPlayerSettings.h"
 #include "VroomMenuLayout.h"
@@ -40,6 +41,13 @@ void Shutdown()
 }
 constexpr int FormatVersion=1;
 constexpr int MaxSamples=36000;
+FGhostSample LineSample(const FGhostSample& Previous,const FGhostSample& Current,double Alpha)
+{
+    FGhostSample Origin;
+    Origin.Location=FMath::Lerp(Previous.Location,Current.Location,Alpha);
+    Origin.Rotation=FQuat::Slerp(Previous.Rotation,Current.Rotation,Alpha).GetNormalized();
+    return Origin;
+}
 int Key(int Track,int Mode){return FMath::Clamp(Track,0,5)*3+FMath::Clamp(Mode,0,2);}
 FString File()
 {
@@ -168,8 +176,20 @@ bool RunSelfTest()
     auto Invalid=MakeShared<FJsonObject>();Invalid->SetNumberField(TEXT("version"),-1);
     const bool RejectInvalid=!Parse(Invalid);
     const bool Backup=Read(File()+TEXT(".bak")).IsValid();
-    const bool Pass=RoundTrip&&Interpolation&&RejectInvalid&&Backup;
-    UE_LOG(LogTemp,Display,TEXT("VROOM: Progress self-test %s roundtrip=%d delta=%d malformed=%d backup=%d isolated=%s"),Pass?TEXT("PASS"):TEXT("FAIL"),RoundTrip,Interpolation,RejectInvalid,Backup,*File());
+    FGhostSample Before,After;
+    Before.Distance=4359.8;After.Distance=4362.8;
+    Before.Location=FVector(980,40,7);After.Location=FVector(1010,70,10);
+    Before.Rotation=FQuat(FVector::UpVector,-.1);After.Rotation=FQuat(FVector::UpVector,.2);
+    const auto Crossing=FindLineCrossing(Before.Distance,After.Distance,4360);
+    const auto Origin=LineSample(Before,After,Crossing.Alpha);
+    const bool Anchor=Crossing.Valid&&Origin.Time==0&&Origin.Distance==0
+        &&Origin.Location.Equals(FVector(982,42,7.2),.00001)
+        &&Origin.Rotation.Equals(FQuat(FVector::UpVector,-.08),.00001);
+    const bool CleanGate=CanSubmitCleanLap(true,true,3,Origin.Time,Origin.Distance,10)
+        &&!CanSubmitCleanLap(false,true,3,0,0,10)&&!CanSubmitCleanLap(true,false,3,0,0,10)
+        &&!CanSubmitCleanLap(true,true,3,0,24,10);
+    const bool Pass=RoundTrip&&Interpolation&&RejectInvalid&&Backup&&Anchor&&CleanGate;
+    UE_LOG(LogTemp,Display,TEXT("VROOM: Progress self-test %s roundtrip=%d delta=%d malformed=%d backup=%d anchor=%d clean_gate=%d isolated=%s"),Pass?TEXT("PASS"):TEXT("FAIL"),RoundTrip,Interpolation,RejectInvalid,Backup,Anchor,CleanGate,*File());
     return Pass;
 }
 
@@ -214,33 +234,71 @@ void AVroomProgressTracker::Tick(float Dt)
     const int Track=Circuit->TrackIndex,Mode=static_cast<int>(Player->Session.Mode);
     const double Clock=Circuit->RaceClock,Length=Circuit->LengthM();
     const bool Changed=Track!=TrackIndex||Mode!=ModeIndex||Clock<LastClock-.01||!Circuit->Running;
-    if(Changed){Samples.Reset();Recording=false;ObservedLap=Player->Lap;SampleClock=-1;Clean=true;TrackIndex=Track;ModeIndex=Mode;}
-    LastClock=Clock;
-    if(!Diagnostic&&Circuit->Running&&Player->Lap>ObservedLap&&Recording)
+    if(Changed)
     {
-        if(Clean&&Player->LastLapClean&&Samples.Num()>=2&&Samples[0].Distance<=2.&&Player->LastLap>0)
+        Samples.Reset();Recording=false;ObservedLap=Player->Lap;SampleClock=-1;Clean=true;
+        HasPreviousFrame=false;TrackIndex=Track;ModeIndex=Mode;
+    }
+    Vroom::Progress::FGhostSample Frame;
+    Frame.Time=Clock;Frame.Distance=Player->Drive.State.DistanceM;
+    Frame.Location=Player->GetActorLocation();Frame.Rotation=Player->GetActorQuat();
+    const bool CrossedLap=Player->Lap==ObservedLap+1;
+    const double Line=(Player->Lap-1)*Length;
+    const auto Crossing=HasPreviousFrame&&!Changed
+        ? Vroom::Progress::FindLineCrossing(PreviousFrame.Distance,Frame.Distance,Line)
+        : Vroom::Progress::LineCrossing{};
+    Vroom::Progress::FGhostSample Origin;
+    if(Crossing.Valid)Origin=Vroom::Progress::LineSample(PreviousFrame,Frame,Crossing.Alpha);
+    if(!Diagnostic&&Circuit->Running&&Player->Lap>ObservedLap)
+    {
+        if(Recording&&CrossedLap&&Crossing.Valid&&Vroom::Progress::CanSubmitCleanLap(
+            Clean,Player->LastLapClean,Samples.Num(),Samples.IsEmpty()?-1:Samples[0].Time,
+            Samples.IsEmpty()?-1:Samples[0].Distance,Player->LastLap))
         {
-            Vroom::Progress::FGhostSample End;End.Time=Player->LastLap;End.Distance=Length;End.Location=Player->GetActorLocation();End.Rotation=Player->GetActorQuat();
+            auto End=Origin;End.Time=Player->LastLap;End.Distance=Length;
             if(End.Time>Samples.Last().Time)Samples.Add(End);
             Vroom::Progress::Submit(Track,Mode,Player->LastLap,Samples);
         }
         Samples.Reset();Recording=false;SampleClock=-1;Clean=true;
+        // Seed the next full lap at the observed timing line, not at the first
+        // 30-Hz sample, which can already be several metres beyond it.
+        if(CrossedLap&&Crossing.Valid)
+        {
+            Samples.Add(Origin);Recording=true;SampleClock=0;
+        }
     }
     ObservedLap=Player->Lap;
     const bool Active=Circuit->Running&&Clock>=0&&!Circuit->Paused&&Player->Session.Phase!=Vroom::SessionPhase::Finished;
     const double LapTime=FMath::Max(0.,Clock-Player->LapStart);
-    const double LapDistance=FMath::Clamp(Player->Drive.State.DistanceM-(Player->Lap-1)*Length,0.,Length);
+    const double LapDistance=FMath::Clamp(Frame.Distance-Line,0.,Length);
     if(Active&&!Diagnostic)
     {
-        Clean=Clean&&Player->LapClean&&FMath::Abs(Player->Drive.State.LateralM)<=Circuit->HalfWidthM+.4;
-        if(!Recording||LapTime-SampleClock>=1./30.)
+        if(!Recording)
         {
-            Vroom::Progress::FGhostSample S;S.Time=LapTime;S.Distance=LapDistance;S.Location=Player->GetActorLocation();S.Rotation=Player->GetActorQuat();
+            // Solo sessions can start exactly on the line. A standing race grid
+            // starts ahead of it: that shortened first lap never gets an anchor.
+            if(Crossing.Valid)
+                Samples.Add(Origin);
+            else if(Frame.Distance==Line&&LapTime==0)
+            {
+                Origin.Location=Frame.Location;Origin.Rotation=Frame.Rotation;Samples.Add(Origin);
+            }
+            else Clean=false;
+            Recording=true;
+            if(!Samples.IsEmpty())SampleClock=0;
+        }
+        // LapValidator owns off-road/contact/checkpoint validity, including the
+        // allowed pit lane. A second raw lateral-width test rejected legal pits.
+        Clean=Clean&&Player->LapClean;
+        if(LapTime-SampleClock>=1./30.)
+        {
+            auto S=Frame;S.Time=LapTime;S.Distance=LapDistance;
             if(!Samples.IsEmpty()&&(S.Time<=Samples.Last().Time||S.Distance<Samples.Last().Distance-.01))Clean=false;
             if(Samples.Num()<36000)Samples.Add(S);else Clean=false;
-            SampleClock=LapTime;Recording=true;
+            SampleClock=LapTime;
         }
     }
+    PreviousFrame=Frame;HasPreviousFrame=true;LastClock=Clock;
     const auto&G=Vroom::Progress::Record(Track,Mode).Ghost;
     bool Visible=Active&&Player->Session.Mode==Vroom::SessionMode::TimeTrial&&Vroom::Settings::Get().GhostEnabled&&G.Num()>1&&LapTime>=G[0].Time&&LapTime<=G.Last().Time;
     if(Visible)

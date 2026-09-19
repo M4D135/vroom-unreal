@@ -1,5 +1,5 @@
 #!/bin/bash
-# The native launcher reads the explicit validated-release manifest.
+# Same launcher as Desktop/Vroom.app; never select a build by its modification time.
 set -euo pipefail
 VROOM_LAUNCHER="$HOME/Applications/Vroom.app/Contents/MacOS/VroomLauncher"
 if [[ ! -x "$VROOM_LAUNCHER" ]]; then

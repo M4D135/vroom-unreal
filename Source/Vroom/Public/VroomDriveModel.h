@@ -12,7 +12,7 @@ struct DriveInput
 {
     double Throttle = 0, Brake = 0, Steer = 0;
     bool ShiftUp = false, ShiftDown = false;
-    // Arcade hop-drift. Keyboard also starts it from brake+steer.
+    // Deliberate hop-drift button; braking alone never initiates a drift.
     bool Drift = false;
 };
 
@@ -41,6 +41,10 @@ public:
     double SkidAmount = 0;
     bool Drifting = false;
     double DriftCharge = 0;
+    // Locked slide direction and current countersteer quality for HUD/feedback.
+    // Both are zero when idle; the internal slide retains its blend-out pose.
+    int DriftDirection = 0;
+    double DriftControl = 0;
     double BoostRemaining = 0;
     int BoostTier = 0;
     double HopHeightM = 0;
@@ -132,22 +136,38 @@ public:
     inline static constexpr double DriftEntrySteer = 0.22;
     inline static constexpr double DriftChargeBoost01 = 0.42;
     inline static constexpr double DriftChargeBoost02 = 1.00;
-    inline static constexpr double DriftLatGain = 0.20;
+    inline static constexpr double DriftLatGain = 0.060;
     inline static constexpr double DriftSlipGain = 0.28;
     inline static constexpr double DriftMaxSkidAngle = 0.52;
     inline static constexpr double DriftBlendInSeconds = 0.10;
     inline static constexpr double DriftBlendOutSeconds = 0.16;
+    inline static constexpr double DriftSettleSeconds = 0.24;
+    inline static constexpr double DriftControlGraceSeconds = 0.38;
+    inline static constexpr double DriftFullCounterLimitSeconds = 0.90;
+    inline static constexpr double DriftRearmSeconds = 0.24;
     // Chassis yaw has inertia independently of the immediate lateral controls.
     // Keep room for the road tangent's own angular acceleration in a bend.
     inline static constexpr double MaxChassisSlipAcceleration = 160.0 * 3.14159265358979323846 / 180.0;
     inline static constexpr double ChassisSlipFrequency = 18.0;
+
+    // Curve loading and grass steering loss build with speed. Applying the
+    // full arcade wash at walking pace made wash/steer almost speed-independent:
+    // a stopped car could skid, stall against grass friction and never turn in.
+    // Reach the existing handling exactly at 144 km/h, with a smooth endpoint.
+    inline static constexpr double FullCornerLoadSpeedMps = 40.0;
+    static double CornerLoad(double speedMps)
+    {
+        const double ratio = std::clamp(speedMps / FullCornerLoadSpeedMps, 0.0, 1.0);
+        const double load = ratio * ratio;
+        return load * load * (3.0 - 2.0 * load);
+    }
 
     static double ArcadeWashLatMps(double speedMps, double curvature)
     {
         // Fade out very small spline curvature without stepping the lateral
         // velocity when a bend crosses the former 0.0008 cutoff.
         const double t = std::clamp((std::abs(curvature) - 0.0004) / 0.0004, 0.0, 1.0);
-        return speedMps * curvature * ArcadeWashLengthM * t * t * (3.0 - 2.0 * t);
+        return speedMps * curvature * ArcadeWashLengthM * t * t * (3.0 - 2.0 * t) * CornerLoad(speedMps);
     }
 
     void ChangeTyres() { TyreHealth = 2048; }
@@ -155,14 +175,18 @@ public:
     double TyreCondition() const { return std::clamp(TyreHealth / 2048.0, 0.0, 1.0); }
     double TyreGrip() const { return .65 + .35 * TyreCondition(); }
 
-    void CancelArcadeEffects()
+    void CancelArcadeEffects(bool CancelHop = true)
     {
         Drifting = false;
         DriftCharge = DriftBlend = 0;
+        DriftDirection = 0;
+        DriftSlideDirection = 0;
+        DriftControl = DriftAge = DriftLostControl = DriftFullCounter = DriftReleaseAge = DriftArmAge = 0;
         DriftNeedsRelease = true;
         BoostRemaining = 0;
         BoostTier = 0;
-        HopHeightM = HopElapsed = HopDuration = HopPeakM = 0;
+        if (CancelHop)
+            HopHeightM = HopElapsed = HopDuration = HopPeakM = 0;
         ChassisSlipRate = 0;
         Skidding = false;
         SkidAmount = 0;
@@ -181,6 +205,10 @@ public:
         SkidAmount = 0;
         Drifting = false;
         DriftCharge = 0;
+        DriftDirection = 0;
+        DriftSlideDirection = 0;
+        DriftControl = DriftAge = DriftLostControl = DriftFullCounter = DriftArmAge = 0;
+        DriftReleaseAge = DriftRearmSeconds;
         DriftBlend = 0;
         DriftNeedsRelease = false;
         BoostRemaining = 0;
@@ -254,6 +282,10 @@ private:
     double HopPeakM = 0;
     double DriftBlend = 0;
     bool DriftNeedsRelease = false;
+    double DriftAge = 0, DriftLostControl = 0, DriftFullCounter = 0;
+    double DriftArmAge = 0;
+    int DriftSlideDirection = 0;
+    double DriftReleaseAge = DriftRearmSeconds;
 
     static double FiniteClamp(double value, double low, double high, double fallback)
     {
@@ -285,6 +317,8 @@ private:
         ChassisSlipRate = FiniteClamp(ChassisSlipRate, -3.0, 3.0, 0);
         ExtraLatVel = FiniteClamp(ExtraLatVel, -40, 40, 0);
         DriftCharge = FiniteClamp(DriftCharge, 0, 1.4, 0);
+        DriftControl = FiniteClamp(DriftControl, 0, 1, 0);
+        DriftDirection = std::clamp(DriftDirection, -1, 1);
         BoostRemaining = FiniteClamp(BoostRemaining, 0, 3, 0);
         BoostTier = std::clamp(BoostTier, 0, 2);
         HopHeightM = FiniteClamp(HopHeightM, 0, 1.5, 0);
@@ -328,36 +362,80 @@ private:
         const double speed = State.SpeedMps;
         const double grip = TyreGrip();
 
-        // Hop-drift on top of Vroom FROTT: hold brake+steer or Drift at speed.
-        // Chassis stays arcade-parallel; the extra slide is lateral + visual yaw.
+        // Lock the initial slide, then reward balancing it with countersteer.
+        // A short neutral crossing is allowed; holding either full lock forever
+        // cannot farm charge. Keyboard pulses have time to cross that window.
         const double edgeBlend = std::clamp((std::abs(State.LateralM) + 0.8 - roadHalfWidth) / 1.6, 0.0, 1.0);
-        const bool driftCommand = input.Drift || input.Brake >= DriftEntryBrake;
-        const bool driftSurfaceValid = speed >= DriftEntrySpeedMps && !airborne && edgeBlend < 0.92;
+        const bool driftCommand = input.Drift;
+        const bool driftRoadValid = std::abs(State.LateralM) <= roadHalfWidth - 0.25 && !airborne;
+        const bool driftSurfaceValid = speed >= DriftEntrySpeedMps && driftRoadValid && Fuel > 0 && input.Brake == 0;
         if (!driftCommand)
+        {
             DriftNeedsRelease = false;
-        const bool wantDrift = driftCommand && std::abs(input.Steer) >= DriftEntrySteer &&
-            driftSurfaceValid && !DriftNeedsRelease;
-        if (wantDrift)
-        {
-            if (!Drifting)
-                StartHop(0.42, 0.26);
-            Drifting = true;
-            DriftCharge = std::min(1.35, DriftCharge + h);
+            DriftArmAge = 0;
+            DriftReleaseAge = std::min(DriftRearmSeconds, DriftReleaseAge + h);
         }
-        else if (Drifting)
+        if (Drifting)
         {
-            // Reward a deliberate release on the road. Running onto grass,
-            // cresting a jump, slowing down or centering a held drift cancels
-            // the charge; it must not automatically grant or restart a turbo.
-            if (!driftCommand && driftSurfaceValid && input.Brake == 0 &&
-                DriftCharge >= DriftChargeBoost01)
+            DriftAge += h;
+            const double counter = -State.Steering * DriftDirection;
+            // Moderate opposite lock gives full control. Full digital lock is
+            // useful briefly, but must be relaxed before its .90 s limit.
+            const double target = std::clamp(.48 - std::abs(curvature) * 10.0, .28, .48);
+            DriftControl = counter <= .12 ? 0.0 : std::clamp((counter - .12) / (target - .12), 0.0, 1.0)
+                * (1.0 - .32 * std::clamp((counter - .75) / .25, 0.0, 1.0));
+            if (DriftAge > DriftSettleSeconds)
             {
-                BoostTier = DriftCharge >= DriftChargeBoost02 ? 2 : 1;
-                BoostRemaining = BoostTier == 2 ? 1.15 : 0.55;
+                DriftLostControl = DriftControl >= .30 ? std::max(0.0, DriftLostControl - 2.0 * h)
+                    : DriftLostControl + h;
+                DriftFullCounter = counter > .90 ? DriftFullCounter + h : std::max(0.0, DriftFullCounter - 3.0 * h);
+                if (DriftControl >= .30 && driftSurfaceValid)
+                    DriftCharge = std::min(1.35, DriftCharge + h * DriftControl);
+                else
+                    DriftCharge = std::max(0.0, DriftCharge - .18 * h);
             }
-            Drifting = false;
-            DriftCharge = 0;
-            DriftNeedsRelease = driftCommand;
+            const bool controlled = DriftLostControl < DriftControlGraceSeconds &&
+                DriftFullCounter < DriftFullCounterLimitSeconds;
+            if (!driftCommand || !driftSurfaceValid || !controlled)
+            {
+                // Centering while releasing is fine: recent control survives
+                // the wheel's neutral crossing. A long uncontrolled coast is not.
+                if (!driftCommand && driftSurfaceValid && controlled && DriftLostControl < .18 &&
+                    DriftCharge >= DriftChargeBoost01)
+                {
+                    BoostTier = DriftCharge >= DriftChargeBoost02 ? 2 : 1;
+                    BoostRemaining = BoostTier == 2 ? 1.15 : 0.55;
+                }
+                else
+                {
+                    BoostTier = 0;
+                    BoostRemaining = 0;
+                }
+                Drifting = false;
+                DriftDirection = 0;
+                DriftCharge = DriftControl = 0;
+                DriftNeedsRelease = driftCommand;
+                DriftReleaseAge = 0;
+            }
+        }
+        else if (driftCommand && !DriftNeedsRelease)
+        {
+            DriftArmAge += h;
+            if (std::abs(input.Steer) >= DriftEntrySteer && driftSurfaceValid &&
+                DriftReleaseAge >= DriftRearmSeconds && BoostRemaining <= 0)
+            {
+                StartHop(0.42, 0.26);
+                Drifting = true;
+                DriftDirection = DriftSlideDirection = input.Steer > 0 ? 1 : -1;
+                DriftCharge = DriftControl = DriftAge = DriftLostControl = DriftFullCounter = 0;
+                DriftReleaseAge = 0;
+            }
+            else if (DriftArmAge >= .16 || !driftSurfaceValid ||
+                DriftReleaseAge < DriftRearmSeconds || BoostRemaining > 0)
+            {
+                DriftNeedsRelease = true;
+                DriftReleaseAge = 0;
+            }
         }
         const double blendSeconds = Drifting ? DriftBlendInSeconds : DriftBlendOutSeconds;
         DriftBlend += ((Drifting ? 1.0 : 0.0) - DriftBlend) * (1.0 - std::exp(-h / blendSeconds));
@@ -408,6 +486,7 @@ private:
         {
             Skidding = true;
             SkidAmount = std::max(SkidAmount, DriftBlend * std::clamp(0.42 + DriftCharge * 0.4, 0.42, 1.0));
+            TyreHealth = std::max(0.0, TyreHealth - (5.0 + 5.0 * (1.0 - DriftControl)) * DriftBlend * h);
         }
 
         double rollingMoment = airborne ? 4.0 : 10.0 + 198.0 * edgeBlend;
@@ -420,7 +499,7 @@ private:
         const double torque = (ShiftDelay > 0 || wheelRpm >= MaxRpm) ? 0.0 : TorqueAt(State.Rpm) * input.Throttle;
         const double netMoment = torque - brakeMoment - airMoment - 10.0 - rollingMoment;
         double acceleration = (256.0 * 20.0 / (GearInertia[gear] * 5.4)) * netMoment;
-        if (input.Brake > 0 || edgeBlend >= 0.92)
+        if (input.Brake > 0 || !driftRoadValid || Fuel <= 0)
         {
             BoostRemaining = 0;
             BoostTier = 0;
@@ -441,11 +520,11 @@ private:
         ExtraLatVel *= std::exp(-h / 0.16);
         double steerLat = ArcadeSteerLatMps(State.Steering, State.SpeedMps) * grip;
         if (edgeBlend > 0 && !airborne)
-            steerLat *= 1.0 - 0.5 * edgeBlend;
+            steerLat *= 1.0 - 0.5 * edgeBlend * CornerLoad(speed);
         if (airborne)
             steerLat *= 0.88;
-        double latVel = steerLat - wash + ExtraLatVel;
-        latVel += DriftBlend * State.Steering * std::min(State.SpeedMps, 54.0) * DriftLatGain;
+        double latVel = steerLat * (1.0 - .70 * DriftBlend) - wash + ExtraLatVel;
+        latVel += DriftBlend * DriftSlideDirection * std::min(State.SpeedMps, 54.0) * DriftLatGain;
         const double metric = std::clamp(1.0 - curvature * State.LateralM, 0.3, 3.0);
         const double progress = State.SpeedMps / metric;
         VelocityHeadingRad = 0;
@@ -454,7 +533,7 @@ private:
         const double sideslip = std::atan2(latVel, std::max(State.SpeedMps, 1.0));
         double slipTarget = sideslip * 0.55
             + State.Steering * 0.05 * std::clamp(State.SpeedMps / (State.SpeedMps + 14.0), 0.0, 1.0);
-        slipTarget = std::clamp(slipTarget + DriftBlend * State.Steering * DriftSlipGain,
+        slipTarget = std::clamp(slipTarget + DriftBlend * DriftSlideDirection * DriftSlipGain,
             -DriftMaxSkidAngle, DriftMaxSkidAngle);
         // A first-order follower changes angular velocity instantly when a
         // brake tap starts/stops a drift. Preserve angular velocity instead.

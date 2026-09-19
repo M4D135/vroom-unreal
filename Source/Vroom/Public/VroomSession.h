@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include "VroomTrackLayout.h"
 
 namespace Vroom
 {
@@ -189,8 +190,13 @@ struct PitStopModel
     void Locate(double Distance, double Lateral, double Speed, double Length)
     {
         const double S = Along(Distance, Length);
-        InLane = S >= 55 && S <= 190 && Lateral >= 10.5 && Lateral <= 14.5;
-        Available = S >= 96 && S <= 108 && Lateral >= 11 && Lateral <= 14 && Speed < .5;
+        InLane = S >= TrackLayout::PitEntry && S <= TrackLayout::PitExit
+            && std::isfinite(Lateral)
+            && std::abs(Lateral - TrackLayout::PitCenterAt(S, 4.75)) <= TrackLayout::PitHalfWidth;
+        // Forgiving service area along the straight pit lane. Entry/exit
+        // connectors and the racing surface never grant a pit service.
+        Available = InLane && S >= 65 && S <= 180 && Lateral >= 10.5 && Lateral <= 14.5
+            && std::isfinite(Speed) && std::abs(Speed) < .8;
     }
     bool Request(bool Tyres, bool Fuel)
     {

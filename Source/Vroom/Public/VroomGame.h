@@ -5,7 +5,7 @@
 // Version affichee dans le HUD et le journal : le seul temoin de build fiable.
 namespace Vroom
 {
-inline constexpr const TCHAR* AppVersion = TEXT("0.32");
+inline constexpr const TCHAR* AppVersion = TEXT("0.33");
 }
 #include "GameFramework/Pawn.h"
 #include "GameFramework/HUD.h"
@@ -69,9 +69,11 @@ public:
     float Curvature(float DistanceM) const;
     Vroom::ElevationPose Elevation(float DistanceM) const;
     float LengthM() const;
+    float TerrainHeightAt(const FVector& Point) const;
+    bool VerifyTrackGeometry() const;
     const FVroomTrack* CurrentTrack() const;
     bool SweepScenery(const FVector& PreviousCenter, const FVector& Center, const FQuat& CarRotation,
-        double& OutFraction, FVector& OutNormal) const;
+        double& OutFraction, FVector& OutNormal, bool IgnoreSeparatingInitialContact = false) const;
     UPROPERTY() TObjectPtr<USplineComponent> Spline;
     UPROPERTY() TObjectPtr<UProceduralMeshComponent> Surface;
     UPROPERTY() TObjectPtr<UProceduralMeshComponent> Terrain;
@@ -153,6 +155,8 @@ public:
     void SetDifficulty(Vroom::RaceDifficulty Difficulty);
     void SelectSessionTrack(int32 Index);
     void HandleAction(Vroom::Action Action);
+    double GetLandingFeedbackTime() const { return LandingFeedbackTime; }
+    double GetLandingQuality() const { return LandingQuality; }
     bool PreparingCircuit = false;
     uint32 PendingRenderJobs = 0;
     UPROPERTY() TObjectPtr<USceneComponent> MirrorRoot;
@@ -259,11 +263,22 @@ public:
     FString CapturePath;
     FString TestImpact;
     bool TestPrepared = false;
+    int32 OffroadTestSide = 0;
+    double OffroadStartDistance = 0;
+    bool OffroadReturned = false;
+    bool StartTest = false, StartTestStationary = true;
+    FString StartTestScenario;
+    int32 StartTestPhase = 0;
+    double StartTestPauseRemaining = 0, StartTestPauseClock = 0;
+    double StartTestDistance = 0;
+    TArray<double> StartTestOpponents;
     bool PitTest = false, PitTestStationary = true, PitTestCompleted = false;
     double PitTestOpponentStart = 0;
     int32 TestContacts = 0;
     int32 TestRespawns = 0;
     int32 TestVisibilityErrors = 0;
+    int32 TestControlledLandings = 0;
+    double LandingFeedbackTime = 0, LandingQuality = 0;
     double TestSeconds = 0;
     void SimulateStep(const Vroom::DriveInput& Input, double H);
     void PlaceOnStartingGrid();

@@ -1,3 +1,38 @@
+# Performances — Vroom 0.33
+
+## Mesures du 19 septembre 2026
+
+Les huit profils du même package passent, sous fenêtres visibles et actives, sur Apple M5 / 24 Gio / macOS 26.4 / UE 5.8 Metal. Réglage : Performance, **70 % interne, TAA, 60 FPS avec VSync**. Les valeurs ci-dessous excluent 120 images de démarrage par profil. Le [rapport complet 0.33](FINALISATION_033.md) consigne aussi les contrôles de caméra et les empreintes du package.
+
+| Profil | Images analysées | FPS moyen | P99 ms | Max ms | Images >20 ms | Verdict / CSV |
+|---|---:|---:|---:|---:|---:|---|
+| 1440 × 900 | 1680 | 59.99 | 16.926 | 17.031 | 0 | PASS, `Profile(20260919_175711).csv` |
+| 2560 × 1664 | 1680 | 59.99 | 16.963 | 17.050 | 0 | PASS, `Profile(20260919_175747).csv` |
+| Autriche | 7680 | 59.99 | 16.969 | 18.190 | 0 | PASS, `Profile(20260919_175823).csv` |
+| France | 7680 | 59.99 | 16.977 | 18.433 | 0 | PASS, `Profile(20260919_180043).csv` |
+| États-Unis | 7680 | 59.99 | 16.966 | 18.031 | 0 | PASS, `Profile(20260919_180301).csv` |
+| Suède | 7680 | 59.99 | 17.008 | 19.938 | 0 | PASS, `Profile(20260919_180522).csv` |
+| Japon | 7680 | 59.99 | 16.946 | 18.254 | 0 | PASS, `Profile(20260919_180740).csv` |
+| Royaume-Uni | 7680 | 59.99 | 16.919 | 18.196 | 0 | PASS, `Profile(20260919_180959).csv` |
+
+Commande : `python3 Tools/verify_mac.py --visible --graphics-preset performance --profile --soak`. Le profil est appliqué temporairement ; la comparaison et toute reprise conservent les réglages explicitement mesurés. Les scénarios fonctionnels sont également visibles avec cette commande.
+
+
+### Comparaison complémentaire du profil Élevé
+
+Deux diagnostics visibles supplémentaires du même package mesurent le profil Élevé, à 100 % interne avec TSR et Lumen, sur 1 680 images analysées après 120 images exclues. Ils ne remplacent pas les six tours du profil Performance.
+
+| Sortie | FPS moyen | P99 ms | Max ms | Images >20 ms | Résultat |
+|---|---:|---:|---:|---:|---|
+| 1440 × 900 | 60,00 | 16,930 | 17,155 | 0 | PASS |
+| 2560 × 1664 | 25,90 | 47,591 | 56,100 | 1680 | ÉCHEC des seuils 60 FPS |
+
+À haute définition, le temps GPU moyen de 38,49 ms est proche du temps image de 38,61 ms ; le thread de jeu reste à 1,71 ms. Ce diagnostic désigne le coût graphique comme la limite de cette mesure. Le profil Performance a été appliqué dans le panneau du jeu installé pour privilégier la fluidité ; l’ancien fichier de préférences est sauvegardé. Preuve complémentaire : `Saved/Validation/v033/high-profile/results.json`.
+
+## Historique 0.30 — mesures conservées
+
+Les sections suivantes concernent les versions antérieures ; elles ne sont pas les mesures de la 0.33.
+
 # Fluidité — Vroom 0.30
 
 **Le package Mac 0.30 passe la série automatisée du 13 septembre 2026** : huit profils de cadence, six tours complets et la trace courte de mouvement. Le rapport `Saved/Validation/v0.30.0/20260913-030921-package/results.json` est complet, sans échec. Les mesures ont été effectuées en fenêtre sous verrouillage (`onscreen_locked`), sans essai interactif. Les résultats détaillés figurent en fin de page ; [VALIDATION.md](VALIDATION.md) identifie le build et les empreintes.

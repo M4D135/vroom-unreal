@@ -43,6 +43,7 @@ int main()
         Check(slow.TryContact(query).Kind == ContactKind::None, "persistent overlap does not repeat an impact");
     query.PreviousGapM = query.GapM = 9;
     Check(slow.TryContact(query).Kind == ContactKind::None, "separation is not an impact");
+    Run(slow, ContactModel::PairContactCooldownSeconds + .05);
     Check(slow.TryContact(Approach(60, 50)).Kind == ContactKind::SlowImpact, "the pair rearms after separation");
 
     ContactModel low;
@@ -66,8 +67,15 @@ int main()
           "another overlapping car cannot crash the protected recovery");
 
     ContactModel tyreSlow;
-    Check(tyreSlow.TryContact(Approach(40, 30, 1.6)).Kind == ContactKind::SlowImpact,
-          "a low-speed tyre touch remains small rather than jumping");
+    const auto wheelBrush = tyreSlow.TryContact(Approach(40, 30, 1.6));
+    Check(wheelBrush.Kind == ContactKind::TyreJump && wheelBrush.ControlledTyreHop,
+          "a moving low-relative-speed tyre brush produces a controlled small hop");
+    Check(wheelBrush.SpeedAfterMps > 38.8 && !tyreSlow.State.ControlsLocked && !tyreSlow.State.JumpWillBreakTyres,
+          "small wheel hop preserves momentum and air control without damaging tyres");
+    tyreSlow.Step(tyreSlow.State.PhaseDuration * .5);
+    Check(tyreSlow.State.HeightM >= .10 && tyreSlow.State.HeightM <= .32
+          && std::abs(tyreSlow.State.PitchRad) < .04 && std::abs(tyreSlow.State.RollRad) < .023,
+          "wheel brush has a small stable cockpit arc instead of the large crash jump");
     ContactModel jump;
     impact = jump.TryContact(Approach(30 + threshold, 30, 1.6));
     Check(impact.Kind == ContactKind::TyreJump, "fast tyre contact takes the jump branch");
@@ -226,9 +234,219 @@ int main()
     Check(Slow.Kind == ContactKind::SlowImpact && Graze.State.Phase == ContactPhase::Driving,
           "a slow scenery graze does not lock the car into recovery");
     Check(Slow.SpeedAfterMps > 3 && Slow.SpeedAfterMps < 10, "a graze keeps residual speed");
+    for (int side : {-1, 1})
+    {
+        ContactModel sideGraze;
+        const auto hit = sideGraze.ForceObjectGraze(5, side);
+        Check(hit.Kind == ContactKind::SlowImpact && hit.ImpactSide == side
+              && hit.LateralShoveMps * side < 0 && !sideGraze.State.ControlsLocked,
+              "a slow obstacle graze pushes away from either wall without locking controls");
+        const std::array<std::array<double, 3>, 3> identity = {{{1,0,0},{0,1,0},{0,0,1}}};
+        std::array<double, 3> normal{};
+        double fraction = -1;
+        // Car is exactly touching the outside of an axis-aligned obstacle;
+        // moving out still returns an initial SAT overlap, with an outward
+        // normal. The caller uses positive motion dot normal to allow escape.
+        const std::array<double, 3> from = {0, -2.0 * side, 0};
+        const std::array<double, 3> away = {0, -2.1 * side, 0};
+        Check(ContactModel::SweepOrientedObstacle(from, away, {3,1,1}, identity, {1,1,1}, fraction, normal)
+              && Near(fraction, 0) && Near(normal[1], -side)
+              && (away[1] - from[1]) * normal[1] > 0,
+              "SAT reports a finite outward normal for initial separating contact on either wall");
+        Check(ContactModel::SeparatingAtStart(fraction, from, away, normal),
+              "moving away from a wall can clear its initial overlap");
+        const std::array<double, 3> inward = {0, -1.9 * side, 0};
+        Check(!ContactModel::SeparatingAtStart(fraction, from, inward, normal),
+              "moving farther into an initially touching wall remains a real contact");
+        Check(ContactModel::SeparatingAtStart(0, from, {1, from[1], 0}, normal)
+              && !ContactModel::SeparatingAtStart(.5, from, away, normal),
+              "sliding along an initial wall is allowed but a future swept hit is never discarded");
+        Check(!ContactModel::SeparatingAtStart(0, from, away, {0,0,0})
+              && !ContactModel::SeparatingAtStart(0, from, away, {0,std::numeric_limits<double>::quiet_NaN(),0}),
+              "an invalid normal cannot make a contact disappear");
+    }
     const auto Hard = Graze.ForceObjectGraze(30, -1);
     Check(Hard.Kind == ContactKind::Crash && Graze.State.Phase == ContactPhase::Crashed,
           "a fast scenery hit still becomes a crash");
+
+    ContactModel rear, hardRear, rearWheel;
+    query = {21, -4.5, -4.0, 0, 0, 30, 40};
+    impact = rear.TryContact(query);
+    Check(impact.Kind == ContactKind::SlowImpact && impact.Face == ContactFace::Rear
+          && impact.SpeedAfterMps < 30 && impact.SpeedAfterMps > 27,
+          "a pursuing car hits the rear without adding speed or inventing a frontal crash");
+    query.PlayerSpeedMps = 30; query.OpponentSpeedMps = 65;
+    impact = hardRear.TryContact(query);
+    Check(impact.Kind == ContactKind::Crash && hardRear.State.ControlsLocked
+          && impact.SpeedAfterMps <= 30 && hardRear.State.TyresBroken,
+          "a severe rear impact is penalized and cannot catapult the player forward");
+    query.PlayerSpeedMps = 35; query.OpponentSpeedMps = 45; query.PreviousLateralGapM = query.LateralGapM = -1.6;
+    impact = rearWheel.TryContact(query);
+    Check(impact.ControlledTyreHop && impact.Face == ContactFace::Rear && impact.LateralShoveMps > 0,
+          "a light rear wheel contact hops and shoves away from the other car");
+
+    auto SideApproach = [](double velocity, double step, int side = 1, int id = 22) {
+        return ContactQuery{id, 0, 0, side * 1.96, side * (1.96 - velocity * step), 40, 40, step};
+    };
+    for (double step : {1.0/30, 1.0/60, 1.0/120})
+        for (int side : {-1, 1})
+        {
+            ContactModel lateral;
+            impact = lateral.TryContact(SideApproach(4, step, side));
+            Check(impact.ControlledTyreHop && impact.Face == ContactFace::Side
+                  && Near(impact.RelativeSpeedMps, 4) && impact.LateralShoveMps * side < 0,
+                  "equal-speed cars still detect a lateral wheel brush at every fixed rate and side");
+            Check(impact.HitFraction > 0 && impact.HitFraction < 1, "side telemetry reports the swept contact fraction");
+            ContactModel violentSide;
+            impact = violentSide.TryContact(SideApproach(ContactModel::SideCrashSpeedMps, step, side));
+            Check(impact.Kind == ContactKind::Crash && violentSide.State.TyresBroken,
+                  "a violent side swipe always crashes instead of granting a small hop");
+        }
+    ContactModel fastGlance;
+    query = SideApproach(2, 1.0/120); query.PlayerSpeedMps = 110; query.OpponentSpeedMps = 20;
+    impact = fastGlance.TryContact(query);
+    Check(impact.Kind == ContactKind::TyreJump && !impact.ControlledTyreHop && fastGlance.State.JumpWillBreakTyres,
+          "a huge tangential speed difference is not disguised as harmless lateral rubbing");
+    ContactModel parked;
+    query = {23, 0, 0, 1.6, 1.6, 0, 0};
+    Check(parked.TryContact(query).Kind == ContactKind::None, "stationary overlap does not launch or lock the car");
+    query = Approach(1, 0, 1.6, 24);
+    Check(parked.TryContact(query).Kind == ContactKind::SlowImpact && !parked.State.ControlsLocked,
+          "parking-speed wheel rub does not create pogo jumps or recovery locks");
+    ContactModel escaping;
+    query = {25, 0, 0, 1.7, 2.0, 40, 40};
+    Check(escaping.TryContact(query).Kind == ContactKind::None, "separating lateral overlap does not hit again");
+
+    ContactModel cooldown;
+    Check(cooldown.TryContact(Approach(50, 40)).Kind == ContactKind::SlowImpact, "cooldown test starts with a contact");
+    query = Approach(50, 40); query.PreviousGapM = query.GapM = 10;
+    cooldown.TryContact(query);
+    Check(cooldown.TryContact(Approach(50, 40)).Kind == ContactKind::None, "instant separation/recontact cannot farm a pair");
+    Run(cooldown, 1);
+    Check(cooldown.TryContact(Approach(50, 40)).Kind == ContactKind::None,
+          "a recontact suppressed during cooldown stays latched after the timer expires");
+    cooldown.TryContact(query);
+    Check(cooldown.TryContact(Approach(50, 40)).Kind == ContactKind::SlowImpact,
+          "real separation after cooldown permits a later independent impact");
+
+    ContactModel hopFarm;
+    hopFarm.TryContact(Approach(50, 40, 1.6, 1));
+    Run(hopFarm, .6);
+    impact = hopFarm.TryContact(Approach(50, 40, 1.6, 2));
+    Check(impact.Kind == ContactKind::SlowImpact && !impact.ControlledTyreHop,
+          "alternating opponent IDs cannot chain small hops after landing");
+    Run(hopFarm, 1);
+    Check(hopFarm.TryContact(Approach(50, 40, 1.6, 3)).ControlledTyreHop,
+          "a fresh wheel contact after the global cooldown can hop again");
+    ContactModel interruptedHop;
+    interruptedHop.TryContact(Approach(50, 40, 1.6, 1));
+    interruptedHop.Step(.1, 1);
+    const double hopHeight = interruptedHop.State.HeightM;
+    impact = interruptedHop.TryContact(Approach(80, 20, 0, 2));
+    Check(impact.Kind == ContactKind::Crash && interruptedHop.State.ControlsLocked
+          && Near(interruptedHop.State.HeightM, hopHeight),
+          "a small hop is not invulnerability to a different severe contact and retains impact height");
+
+    for (double relative : {15.0/3.6, 40.0/3.6, 60.0/3.6})
+        for (int side : {-1, 1})
+            for (double steering : {-1.0, 0.0, 1.0})
+            {
+                ContactLanding previousLanding;
+                for (double step : {1.0/30, 1.0/60, 1.0/120})
+                {
+                    ContactModel skill;
+                    skill.TryContact(Approach(40 + relative, 40, side * 1.6));
+                    for (int frame = 0; frame < int(std::round(.6 / step)); ++frame) skill.Step(step, steering * side);
+                    const auto landing = skill.ConsumeLanding();
+                    Check(landing.JustLanded && !skill.ConsumeLanding().JustLanded && !skill.ConsumeRespawn(),
+                          "a controlled landing emits exactly one event and no forced repositioning");
+                    const double expected = steering > 0 ? 1.0 : (steering < 0 ? .94 : .97);
+                    Check(Near(landing.SpeedRetention, expected) && landing.SpeedRetention <= 1,
+                          "countersteer preserves momentum; wrong/no correction costs speed without any boost");
+                    Check(landing.LateralVelocityRetention >= .30 - 1.e-9 && landing.LateralVelocityRetention <= .75,
+                          "landing damps residual shove instead of reversing or amplifying it");
+                    if (previousLanding.JustLanded)
+                        Check(Near(landing.LandingControl, previousLanding.LandingControl),
+                              "landing skill score agrees at 30, 60 and 120 Hz");
+                    previousLanding = landing;
+                }
+            }
+    ContactModel keyboardCorrection;
+    keyboardCorrection.TryContact(Approach(50, 40, 1.6));
+    for (int frame = 0; frame < 72; ++frame)
+        keyboardCorrection.Step(1.0/120, frame >= 12 && frame < 26 ? 1 : 0);
+    const auto corrected = keyboardCorrection.ConsumeLanding();
+    Check(corrected.JustLanded && corrected.LandingControl > .7 && corrected.SpeedRetention > .98,
+          "a short countersteer tap after a 100ms keyboard reaction still earns a clean recovery");
+    ContactModel pausedHop;
+    pausedHop.TryContact(Approach(50, 40, 1.6));
+    pausedHop.Step(0, 1);
+    Check(pausedHop.State.PhaseElapsed == 0 && !pausedHop.ConsumeLanding().JustLanded,
+          "paused time does not advance the airborne skill window");
+    pausedHop.Step(.1, std::numeric_limits<double>::quiet_NaN());
+    Check(std::isfinite(pausedHop.State.LandingControl), "invalid control input cannot poison the landing result");
+    pausedHop.Reset();
+    Check(!pausedHop.ConsumeLanding().JustLanded, "reset clears a pending landing event");
+    query = SideApproach(4, 1.0/120); query.StepSeconds = 0;
+    Check(pausedHop.TryContact(query).Kind == ContactKind::None, "invalid contact duration is rejected");
+
+    double inheritedAtPoint = -1;
+    for (double step : {1.0/30, 1.0/60, 1.0/120})
+    {
+        ContactModel inherited, baseline;
+        inherited.TryContact(Approach(50, 40, 1.6));
+        baseline.TryContact(Approach(50, 40, 1.6));
+        const double duration = inherited.State.PhaseDuration;
+        inherited.InheritHopHeight(.3);
+        Check(Near(inherited.State.HeightM, .3) && inherited.State.PhaseElapsed == 0
+              && Near(inherited.State.PhaseDuration, duration) && !inherited.State.ControlsLocked,
+              "a wheel hit inherits a 30 cm drift hop continuously without restarting or locking controls");
+        for (int frame = 0; frame < int(std::round(.2 / step)); ++frame)
+        {
+            inherited.Step(step, 1); baseline.Step(step, 1);
+            Check(inherited.State.HeightM >= baseline.State.HeightM
+                  && inherited.State.HeightM <= .3 + .32,
+                  "transferred hop height decays above the original arc without an unbounded extra launch");
+        }
+        const double remaining = 1 - inherited.State.PhaseElapsed / duration;
+        Check(Near(inherited.State.HeightM - baseline.State.HeightM, .3 * remaining * remaining),
+              "the old hop contribution fades smoothly toward the same landing");
+        if (inheritedAtPoint >= 0)
+            Check(Near(inherited.State.HeightM, inheritedAtPoint), "inherited hop height agrees at 30, 60 and 120 Hz");
+        inheritedAtPoint = inherited.State.HeightM;
+        Run(inherited, 1, step);
+        Check(inherited.State.Phase == ContactPhase::Driving && Near(inherited.State.HeightM, 0)
+              && inherited.ConsumeLanding().JustLanded && !inherited.ConsumeRespawn(),
+              "transferred small hop lands once at zero height without a forced repositioning");
+
+        ContactModel inheritedCrash;
+        inheritedCrash.ForceObjectCrash(30, 1);
+        inheritedCrash.InheritHopHeight(.3);
+        Check(Near(inheritedCrash.State.HeightM, .3) && inheritedCrash.State.ControlsLocked
+              && inheritedCrash.State.TyresBroken,
+              "a crash inherits the visible hop height and preserves its severe penalty");
+        inheritedCrash.Step(step);
+        Check(inheritedCrash.State.HeightM > .25,
+              "an inherited airborne wreck falls gradually instead of dropping to ground next step");
+        Run(inheritedCrash, 5, step);
+        Check(Near(inheritedCrash.State.HeightM, 0) && inheritedCrash.ConsumeRespawn(),
+              "inherited crash height finishes on the ground through the ordinary recovery");
+    }
+    ContactModel interruptedTransfer;
+    interruptedTransfer.TryContact(Approach(50, 40, 1.6));
+    interruptedTransfer.InheritHopHeight(.3);
+    interruptedTransfer.Step(.1);
+    const double beforeSecondHit = interruptedTransfer.State.HeightM;
+    interruptedTransfer.TryContact(Approach(80, 20, 0, 2));
+    interruptedTransfer.InheritHopHeight(0);
+    Check(Near(interruptedTransfer.State.HeightM, beforeSecondHit),
+          "a severe second hit preserves the previously transferred hop without double-counting it");
+    interruptedTransfer.InheritHopHeight(std::numeric_limits<double>::quiet_NaN());
+    interruptedTransfer.InheritHopHeight(-1);
+    Check(Near(interruptedTransfer.State.HeightM, beforeSecondHit), "invalid inherited heights are ignored");
+    interruptedTransfer.Reset();
+    interruptedTransfer.TryContact(Approach(50, 40, 1.6));
+    Check(interruptedTransfer.State.HeightM == 0, "reset clears the inherited hop origin");
 
     if (Failures)
         return EXIT_FAILURE;

@@ -65,5 +65,50 @@ int main()
     assert(!Pit.Servicing && Pit.Remaining==0 && Pit.NeedFuel && Pit.NeedTyres);
     assert(!Pit.Step(1));
     Pit.Locate(102,-12.5,0,5000); assert(!Pit.Available);
-    std::cout << "PASS: modes, qualification/grid, results/points, six-stage progression, arcade limits, timed pit service\n";
+    // Stopping anywhere in the usable straight pit lane is sufficient; the
+    // driver need not hunt for the old 12-metre box at S=96..108.
+    for(double S:{65.0,66.0,102.0,150.0,179.0,180.0})
+        for(double Lateral:{10.5,12.5,14.5})
+            for(double Speed:{-.79,0.0,.79})
+            {
+                PitStopModel Wide;
+                Wide.Locate(S+5000,Lateral,Speed,5000);
+                assert(Wide.InLane && Wide.Available && !Wide.Servicing);
+                assert(!Wide.Request(false,false));
+                assert(Wide.Request(true,true) && Wide.Duration==7);
+                assert(!Wide.Step(.5) && Wide.Remaining==6.5);
+                assert(!Wide.Request(true,true) && !Wide.Request(false,true));
+                assert(Wide.Duration==7 && Wide.Remaining==6.5);
+                assert(Wide.Step(6.5) && !Wide.Servicing);
+                assert(!Wide.Step(1) && Wide.Remaining==0);
+            }
+    // The painted connectors are legal track surface, but not service bays.
+    for(double S:{31.0,43.0,55.0,64.999,180.001,190.0,202.0,214.0})
+    {
+        PitStopModel Connector;
+        Connector.Locate(S,TrackLayout::PitCenterAt(S,4.75),0,5000);
+        assert(Connector.InLane && !Connector.Available && !Connector.Request(true,true));
+    }
+    for(double Lateral:{-12.5,-4.75,0.0,4.75,10.499,14.501})
+    {
+        PitStopModel Outside;
+        Outside.Locate(120,Lateral,0,5000);
+        assert(!Outside.Available && !Outside.Request(true,true));
+    }
+    for(double Speed:{-.8,.8,5.0,16.0,std::numeric_limits<double>::infinity(),
+                      std::numeric_limits<double>::quiet_NaN()})
+    {
+        PitStopModel Passing;
+        Passing.Locate(120,12.5,Speed,5000);
+        assert(Passing.InLane && !Passing.Available && !Passing.Request(true,true));
+    }
+    for(bool Tyres:{false,true})
+    {
+        PitStopModel SingleService;
+        SingleService.Locate(170,12.5,0,5000);
+        assert(SingleService.Request(Tyres,!Tyres));
+        assert(SingleService.Duration==(Tyres?4:3));
+        assert(SingleService.Step(SingleService.Duration) && !SingleService.Servicing);
+    }
+    std::cout << "PASS: modes, qualification/grid, results/points, six-stage progression, arcade limits, forgiving single-request pit service\n";
 }

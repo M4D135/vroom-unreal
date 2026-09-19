@@ -77,7 +77,7 @@ if [[ "$VROOM_MODE" == package ]]; then
         exit 1
     fi
     printf 'Package créé dans : %s\n' "$VROOM_ARCHIVE_DIR"
-    printf '%s\n' 'La version installée reste active. Valider avec Tools/verify_mac.py --profile --soak, puis Tools/install_mac.py --validation CHEMIN/results.json.'
+    printf '%s\n' 'La version installée reste active. Valider avec Tools/verify_mac.py --visible --graphics-preset performance --profile --soak, puis Tools/install_mac.py --validation CHEMIN/results.json.'
 
 else
     printf '%s\n' 'Prêt. Double-cliquer Tools/run_mac.command ou Desktop/Vroom.command pour jouer.'

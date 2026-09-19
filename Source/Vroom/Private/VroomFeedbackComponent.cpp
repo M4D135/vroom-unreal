@@ -38,20 +38,39 @@ void UVroomFeedbackComponent::BeginPlay()
     Marks = Mesh(TEXT("TyreTraces"), TEXT("/Game/Materials/M_TyreTrace"));
     Smoke = Mesh(TEXT("DriftSmoke"), TEXT("/Game/Materials/M_DriftSmoke"));
     Strips.Reserve(512); Puffs.Reserve(48);
+    Phases.Reserve(12);
+    AudioSamples.SetNumZeroed(1600);
     Wave = NewObject<USoundWaveProcedural>(Car);
     Wave->SetSampleRate(48000); Wave->NumChannels = 2;
     Wave->Duration = INDEFINITELY_LOOPING_DURATION;
     Audio = NewObject<UAudioComponent>(Car, TEXT("RaceStereo"));
     Audio->bAutoActivate = false;
     Audio->SetSound(Wave); Audio->RegisterComponent();
-    UpdateRaceSound(); Audio->Play();
+    for (int32 Block = 0; Block < 3; ++Block) UpdateRaceSound();
+    Audio->Play();
 }
 
 void UVroomFeedbackComponent::TickComponent(float Dt, ELevelTick Type, FActorComponentTickFunction* Function)
 {
     Super::TickComponent(Dt, Type, Function);
     if (!Car || !Car->Circuit) return;
-    const bool Active = Car->Circuit->Running && !Car->Circuit->Paused && Car->Circuit->RaceClock >= 0;
+    const bool RaceEnabled = Car->Circuit->Running && !Car->Circuit->Paused && !Car->PreparingCircuit;
+    const bool Active = RaceEnabled && Car->Circuit->RaceClock >= 0;
+    if (RaceEnabled)
+    {
+        const Vroom::StartSignal Signal = Vroom::StartSignalFromClock(Car->Circuit->RaceClock);
+        if (Car->Circuit->StartSignalPlayed != static_cast<int32>(Signal))
+        {
+            Car->Circuit->StartSignalPlayed = static_cast<int32>(Signal);
+            const auto Beep = Vroom::BeepFor(Signal);
+            if (Beep.Duration > 0)
+            {
+                StartTone.Trigger(Signal);
+                UE_LOG(LogTemp, Display, TEXT("VROOM: Start beep signal=%d frequency=%.0f duration=%.2f raceClock=%.3f"),
+                    static_cast<int32>(Signal), Beep.Frequency, Beep.Duration, Car->Circuit->RaceClock);
+            }
+        }
+    }
     if (LastTrack != Car->Circuit->TrackIndex)
     {
         LastTrack = Car->Circuit->TrackIndex;
@@ -66,13 +85,20 @@ void UVroomFeedbackComponent::TickComponent(float Dt, ELevelTick Type, FActorCom
     if (!ReportedTest && Clock >= 3.2 && FParse::Param(FCommandLine::Get(), TEXT("VroomDriftTest")))
     {
         ReportedTest = true;
-        const bool Passed = SeenMarks && SeenSmoke && SeenBoost && Marks->GetMaterial(0) && Smoke->GetMaterial(0);
+        FString DriftScenario;
+        FParse::Value(FCommandLine::Get(), TEXT("VroomDriftScenario="), DriftScenario);
+        const bool Unskilled = DriftScenario == TEXT("unskilled");
+        const bool Passed = SeenMarks && SeenSmoke && (SeenBoost != Unskilled) && Marks->GetMaterial(0) && Smoke->GetMaterial(0);
         UE_LOG(LogTemp, Display, TEXT("VROOM: Drift feedback %s marks=%d smoke=%d boost=%d"),
             Passed ? TEXT("PASS") : TEXT("FAIL"), SeenMarks, SeenSmoke, SeenBoost);
+        if (Unskilled)
+            UE_LOG(LogTemp, Display, TEXT("VROOM: Drift skill denied %s"), !SeenBoost ? TEXT("PASS") : TEXT("FAIL"));
     }
     const auto& Settings = Vroom::Settings::Get();
-    Audio->SetVolumeMultiplier(Active ? .55f * Settings.MasterVolume * Settings.EffectsVolume : 0.f);
-    UpdateRaceSound();
+    Audio->SetVolumeMultiplier(RaceEnabled ? .55f * Settings.MasterVolume * Settings.EffectsVolume : 0.f);
+    // Refill a bounded number of small blocks. One block per tick would
+    // underrun the procedural stream when the player selects a 30 FPS cap.
+    for (int32 Block = 0; Block < 3; ++Block) UpdateRaceSound();
 }
 
 void UVroomFeedbackComponent::UpdateEffects(float Dt)
@@ -160,10 +186,17 @@ void UVroomFeedbackComponent::UpdateEffects(float Dt)
 
 void UVroomFeedbackComponent::UpdateRaceSound()
 {
-    if (!Wave || Wave->GetAvailableAudioByteCount() > 9600) return;
-    constexpr int32 Frames = 2400;
-    TArray<int16> Samples; Samples.SetNumZeroed(Frames * 2);
-    if (!Car || !Car->Circuit) { Wave->QueueAudio(reinterpret_cast<const uint8*>(Samples.GetData()), Samples.Num() * 2); return; }
+    // About one output frame per block: the start cue does not sit behind the
+    // old 50–100 ms queue. The PCM buffer is reused for the whole race.
+    if (!Wave || Wave->GetAvailableAudioByteCount() > 3200) return;
+    constexpr int32 Frames = 800;
+    auto& Samples = AudioSamples;
+    if (!Car || !Car->Circuit)
+    {
+        FMemory::Memzero(Samples.GetData(), Samples.Num() * sizeof(int16));
+        Wave->QueueAudio(reinterpret_cast<const uint8*>(Samples.GetData()), Samples.Num() * 2);
+        return;
+    }
     auto* Track = Car->Circuit.Get();
     const int32 Count = Track->OpponentS.Num();
     Phases.SetNumZeroed(Count);
@@ -200,7 +233,8 @@ void UVroomFeedbackComponent::UpdateRaceSound()
         const double Noise = double(NoiseSeed >> 8) / 8388607.5 - 1;
         NoisePhase += (Noise - NoisePhase) * .12;
         CuePhase = FMath::Fmod(CuePhase + (Tier == 2 ? 1320 : 880) * UE_TWO_PI / 48000, UE_TWO_PI);
-        const double Effects = NoisePhase * Surface + Noise * ShiftEnvelope * .13 + std::sin(CuePhase) * CueEnvelope * .07;
+        const double Effects = NoisePhase * Surface + Noise * ShiftEnvelope * .13
+            + std::sin(CuePhase) * CueEnvelope * .07 + StartTone.NextSample() * .45;
         ShiftEnvelope *= .9975; CueEnvelope *= .9994;
         Samples[Frame * 2] = int16(FMath::Clamp((Left + Effects) * 24000, -30000.0, 30000.0));
         Samples[Frame * 2 + 1] = int16(FMath::Clamp((Right + Effects) * 24000, -30000.0, 30000.0));

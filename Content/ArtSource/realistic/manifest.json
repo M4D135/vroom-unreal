@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "license": "CC0-1.0",
+  "resolution": "1K",
+  "sources": [
+    {
+      "id": "Asphalt010",
+      "provider": "ambientCG",
+      "page": "https://ambientcg.com/view?id=Asphalt010",
+      "author": "Lennart Demes",
+      "license": "https://docs.ambientcg.com/license/",
+      "url": "https://ambientcg.com/get?file=Asphalt010_1K-JPG.zip",
+      "archive_sha256": "716f9433ddef61ea025d3859a3b06de2cbff54a293b091bf3d736b3787071e7b",
+      "files": [
+        {
+          "path": "Asphalt010/Asphalt010_1K-JPG_Color.jpg",
+          "url": "https://ambientcg.com/get?file=Asphalt010_1K-JPG.zip",
+          "bytes": 1093417,
+          "sha256": "412598f9cfa046ff222a76ecd66fde576e42f5141938ffe3be2e2c0e9082e5c8"
+        },
+        {
+          "path": "Asphalt010/Asphalt010_1K-JPG_NormalDX.jpg",
+          "url": "https://ambientcg.com/get?file=Asphalt010_1K-JPG.zip",
+          "bytes": 2105871,
+          "sha256": "f14feaa81ac68b62601e8fd63f3b71772ada78947aba87d57874d8f4ebd61e72"
+        },
+        {
+          "path": "Asphalt010/Asphalt010_1K-JPG_Roughness.jpg",
+          "url": "https://ambientcg.com/get?file=Asphalt010_1K-JPG.zip",
+          "bytes": 746915,
+          "sha256": "5f0f9ee453565de9fdf838140a425f59b215ca3c87a3c269e39247d6f688c13f"
+        }
+      ]
+    },
+    {
+      "id": "Grass004",
+      "provider": "ambientCG",
+      "page": "https://ambientcg.com/view?id=Grass004",
+      "author": "Lennart Demes",
+      "license": "https://docs.ambientcg.com/license/",
+      "url": "https://ambientcg.com/get?file=Grass004_1K-JPG.zip",
+      "archive_sha256": "4b63495f459db8481f4d5144e4e9069345c81cf898cc71f2216f5dd3bb344469",
+      "files": [
+        {
+          "path": "Grass004/Grass004_1K-JPG_Color.jpg",
+          "url": "https://ambientcg.com/get?file=Grass004_1K-JPG.zip",
+          "bytes": 1985561,
+          "sha256": "9e1c60da44b34a9738b1256ba827541f097dc583521b1d281e61b5f4b4217bc5"
+        },
+        {
+          "path": "Grass004/Grass004_1K-JPG_NormalDX.jpg",
+          "url": "https://ambientcg.com/get?file=Grass004_1K-JPG.zip",
+          "bytes": 2339065,
+          "sha256": "c375ab178faa4df0b0e0b13dabc5594ab8e8e8220a9d40e8815ff8e602ec058c"
+        },
+        {
+          "path": "Grass004/Grass004_1K-JPG_Roughness.jpg",
+          "url": "https://ambientcg.com/get?file=Grass004_1K-JPG.zip",
+          "bytes": 851664,
+          "sha256": "706580983860f942e141acdd68c4128dd683be50fcc5d85b7c67a9a3a8c7bac0"
+        }
+      ]
+    },
+    {
+      "id": "rock_moss_set_02",
+      "provider": "Poly Haven",
+      "page": "https://polyhaven.com/a/rock_moss_set_02",
+      "author": "Kless Gyzen",
+      "license": "https://polyhaven.com/license",
+      "url": "https://api.polyhaven.com/files/rock_moss_set_02",
+      "files": [
+        {
+          "path": "rock_moss_set_02/rock_moss_set_02_1k.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/rock_moss_set_02/rock_moss_set_02_1k.gltf",
+          "bytes": 11608,
+          "sha256": "c3b992a7622e94f7d8da97a47277a2a5177a513af0312a127ec908d4056c97db"
+        },
+        {
+          "path": "rock_moss_set_02/textures/rock_moss_set_02_nor_gl_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/rock_moss_set_02/rock_moss_set_02_nor_gl_1k.jpg",
+          "bytes": 273527,
+          "sha256": "dd2503789089fb72ef469efd14364d393e769c0de8781a251475cac7e0b6f51d"
+        },
+        {
+          "path": "rock_moss_set_02/textures/rock_moss_set_02_diff_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/rock_moss_set_02/rock_moss_set_02_diff_1k.jpg",
+          "bytes": 194307,
+          "sha256": "91dd2cc77d5198b067d77e5bdb3fa8ee7b8950aeff5aec2c1ccaddb76dcca481"
+        },
+        {
+          "path": "rock_moss_set_02/textures/rock_moss_set_02_rough_1k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/rock_moss_set_02/rock_moss_set_02_rough_1k.jpg",
+          "bytes": 146226,
+          "sha256": "12252219a98a560940359973e83af831abdcfab0ead3f0a2a7b135a0143105f1"
+        },
+        {
+          "path": "rock_moss_set_02/rock_moss_set_02.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/rock_moss_set_02/rock_moss_set_02.bin",
+          "bytes": 1316572,
+          "sha256": "2df9d8eaaca4207529b0f613d4886d3962d0b9ffc0cdfd2bc4bf35dbcd391cb5"
+        }
+      ]
+    }
+  ]
+}

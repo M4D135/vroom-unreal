@@ -399,9 +399,14 @@ def create_scenery_materials():
     create_material('M_StartLight', (.06, .003, .002), .34)
     material = ASSET_LIBRARY.load_asset(MATERIAL_DIRECTORY + '/M_StartLight')
     lit = expression(material, unreal.MaterialExpressionPerInstanceCustomData, data_index=0, const_default_value=0.0)
-    red = color(material, (7.0, .02, .006))
+    channels = [expression(material, unreal.MaterialExpressionPerInstanceCustomData,
+                           data_index=i + 1, const_default_value=(.95, .025, .01)[i]) for i in range(3)]
+    rg = expression(material, unreal.MaterialExpressionAppendVector)
+    connect(channels[0], rg, 'A'); connect(channels[1], rg, 'B')
+    rgb = expression(material, unreal.MaterialExpressionAppendVector)
+    connect(rg, rgb, 'A'); connect(channels[2], rgb, 'B')
     emission = expression(material, unreal.MaterialExpressionMultiply)
-    connect(red, emission, 'A')
+    connect(multiply(material, rgb, 7.0), emission, 'A')
     connect(lit, emission, 'B')
     output(emission, unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MATERIAL_LIBRARY.recompile_material(material)

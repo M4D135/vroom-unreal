@@ -28,5 +28,7 @@ private:
     double LastClock=-1, SampleClock=-1;
     bool Clean=true, Recording=false;
     TArray<Vroom::Progress::FGhostSample> Samples;
+    Vroom::Progress::FGhostSample PreviousFrame; // Absolute clock/distance, every rendered frame.
+    bool HasPreviousFrame=false;
     void BuildGhost(AVroomCar* Player);
 };

@@ -155,7 +155,11 @@ void AVroomCar::BeginPlay()
     AutoDemo |= FParse::Param(FCommandLine::Get(), TEXT("VroomDriftTest"));
     FParse::Value(FCommandLine::Get(), TEXT("VroomCollisionTest="), TestImpact);
     PitTest = FParse::Param(FCommandLine::Get(), TEXT("VroomPitTest"));
-    AutoDemo |= !TestImpact.IsEmpty() || PitTest;
+    FParse::Value(FCommandLine::Get(), TEXT("VroomOffroadTest="), OffroadTestSide);
+    OffroadTestSide = FMath::Clamp(OffroadTestSide, -1, 1);
+    StartTest = FParse::Param(FCommandLine::Get(), TEXT("VroomStartTest"));
+    FParse::Value(FCommandLine::Get(), TEXT("VroomStartScenario="), StartTestScenario);
+    AutoDemo |= !TestImpact.IsEmpty() || PitTest || OffroadTestSide != 0 || StartTest;
     TickDebug = FParse::Param(FCommandLine::Get(), TEXT("VroomTickDebug"));
     MotionTrace = FParse::Param(FCommandLine::Get(), TEXT("VroomMotionTrace"));
     VerificationMode = FParse::Param(FCommandLine::Get(), TEXT("VroomVerify"));
@@ -284,6 +288,7 @@ void AVroomCar::PlaceOnStartingGrid()
 
 void AVroomCar::ResetCar()
 {
+    LandingFeedbackTime = LandingQuality = 0;
     Drive.Reset();
     Contacts.Reset();
     Pit = Vroom::PitStopModel{};
@@ -360,6 +365,7 @@ void AVroomCar::StartSession()
         Agent.FuelBurn = Budget.FuelPerThrottleSecond;
         Agent.TyreWearPerMetre = Budget.TyreWearPerMetre;
         Agent.Pitting = false;
+        Agent.PitCommitted = Agent.PitExiting = false;
         Agent.PitTimer = 0.0;
     }
     Circuit->StartLightStage = -1;
@@ -549,18 +555,20 @@ double AVroomCar::QualificationBenchmark() const
 
 void AVroomCar::UpdateSessionRules()
 {
-    if (AutoDemo || !Session.Active()) return;
+    if ((AutoDemo && !StartTest) || !Session.Active()) return;
+    const double ClassifiedDistance = ValidLaps * Circuit->LengthM()
+        + Vroom::LapValidator::Along(Drive.State.DistanceM, Circuit->LengthM());
     int32 Position = 1;
     if (Circuit->OpponentsVisible)
         for (int32 I = 0; I < Circuit->OpponentS.Num(); ++I)
             if ((Circuit->OpponentFinishTimes.IsValidIndex(I) && Circuit->OpponentFinishTimes[I] > 0)
-                || Circuit->OpponentS[I] > Drive.State.DistanceM) ++Position;
+                || Circuit->OpponentS[I] > ClassifiedDistance) ++Position;
     const auto Before = Session.Phase;
     double ResultClock = Circuit->RaceClock;
     if (Session.Mode == Vroom::SessionMode::GrandPrix && !Session.QualifyingRun && Circuit->RaceFinishDistance > 0
-        && PreviousDrive.DistanceM < Circuit->RaceFinishDistance && Drive.State.DistanceM >= Circuit->RaceFinishDistance)
+        && ValidLaps >= Session.LapTarget && LapState.PhysicalLaps > 1)
     {
-        const double Fraction = FMath::Clamp((Circuit->RaceFinishDistance - PreviousDrive.DistanceM)
+        const double Fraction = FMath::Clamp((std::floor(Drive.State.DistanceM / Circuit->LengthM()) * Circuit->LengthM() - PreviousDrive.DistanceM)
             / FMath::Max(.0001, Drive.State.DistanceM - PreviousDrive.DistanceM), 0.0, 1.0);
         ResultClock -= Vroom::FrameTiming::StepSeconds * (1.0 - Fraction);
     }
@@ -576,7 +584,7 @@ void AVroomCar::UpdateSessionRules()
                 Order[I] = I;
                 FinishTimes[I] = I == Vroom::SessionModel::PlayerDriver ? (Session.Retired ? 0 : Session.FinishedTime)
                     : Circuit->OpponentFinishTimes[I];
-                Distances[I] = I == Vroom::SessionModel::PlayerDriver ? Drive.State.DistanceM : Circuit->OpponentS[I];
+                Distances[I] = I == Vroom::SessionModel::PlayerDriver ? ClassifiedDistance : Circuit->OpponentS[I];
             }
             std::sort(Order.begin(), Order.end(), [&](int A, int B)
             {
@@ -688,9 +696,35 @@ void AVroomCar::Tick(float Dt)
         const bool HasTrackArgument = FParse::Value(FCommandLine::Get(), TEXT("VroomTrack="), RequestedTrack);
         if (HasTrackArgument) Circuit->SelectTrack(FMath::Clamp(RequestedTrack, 0, 5));
         else if (!VerificationMode && !AutoDemo) Circuit->SelectTrack(Vroom::SessionModel::ChampionshipOrder[0]);
+        if (FParse::Param(FCommandLine::Get(), TEXT("VroomTrackAudit")) && !Circuit->VerifyTrackGeometry())
+        { FPlatformMisc::RequestExitWithStatus(false, 1); return; }
         Session.SelectTrack(Circuit->TrackIndex);
         TourStartDistance = Drive.State.DistanceM;
         if (TourDemo) Circuit->ConfigureTraffic(true, false, Session.Difficulty);
+        if (OffroadTestSide != 0)
+        {
+            ResetCar();
+            double BestCurve = 0;
+            for (double S = 350; S < Circuit->LengthM() - 100; S += 5)
+                if (FMath::Abs(Circuit->Curvature(S)) > BestCurve)
+                { BestCurve = FMath::Abs(Circuit->Curvature(S)); OffroadStartDistance = S; }
+            Drive.State.DistanceM = OffroadStartDistance;
+            Drive.State.LateralM = OffroadTestSide * (Circuit->HalfWidthM + 2.25);
+            Drive.TyreHealth = 2048 * .83; Drive.Fuel = .98;
+            PreviousDrive = Drive.State;
+            Circuit->ConfigureTraffic(false, false, Session.Difficulty);
+            Circuit->Running = true; Circuit->Paused = false; Circuit->RaceClock = 0;
+            UE_LOG(LogTemp, Display, TEXT("VROOM: Offroad restart initial side=%d speed=0 s=%.2f lateral=%.2f curvature=%.5f"),
+                OffroadTestSide, OffroadStartDistance, Drive.State.LateralM, Circuit->Curvature(OffroadStartDistance));
+        }
+        if (StartTest)
+        {
+            if (StartTestScenario == TEXT("mute")) Vroom::Settings::Mutable().MasterVolume = 0;
+            StartSession();
+            StartTestDistance = Drive.State.DistanceM;
+            for (double S : Circuit->OpponentS) StartTestOpponents.Add(S);
+        }
+        BeginCircuitPreparation();
         FString SessionPreview;
         if (FParse::Value(FCommandLine::Get(), TEXT("VroomSessionPreview="), SessionPreview))
         {
@@ -732,6 +766,31 @@ void AVroomCar::Tick(float Dt)
     // This is also used by verification: CSV capture still starts at frame 0,
     // with the same hard frame-time gates and warmup as an ordinary launch.
     if (UpdateCircuitPreparation()) { UpdateDiagnostics(Dt); return; }
+    if (StartTest && StartTestScenario == TEXT("restart") && StartTestPhase == 0 && TestSeconds >= 1.0)
+    {
+        RestartSession();
+        StartTestPhase = 1;
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Start test restarted during countdown"));
+        return;
+    }
+    if (StartTest && StartTestScenario == TEXT("pause"))
+    {
+        if (StartTestPhase == 0 && Circuit->RaceClock > -1.5)
+        {
+            Circuit->Paused = true; StartTestPauseRemaining = .75;
+            StartTestPauseClock = Circuit->RaceClock; StartTestPhase = 1;
+        }
+        if (StartTestPhase == 1)
+        {
+            StartTestStationary &= FMath::Abs(Circuit->RaceClock - StartTestPauseClock) < .00001;
+            StartTestPauseRemaining -= Dt;
+            if (StartTestPauseRemaining <= 0)
+            {
+                Circuit->Paused = false; StartTestPhase = 2;
+                UE_LOG(LogTemp, Display, TEXT("VROOM: Start test resumed after pause"));
+            }
+        }
+    }
     if (!VerificationMode && !Vroom::Graphics::IsOpen())
     {
         const bool WasControlsOpen = Vroom::Settings::IsOpen();
@@ -874,15 +933,29 @@ void AVroomCar::Tick(float Dt)
     if (FParse::Param(FCommandLine::Get(), TEXT("VroomDriftTest")))
     {
         Input = Vroom::DriveInput{};
-        Input.Throttle = .55; Input.Steer = PreviewClock < 1.4 ? .23 : -.12;
-        Input.Drift = PreviewClock >= .2 && PreviewClock < 1.35;
+        FString Scenario;
+        FParse::Value(FCommandLine::Get(), TEXT("VroomDriftScenario="), Scenario);
+        Input.Throttle = .6;
+        Input.Drift = TestSeconds >= .2 && TestSeconds < 1.8;
+        if (Input.Drift)
+            Input.Steer = TestSeconds < .5 || Scenario == TEXT("unskilled") ? .8 : -.45;
     }
     if (!TestImpact.IsEmpty())
     {
         Input = Vroom::DriveInput{};
-        InputSteering = 0.f;
+        if (TestImpact == TEXT("rub") && Contacts.State.ControlledTyreHop)
+            Input.Steer = Contacts.State.ImpactSide * .7;
+        else InputSteering = 0.f;
     }
     if (PitTest) { Input = Vroom::DriveInput{}; Input.Throttle = 1; }
+    if (OffroadTestSide != 0)
+    {
+        Input = Vroom::DriveInput{}; Input.Throttle = 1;
+        Input.Steer = FMath::Clamp(-Drive.State.LateralM * .8, -1.0, 1.0);
+        if (FMath::Abs(Drive.State.LateralM) < Circuit->HalfWidthM - .3) OffroadReturned = true;
+    }
+    if (StartTest) { Input = Vroom::DriveInput{}; Input.Throttle = 1; }
+
     if (AutoDemo && PreviewClock >= NextTrace)
     {
         NextTrace = PreviewClock + 1.0;
@@ -948,8 +1021,10 @@ void AVroomCar::Tick(float Dt)
 void AVroomCar::UpdateDiagnostics(float Dt)
 {
     PreviewClock += Dt;
-    const double CheckClock = TestImpact.IsEmpty() && !PitTest ? PreviewClock : TestSeconds;
-    if (!CapturePath.IsEmpty() && CheckClock >= CaptureAfter)
+    const bool SimulationTest = !TestImpact.IsEmpty() || PitTest || OffroadTestSide != 0 || StartTest
+        || FParse::Param(FCommandLine::Get(), TEXT("VroomDriftTest"));
+    const double CheckClock = SimulationTest ? TestSeconds : PreviewClock;
+    if (!PreparingCircuit && !CapturePath.IsEmpty() && CheckClock >= CaptureAfter)
     {
         FScreenshotRequest::RequestScreenshot(CapturePath, true, false);
         UE_LOG(LogTemp, Display, TEXT("VROOM: Capture requested %s speed=%.1f km/h s=%.1f lateral=%.2f"), *CapturePath, Drive.State.SpeedMps * 3.6, Drive.State.DistanceM, Drive.State.LateralM);
@@ -962,6 +1037,10 @@ void AVroomCar::UpdateDiagnostics(float Dt)
     {
         bool Passed = TestImpact.IsEmpty() || (TestContacts == 1 && TestVisibilityErrors == 0 &&
             ((TestImpact == TEXT("slow") && Contacts.State.LastKind == Vroom::ContactKind::SlowImpact && TestRespawns == 0) ||
+            (TestImpact == TEXT("rear") && Contacts.State.LastKind == Vroom::ContactKind::SlowImpact && TestRespawns == 0) ||
+            (TestImpact == TEXT("rub") && Contacts.State.LastKind == Vroom::ContactKind::TyreJump
+                && TestRespawns == 0 && TestControlledLandings == 1 && LandingQuality > .8
+                && !Contacts.State.TyresBroken && !Contacts.State.ControlsLocked) ||
             (TestImpact == TEXT("crash") && Contacts.State.LastKind == Vroom::ContactKind::Crash && TestRespawns == 1) ||
             (TestImpact == TEXT("tyre") && Contacts.State.LastKind == Vroom::ContactKind::TyreJump && TestRespawns == 1) ||
             (TestImpact == TEXT("scenery") && Contacts.State.LastKind == Vroom::ContactKind::Crash && TestRespawns == 1
@@ -977,6 +1056,25 @@ void AVroomCar::UpdateDiagnostics(float Dt)
                 PitTestStationary, PitTestCompleted, Pit.Servicing, Drive.Fuel, Drive.TyreHealth,
                 Drive.State.SpeedMps, Drive.State.DistanceM, Circuit->RaceClock, Circuit->OpponentS[0] - PitTestOpponentStart);
         }
+        if (OffroadTestSide != 0)
+        {
+            Passed &= OffroadReturned && Drive.State.DistanceM > OffroadStartDistance + 8
+                && Drive.State.SpeedMps > 2 && TestRespawns == 0 && TestContacts == 0;
+            UE_LOG(LogTemp, Display, TEXT("VROOM: Offroad restart %s returned=%d progress=%.2f speed=%.2f lateral=%.2f"),
+                Passed ? TEXT("PASS") : TEXT("FAIL"), OffroadReturned, Drive.State.DistanceM - OffroadStartDistance,
+                Drive.State.SpeedMps, Drive.State.LateralM);
+        }
+        if (StartTest)
+        {
+            Passed &= StartTestStationary && Circuit->RaceClock >= 2 && Drive.State.DistanceM > StartTestDistance + 3;
+            Passed &= Session.Phase == Vroom::SessionPhase::Racing;
+            Passed &= StartTestScenario != TEXT("restart") || StartTestPhase == 1;
+            Passed &= StartTestScenario != TEXT("pause") || StartTestPhase == 2;
+            Passed &= StartTestScenario != TEXT("mute") || Vroom::Settings::Get().MasterVolume == 0;
+            UE_LOG(LogTemp, Display, TEXT("VROOM: Start integration %s stationary=%d raceClock=%.2f progress=%.2f"),
+                Passed ? TEXT("PASS") : TEXT("FAIL"), StartTestStationary, Circuit->RaceClock,
+                Drive.State.DistanceM - StartTestDistance);
+        }
         UE_LOG(LogTemp, Display, TEXT("VROOM: Verification %s scenario=%s contacts=%d respawns=%d visibilityErrors=%d"), Passed ? TEXT("PASS") : TEXT("FAIL"), *TestImpact, TestContacts, TestRespawns, TestVisibilityErrors);
         FPlatformMisc::RequestExitWithStatus(false, Passed ? 0 : 1);
     }
@@ -984,6 +1082,7 @@ void AVroomCar::UpdateDiagnostics(float Dt)
 
 void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
 {
+    LandingFeedbackTime = FMath::Max(0.0, LandingFeedbackTime - H);
     PreviousDrive = Drive.State;
     PreviousVisualHeading = Contacts.State.ControlsLocked ? Drive.State.HeadingRad : Drive.VisualHeading();
     PreviousContact = Contacts.State;
@@ -992,6 +1091,12 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
     Circuit->TrafficPlayer.Lateral = Drive.State.LateralM;
     Circuit->TrafficPlayer.Speed = Drive.State.SpeedMps;
     Circuit->TrafficPlayerActive = !TourDemo && Circuit->OpponentsVisible;
+    if (StartTest && Circuit->RaceClock < 0)
+    {
+        StartTestStationary &= FMath::Abs(Drive.State.DistanceM - StartTestDistance) < .001;
+        for (int32 I = 0; I < StartTestOpponents.Num(); ++I)
+            StartTestStationary &= FMath::Abs(Circuit->OpponentS[I] - StartTestOpponents[I]) < .001;
+    }
     Circuit->AdvanceRace(H);
     TestSeconds += H;
     if (Circuit->RaceClock < 0)
@@ -1073,7 +1178,18 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
     }
     else Drive.Step(Input, H, Circuit->Curvature(Drive.State.DistanceM), Pit.InLane ? 15.2 : Half,
         Airborne ? 0 : Circuit->Elevation(Drive.State.DistanceM).Grade, Airborne);
-    Contacts.Step(H);
+    Contacts.Step(H, Drive.State.Steering);
+    const auto Landing = Contacts.ConsumeLanding();
+    if (Landing.JustLanded)
+    {
+        Drive.State.SpeedMps *= Landing.SpeedRetention;
+        Drive.ExtraLatVel *= Landing.LateralVelocityRetention;
+        LandingQuality = Landing.LandingControl;
+        LandingFeedbackTime = 1.1;
+        ++TestControlledLandings;
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Controlled landing quality=%.3f speedRetention=%.3f"),
+            Landing.LandingControl, Landing.SpeedRetention);
+    }
 
     if (!Recovering && Contacts.State.Phase == Vroom::ContactPhase::Recovering)
     {
@@ -1105,7 +1221,7 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
         CarRotation.Yaw += FMath::RadiansToDegrees(Drive.VisualHeading());
         double Fraction = 1;
         FVector Normal;
-        if (FVector::DistSquared(Start,End) > 0.01 && Circuit->SweepScenery(Start, End, CarRotation.Quaternion(), Fraction, Normal))
+        if (FVector::DistSquared(Start,End) > 0.01 && Circuit->SweepScenery(Start, End, CarRotation.Quaternion(), Fraction, Normal, true))
         {
             const double RelativeSpeed = FVector::Dist(Start,End) / (100 * H);
             const double SideDot = FVector::DotProduct(Normal, CarRotation.Quaternion().GetRightVector());
@@ -1116,7 +1232,8 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
                 Drive.State.DistanceM = FMath::Lerp(PreviousDrive.DistanceM, Drive.State.DistanceM, Fraction);
                 Drive.State.LateralM = FMath::Lerp(PreviousDrive.LateralM, Drive.State.LateralM, Fraction);
                 Drive.State.HeadingRad = Drive.VisualHeading();
-                Drive.CancelArcadeEffects();
+                if (Hit.Kind == Vroom::ContactKind::Crash) Contacts.InheritHopHeight(Drive.HopHeightM);
+                Drive.CancelArcadeEffects(Hit.Kind != Vroom::ContactKind::SlowImpact);
                 Drive.ExtraLatVel = 0;
                 if (Hit.Kind == Vroom::ContactKind::Crash)
                 {
@@ -1184,32 +1301,6 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
     }
 
     const double Len = Circuit->LengthM();
-    const int32 PreviousPhysical = LapState.PhysicalLaps;
-    LapState.Observe(Drive.State.DistanceM, Drive.State.LateralM, Len, Circuit->HalfWidthM, Pit.InLane);
-    LapClean = !LapState.Dirty && !LapState.Invalid;
-    LapInvalidReason = LapState.Invalid ? FString(LapState.Reason)
-        : (LapState.Dirty ? FString(LapState.Reason) : FString());
-    if (LapState.PhysicalLaps > PreviousPhysical)
-    {
-        LastLapClean = LapState.LastCompletedClean;
-        LastLapInvalidated = LapState.LastCompletedInvalid || !LastLapClean;
-        LastLapInvalidReason = LastLapInvalidated ? FString(LapState.LastCompletedReason) : FString();
-        LastLap = Circuit->RaceClock - LapStart;
-        ValidLaps = LapState.ValidLaps;
-        if (LastLapClean && (BestLap <= 0 || LastLap < BestLap)) BestLap = LastLap;
-        if (!AutoDemo && Session.QualifyingRun && Session.Active())
-        {
-            Session.CompleteQualification(LastLap, LastLapClean, QualificationBenchmark());
-            Circuit->Paused = true;
-            if (auto* PC = Cast<APlayerController>(GetController())) PC->bShowMouseCursor = true;
-            UE_LOG(LogTemp, Display, TEXT("VROOM: Qualification time=%.3f clean=%d grid=%d"), LastLap, LastLapClean, Session.QualificationPosition);
-        }
-        LapStart = Circuit->RaceClock;
-        Lap = LapState.PhysicalLaps;
-        LapClean = !Contacts.State.ControlsLocked;
-        UE_LOG(LogTemp, Display, TEXT("VROOM: Lap %d time %.3f clean=%d valid=%d reason=%s"),
-            Lap - 1, LastLap, LastLapClean, ValidLaps, *LastLapInvalidReason);
-    }
 
     if (Circuit->RaceClock > 0 && !Wrecked)
     {
@@ -1263,11 +1354,19 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
         Q.PreviousLateralGapM = (Circuit->PreviousOpponentLanes.IsValidIndex(I)
             ? Circuit->PreviousOpponentLanes[I] : Circuit->OpponentLanes[I]) - PreviousDrive.LateralM;
         Q.PlayerSpeedMps = Drive.State.SpeedMps; Q.OpponentSpeedMps = Circuit->OpponentSpeeds[I];
-        if (TourDemo) continue;
+        Q.StepSeconds = H;
+        if (TourDemo || (Circuit->OpponentRecycled.IsValidIndex(I) && Circuit->OpponentRecycled[I])) continue;
         const auto Hit = Contacts.TryContact(Q);
         if (Hit.Kind == Vroom::ContactKind::None) continue;
         Circuit->HitOpponent(I, Hit.RelativeSpeedMps);
         Drive.State.SpeedMps = Hit.SpeedAfterMps;
+        // A contact cannot cash out a charged drift or stack its hop with the
+        // separate wheel-contact flight. Preserve the interpolated chassis yaw.
+        if (Hit.Kind == Vroom::ContactKind::TyreJump || Hit.Kind == Vroom::ContactKind::Crash)
+            Contacts.InheritHopHeight(Drive.HopHeightM);
+        Drive.CancelArcadeEffects(Hit.Kind != Vroom::ContactKind::SlowImpact);
+        if (Hit.Kind == Vroom::ContactKind::Crash || Contacts.State.JumpWillBreakTyres)
+            Drive.TyreHealth = FMath::Max(0.0, Drive.TyreHealth - 180);
         if (Hit.Kind == Vroom::ContactKind::Crash)
         {
             Drive.State.HeadingRad = Drive.VisualHeading();
@@ -1278,9 +1377,38 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
         else if (std::abs(Hit.LateralShoveMps) > 0.05)
             Drive.Shove(Hit.LateralShoveMps);
         LapClean = false; LapState.MarkDirty("contact"); ++TestContacts;
-        ImpactSound = Hit.Kind == Vroom::ContactKind::SlowImpact ? .35 : 1;
-        UE_LOG(LogTemp, Display, TEXT("VROOM: Contact kind=%d relative=%.2f km/h speedAfter=%.2f km/h"), static_cast<int32>(Hit.Kind), Hit.RelativeSpeedMps * 3.6, Hit.SpeedAfterMps * 3.6);
+        ImpactSound = Hit.ControlledTyreHop ? .25 : (Hit.Kind == Vroom::ContactKind::SlowImpact ? .35 : 1);
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Contact kind=%d relative=%.2f km/h speedAfter=%.2f km/h controlledHop=%d face=%d"),
+            static_cast<int32>(Hit.Kind), Hit.RelativeSpeedMps * 3.6, Hit.SpeedAfterMps * 3.6,
+            Hit.ControlledTyreHop, static_cast<int32>(Hit.Face));
     }
+    const int32 PreviousPhysical = LapState.PhysicalLaps;
+    LapState.Observe(Drive.State.DistanceM, Drive.State.LateralM, Len, Circuit->HalfWidthM, Pit.InLane);
+    LapClean = !LapState.Dirty && !LapState.Invalid;
+    LapInvalidReason = LapState.Invalid ? FString(LapState.Reason)
+        : (LapState.Dirty ? FString(LapState.Reason) : FString());
+    if (LapState.PhysicalLaps > PreviousPhysical)
+    {
+        LastLapClean = LapState.LastCompletedClean;
+        LastLapInvalidated = LapState.LastCompletedInvalid || !LastLapClean;
+        LastLapInvalidReason = LastLapInvalidated ? FString(LapState.LastCompletedReason) : FString();
+        LastLap = Circuit->RaceClock - LapStart;
+        ValidLaps = LapState.ValidLaps;
+        if (LastLapClean && (BestLap <= 0 || LastLap < BestLap)) BestLap = LastLap;
+        if (!AutoDemo && Session.QualifyingRun && Session.Active())
+        {
+            Session.CompleteQualification(LastLap, LastLapClean, QualificationBenchmark());
+            Circuit->Paused = true;
+            if (auto* PC = Cast<APlayerController>(GetController())) PC->bShowMouseCursor = true;
+            UE_LOG(LogTemp, Display, TEXT("VROOM: Qualification time=%.3f clean=%d grid=%d"), LastLap, LastLapClean, Session.QualificationPosition);
+        }
+        LapStart = Circuit->RaceClock;
+        Lap = LapState.PhysicalLaps;
+        LapClean = !Contacts.State.ControlsLocked;
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Lap %d time %.3f clean=%d valid=%d reason=%s"),
+            Lap - 1, LastLap, LastLapClean, ValidLaps, *LastLapInvalidReason);
+    }
+
     UpdateSessionRules();
 }
 
@@ -1373,6 +1501,16 @@ void AVroomCar::PrepareCollisionTest()
     Circuit->OpponentS[0] = 104.4;
     Circuit->OpponentLanes[0] = TestImpact == TEXT("tyre") ? 1.55 : 0;
     Circuit->OpponentSpeeds[0] = TestImpact == TEXT("slow") ? 15 : (TestImpact == TEXT("crash") ? 40 : 10);
+    if (TestImpact == TEXT("rub"))
+    {
+        Drive.State.SpeedMps = 35; Drive.State.Gear = 4;
+        Circuit->OpponentSpeeds[0] = 31; Circuit->OpponentLanes[0] = 1.7;
+    }
+    if (TestImpact == TEXT("rear"))
+    {
+        Drive.State.SpeedMps = 20; Drive.State.Gear = 2;
+        Circuit->OpponentS[0] = 95.6; Circuit->OpponentSpeeds[0] = 25;
+    }
     if (TestImpact == TEXT("scenery"))
     {
         // Aim at the real start-gantry pillar at s=160 m, lateral=9 m.

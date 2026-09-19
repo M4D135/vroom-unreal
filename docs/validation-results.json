@@ -1,6 +1,6 @@
 {
-  "version": "0.30.0",
-  "date": "2026-09-13T03:09:21.816235",
+  "version": "0.33.0",
+  "date": "2026-09-19T17:48:42.221068",
   "editor": false,
   "completed": true,
   "cases": [
@@ -10,11 +10,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/progress-data.log",
       "offscreen": false,
-      "evidence_sha256": {
-        "log": "721638fb517ba8190aa08feb7beb8dd2e2b82742de8e9540e39793cb39c9c5c8"
-      },
       "status": "PASS",
       "request": {
         "flags": [
@@ -26,9 +22,30 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/progress-data-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/progress-data.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "a44ebd464fde70f9ba55e0d1c93c8746b9a9e313bc508fac7c2579dabf5209a3",
+        "log": "1fd4c35b6305a56f70a15b7a6bcf69cdf97d3aa656fa0fe7ff372a92e03f0ded"
+      }
     },
     {
       "name": "menu-flow",
@@ -36,11 +53,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/menu-flow.log",
       "offscreen": false,
-      "evidence_sha256": {
-        "log": "66e4d3ebbb0842a9cedfd5483c878300749ddc96a7f31d2f531516344bc12da2"
-      },
       "status": "PASS",
       "request": {
         "flags": [
@@ -52,9 +65,635 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/menu-flow-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/menu-flow.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "dcedc6798e2df901727e9a9f7e86611930c29003bddd3ae0f13fbad45ccdf05d",
+        "log": "f69bd55d9f195524d8e4f1c5bff7235be74c60619942c906e162e8928332554c"
+      }
+    },
+    {
+      "name": "offroad-left",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomOffroadTest=-1",
+          "-VroomTrack=4"
+        ],
+        "seconds": 10,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 8,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/offroad-left-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/offroad-left.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "be429c5fb13618804cd7a2c7a7b1485bdd584d6e09c061ba44cc0c86d95ad188",
+        "log": "a70f18936275fc233230c554f8ac7b1d323a87fc73911bf560818d91a7208e8c",
+        "capture": "654b5c33e00f0e536acd0c6f18c1b4cdaea504f71bc67c13d416a8dceca46239"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/offroad-left.png"
+    },
+    {
+      "name": "offroad-right",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomOffroadTest=1",
+          "-VroomTrack=4"
+        ],
+        "seconds": 10,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 8,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/offroad-right-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/offroad-right.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "bc802542fd52dad6fee1a05ffa877baa274ef4a09e8f7ac3620d56f870f39910",
+        "log": "0038b2b23937998a7910160dbfb8a9a0ac7436ef727e97c3429d78a838371d4f",
+        "capture": "9b08eb2cbe23b5a9cde9b8570789a1416ad5ffd6a7c4696d4f45b7797023039e"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/offroad-right.png"
+    },
+    {
+      "name": "start-sequence",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=1 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomStartTest"
+        ],
+        "seconds": 6,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 2,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/start-sequence-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/start-sequence.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "d8aa19e47ef76f74f9461d5bc3b6ebff80168f8ca3977ea7abd2c50fa2c0a350",
+        "log": "1a34109bce23ab95a5abdbd1bccd6f043292e22652579f4604e6082434a23aa0",
+        "capture": "55bc54a349410a7c1d9773db6226ceeefb9bd63a2ee08861873e3bf7c9c911e0"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/start-sequence.png"
+    },
+    {
+      "name": "start-restart",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=1 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomStartTest",
+          "-VroomStartScenario=restart"
+        ],
+        "seconds": 8,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 4,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/start-restart-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/start-restart.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "7d4b198c4f81b1ea256935d4181f84a226c956cc8f709c0ef2a2cb5b3e45ce9c",
+        "log": "f00297a42d06e8a515bd9048fb4f6d413acf7214d7471d56a1e75ecf5180aaae",
+        "capture": "204ddbea864ab8a55d77a500135c9c77f5c006a45cb1ed1fbdfb0103e25a96f9"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/start-restart.png"
+    },
+    {
+      "name": "start-pause",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=1 respawns=1 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomStartTest",
+          "-VroomStartScenario=pause"
+        ],
+        "seconds": 8,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 4,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/start-pause-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/start-pause.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "e2840d651967cca628ddcf522b0c5e315b6321fe3ce5f98c111831924adb9a54",
+        "log": "2ad836b508110b81c74f0fc8032ab985be8c91795d32663cdd987eb34b0a5aa0",
+        "capture": "01ab36b083174d3913e57dc10c6823096821acc4d42332961af8a560ef4e8075"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/start-pause.png"
+    },
+    {
+      "name": "start-mute",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=1 respawns=1 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomStartTest",
+          "-VroomStartScenario=mute"
+        ],
+        "seconds": 8,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 4,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/start-mute-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/start-mute.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "076214421a87bd6985d60fb082ecc78f4a05b52d02e7993ed724448d1ac739d4",
+        "log": "8ec60956b544e55be3c26c41dfb9f8d74f69f760fefebebfed3f465ce1e2f70d",
+        "capture": "1bfca6c392eabb3f133da2547576d8af07d36f132d2dacff03f42e651e7e0e65"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/start-mute.png"
+    },
+    {
+      "name": "track-audit-1",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomAutoDemo",
+          "-VroomTrackAudit",
+          "-VroomTrack=0"
+        ],
+        "seconds": 5,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-1-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-1.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "9099b31550a55e94068c7cfca1cf71bd11b13be8b51c94627128335d55012eaf",
+        "log": "ed57178e69dccaa2e70fefe589f6da79ed9d5d9a6a55c28b7b04916bed235e1f",
+        "capture": "845dea21ea846de17a6130757542cbe033d2e4a0d3a45a7ab142dbedea5df179"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-1.png"
+    },
+    {
+      "name": "track-audit-2",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomAutoDemo",
+          "-VroomTrackAudit",
+          "-VroomTrack=1"
+        ],
+        "seconds": 5,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-2-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-2.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "e2e511d2e647862f1f7835688af458032410c79f887bbc5d1a471c5a867ec685",
+        "log": "d27c88c18d306cafd75222f9d6ff540a68027263622b860465f88a320f682d55",
+        "capture": "7459096d9aeb64cc409ac26d2653bfd78d1e0629789fa9b4390cda8c6bc46c0b"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-2.png"
+    },
+    {
+      "name": "track-audit-3",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomAutoDemo",
+          "-VroomTrackAudit",
+          "-VroomTrack=2"
+        ],
+        "seconds": 5,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-3-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-3.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "3b3f0f69769f782effbb2cca55d2ed0c9248f8984bea9bd519ca152bf8c6524f",
+        "log": "f8618956e0d838b900d2f34db3ad275f144c3ac6ad6f01207af7bc7d0709920c",
+        "capture": "074990f4edbdf8987d8f984d32124a5d320addb3d379fbd918117d18e5ad4929"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-3.png"
+    },
+    {
+      "name": "track-audit-4",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomAutoDemo",
+          "-VroomTrackAudit",
+          "-VroomTrack=3"
+        ],
+        "seconds": 5,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-4-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-4.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "9904b82da1d08f7ac798ed24bb69f442ccf8dc1d871913b1e9884b1c410eb0d6",
+        "log": "98ab6ebf0f5a3e40057636e9422ceb671649fe66e29e2232f2d5b7015b249018",
+        "capture": "8cc93bc3dd2e9cb55ca8c96baf42a3fd024e422e495be5c030045dfa11533339"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-4.png"
+    },
+    {
+      "name": "track-audit-5",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomAutoDemo",
+          "-VroomTrackAudit",
+          "-VroomTrack=4"
+        ],
+        "seconds": 5,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-5-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-5.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "591c29b190bb13204d6a5201e15d90bd27401c26c5c99688b90846412f4c0937",
+        "log": "480aba1761a5bd9c6d6da19b19c4cafb45eec5d1f202f9152a8517f3106740bb",
+        "capture": "96047dadd1b59db801d77d43681c8e7c46868b47d97e243f2d414cb84881236a"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-5.png"
+    },
+    {
+      "name": "track-audit-6",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomAutoDemo",
+          "-VroomTrackAudit",
+          "-VroomTrack=5"
+        ],
+        "seconds": 5,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-6-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-6.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "6345143973586cb82f4e0d91d8735adbc96c98c3461c40af4dca07275eaf1baa",
+        "log": "dfb7e7394bd014492ca782d4c9f598513c953376d77b7a7198b94ae81c6cc47d",
+        "capture": "ec2dcc8c724b16aefa9764303ed80d5fd9ea22fb583e238649652b8347558239"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-6.png"
     },
     {
       "name": "pit-service",
@@ -62,17 +701,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/pit-service.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/pit-service.png",
-      "evidence_sha256": {
-        "log": "6d324da1cc5c6b4a5b7dbbe03a046a36854c4f826a3347a447fbb245fa4892a5",
-        "capture": "fa28a54d7595a1bdd57387d4a4ed16c3bd8378e6754ec63f28a994430b01daa8"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -85,9 +714,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/pit-service-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/pit-service.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "6f353b78e5a98611dcccab952e0444ef13940184fbdfebb84393df43f02dd8c8",
+        "log": "cc95417027c0b63875a9f224890411253f96f849234520169b079c44b0cd3cd5",
+        "capture": "bfd13eee9fb6fe30f409f42d22f6fe7991a53a4d548356c0a3338d253501cbc1"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/pit-service.png"
     },
     {
       "name": "drift-feedback",
@@ -95,24 +751,14 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/drift-feedback.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/drift-feedback.png",
-      "evidence_sha256": {
-        "log": "a11f50e315b2bd5ad5982e4116125b4be6924e9ae129d0ffa2af671a48cb2200",
-        "capture": "abfa7761e5a1be9bcdf336ff31242bc5f79a794a666d64c39a53fb813bce2a92"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
           "-VroomDriftTest",
           "-VroomChaseCamera",
           "-VroomStartDistance=350",
-          "-VroomStartSpeed=22"
+          "-VroomStartSpeed=40"
         ],
         "seconds": 5,
         "capture": true,
@@ -120,9 +766,89 @@
           1440,
           900
         ],
-        "capture_after": 1.15
+        "capture_after": 1.45,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/drift-feedback-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/drift-feedback.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "f8a15330d6ecb0f3ae44edfb356613abc1b1072605c7d339683a254942980fbb",
+        "log": "86308193fd60478e141f3eceee69269c0ec9329268043618409f4048ca5cb570",
+        "capture": "1ee52a7cb1ac11c44b0d0880e7095776b235171d03afd0b31be47eccf27557f1"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/drift-feedback.png"
+    },
+    {
+      "name": "drift-unskilled",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomDriftTest",
+          "-VroomDriftScenario=unskilled",
+          "-VroomChaseCamera",
+          "-VroomStartDistance=350",
+          "-VroomStartSpeed=40"
+        ],
+        "seconds": 5,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 1.45,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/drift-unskilled-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/drift-unskilled.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "2e38a1364de9460d57d3c9ead596327b0fb60d8f6e18bf5596ca5f374ce2cfd2",
+        "log": "5a2ddc308845fb241b54ebe598ca8bc8ab896c89f0d00ab97e10f5e00d43a6df",
+        "capture": "b2e33ab8cb02416840af8ec20fd3ccd5791ce27992d2f61b9394363ebcb76053"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/drift-unskilled.png"
     },
     {
       "name": "collision-slow",
@@ -130,17 +856,7 @@
       "checks": [
         "VROOM: Verification PASS scenario=slow contacts=1 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/collision-slow.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/collision-slow.png",
-      "evidence_sha256": {
-        "log": "cc40ffccfbc6c1165e814d440b1b4de1788c9cd9c5711ce49c367d3ce4e378f3",
-        "capture": "077953f001346bc1f80dc15b1e0bc1b315b239cc69bc31807907099cc3f31612"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -153,9 +869,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/collision-slow-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/collision-slow.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "97ea830f5d318c155b54a831a44cfbcc29fc49158c7286b4ab71f0d78bab01fa",
+        "log": "33a1f5a225e9195ff1940548adc7f1ef2b403f8dc0e53e389b1e7c59311a65aa",
+        "capture": "1b3dcebfe671a29439907ef6a0e69418038eaa626effdf79e52ea10d16258c91"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/collision-slow.png"
     },
     {
       "name": "collision-crash",
@@ -163,17 +906,7 @@
       "checks": [
         "VROOM: Verification PASS scenario=crash contacts=1 respawns=1 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/collision-crash.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/collision-crash.png",
-      "evidence_sha256": {
-        "log": "68ac2a768a09f57ecdd789cf01551d323f9cb7e4d3a479f46bf4b7ba4dce1b3c",
-        "capture": "2bfe53b28ed0a560fc01499d0600165824b62e081419384f88d66c954702b102"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -186,9 +919,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/collision-crash-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/collision-crash.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "ca43d815e149b8234c993ff291c28b9102699dd04b05e029781403eafc46f825",
+        "log": "5c99742e8e7d3e94fcdcf2cebd17a31cf2866cd4b1bffb63244b84828138ac64",
+        "capture": "02701d55e74f6622a1903fca6b485e8f4a0430d283dfcc60b6f8641b3dcd0d79"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/collision-crash.png"
     },
     {
       "name": "collision-tyre",
@@ -196,17 +956,7 @@
       "checks": [
         "VROOM: Verification PASS scenario=tyre contacts=1 respawns=1 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/collision-tyre.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/collision-tyre.png",
-      "evidence_sha256": {
-        "log": "5c91f7fbcc51707027bf2a9a5745431a89b7ca060f5fac74a7a7213a4a34cb6d",
-        "capture": "3de2c6d1227a1ad5b04921de769256630992f66a684441216106a29b5b7c9cf1"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -219,9 +969,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/collision-tyre-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/collision-tyre.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "d08976ffe7884f1e86c0a352618577148384f0467572ec4a66762234af625a11",
+        "log": "e05351fdff609269a58c9044832adedd75d32915e3a9d60bf5f37d8b22eb9972",
+        "capture": "733df481f64804b74a1cbb5b74f0d06cb1986257fbebb0333f5b00a483951935"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/collision-tyre.png"
     },
     {
       "name": "collision-scenery",
@@ -229,17 +1006,7 @@
       "checks": [
         "VROOM: Verification PASS scenario=scenery contacts=1 respawns=1 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/collision-scenery.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/collision-scenery.png",
-      "evidence_sha256": {
-        "log": "8cd71b9be5c5a55f0b065711e4d9cd4cfe324ff27f497f34c8c5d95a222a5c8e",
-        "capture": "6e3ba5a147d7b3865c40eabf2df9905b6c68f5d11b7b439e96a85fa62f881a51"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -252,9 +1019,136 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/collision-scenery-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/collision-scenery.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "88776d5473c6db9e6d1cfba3d5ef4405b4584bfbd132e136213f0e3cb660806b",
+        "log": "573df8147f0fd580c98986e723f0d1b73c7ae62e233905c90e12f83e9d86b16e",
+        "capture": "2b8757b122b2372331857a27127af69e7440261a14f688ad4e1cfee85d7696cb"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/collision-scenery.png"
+    },
+    {
+      "name": "collision-rub",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario=rub contacts=1 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomCollisionTest=rub",
+          "-VroomChaseCamera"
+        ],
+        "seconds": 8,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/collision-rub-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/collision-rub.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "f1d86bdc9db8b74bfd45d53cd2268473134a9615e038968e4a1ceee685fa360d",
+        "log": "ac98f1a84d341394d19f2941c804ed915aac3377c1039a085abb4c73cc108dec",
+        "capture": "abfc1f0d54de45cc7b63db8cb14846a9f12d5d5447e3cecf50718e51a53d766d"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/collision-rub.png"
+    },
+    {
+      "name": "collision-rear",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario=rear contacts=1 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomCollisionTest=rear",
+          "-VroomChaseCamera"
+        ],
+        "seconds": 8,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/collision-rear-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/collision-rear.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "26a3a314b64c2a3cdc10ede2390d84e232530eb2b29c5fd90592e0b749afb359",
+        "log": "7e6984549ebc1d6a6c3772891e9e5687a157dbcb057b658db12d02f84d11792c",
+        "capture": "9d5d8e3a2c8e67695a9752dabcd423772581657361174303877d1a23a6170f3a"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/collision-rear.png"
     },
     {
       "name": "neutral",
@@ -262,17 +1156,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/neutral.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/neutral.png",
-      "evidence_sha256": {
-        "log": "a162e7e796691fa81fbbd783e66fa7bbc71a32828f5e8f70d728950009d1ce6c",
-        "capture": "6ac3b6ded5d7957837288435e01b7e0cd6adfe56c2b450fa09b5790603bb7d08"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -287,9 +1171,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/neutral-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/neutral.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "8704b828c770632514ff97eb137b673b2cb853c76019afdfed32d0d05089e3d0",
+        "log": "450fdf0f5346973cbad252b55000468530c935772588025c26a4085092778bdd",
+        "capture": "abe5e7d545b80c30e1dcc8371b8ea03538b43284c4778895bb82556bbd6ad5c8"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/neutral.png"
     },
     {
       "name": "right",
@@ -297,17 +1208,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/right.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/right.png",
-      "evidence_sha256": {
-        "log": "ff155c5c188183e9bceae1c1bf8d4a91dc6fea37460a2fdca77c937933282eac",
-        "capture": "216d78ca89517493c5ebfa00bd691665d2e0c5b3a286950029d9de64df12fb2c"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -322,9 +1223,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/right-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/right.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "e23baf1fcd8acfc898da4063f2a05c012ba291b64a3c2302f571ecc952bdb2df",
+        "log": "37cf7c691c3361eae56cb3dcd3329e03932006b2405248e05cd2c983e5d58d37",
+        "capture": "9bd11143f767ce98d8d860fe1962540ae2ea60519739fc1b6f376c06dae374e9"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/right.png"
     },
     {
       "name": "left",
@@ -332,17 +1260,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/left.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/left.png",
-      "evidence_sha256": {
-        "log": "64de523faa6c97468ae63c16943b171873d8e7208353811da28e4a504e84fefe",
-        "capture": "fced71106f8bf001552381ed65aed03d60f43de5353eb030de7fbdc92a975d4d"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -357,9 +1275,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/left-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/left.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "c2c27cd96becb2bbb6a2c8d7605dbb783ade5841018d7f7da5babfbcf01a0983",
+        "log": "be74b6ede40bf0dbdc675f5a3cbf6dd8549350a09eec389b66bf61aa19d8224b",
+        "capture": "d5143dac237816a80ed0ddc69f9fd61c6b76478fcaf750c6b011994f66a49f3a"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/left.png"
     },
     {
       "name": "small-right",
@@ -367,17 +1312,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/small-right.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/small-right.png",
-      "evidence_sha256": {
-        "log": "f99e4753565ec2256963b20a9c3cca624ca8e77a57957e287ab06ed24e49ba2a",
-        "capture": "3d8b364898e62497ea31b81c958324a81dfeef35470e69d32cc741e15b815b5a"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -392,9 +1327,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/small-right-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/small-right.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "653252aa3c58b86f5b042cdf635d98c22708045ac11f50d5186503de5c81166f",
+        "log": "ff5e703938fe93647405da2889a0b9217a384b2333efb0b9d66a80e3b8bc6feb",
+        "capture": "3f14b5f6cf9c8d302058801c6c6484f685b039f6462f21160afc3ac244f43bab"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/small-right.png"
     },
     {
       "name": "mid-left",
@@ -402,17 +1364,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/mid-left.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/mid-left.png",
-      "evidence_sha256": {
-        "log": "88414b53156a5524663e9554623caeea3e4884e00c1a2c0cbb07b8cb9529eea1",
-        "capture": "3eefe95fdaa6d35bc8676c3bd8fa195f397bafc84af2b100f5afc81b1045eaf7"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -427,45 +1379,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
-    },
-    {
-      "name": "inspect-neutral",
-      "exit": 0,
-      "checks": [
-        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/mid-left-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/inspect-neutral.log",
-      "offscreen": true,
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/mid-left.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "953766dddcde29e04497166608e7b52064247efd3d4434e64a2b8133e5d72466",
+        "log": "f5a7d1377e02bc00bf62c43aab024e9a3ad2d545bf9599e77fefafcc92f7dcd1",
+        "capture": "9f7e09819c483261980c4e2524a1ae3a957d4961db9f93d323926ef82e5f66d3"
+      },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/inspect-neutral.png",
-      "evidence_sha256": {
-        "log": "3c50ecf28b52ec8262124843cc28e7581c41a6de7b3a4daa56effd316a6a293c",
-        "capture": "da9aa3716c56c464935052c1340ed7b47001221ecabd2fa13f243c119f53d33f"
-      },
-      "status": "PASS",
-      "request": {
-        "flags": [
-          "-VroomAutoDemo",
-          "-VroomStartDistance=350",
-          "-VroomStartSpeed=0",
-          "-VroomPreviewSteering=0",
-          "-VroomInspectCockpit"
-        ],
-        "seconds": 5,
-        "capture": true,
-        "resolution": [
-          1440,
-          900
-        ],
-        "capture_after": 3
-      },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/mid-left.png"
     },
     {
       "name": "neutral-16x9",
@@ -473,17 +1416,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/neutral-16x9.log",
-      "offscreen": true,
-      "size": [
-        1600,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/neutral-16x9.png",
-      "evidence_sha256": {
-        "log": "e7b8ea8ecba572cc3a8b4d93674d25ff5ca26d212498a8be460e421a44484c35",
-        "capture": "a524fd7e13bbc1e9df661cc3369f806abe6f67e400265fd212b0c08f9472a194"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -498,9 +1431,36 @@
           1600,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/neutral-16x9-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/neutral-16x9.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "ed8d4dd94fc65ea85a5b0c99bded52aac9897ac2e8eab68bfe7b30d3965e04d1",
+        "log": "0bbfb7a77182531d1322807ea083a20c45b96839b5ab12fcd44c0d2516a75399",
+        "capture": "f1c00f78d6456caa28bbdc5f3e72157cfa3007ba91150a2e2d93bd68284e4ef0"
+      },
+      "size": [
+        1600,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/neutral-16x9.png"
     },
     {
       "name": "cars",
@@ -508,17 +1468,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/cars.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/cars.png",
-      "evidence_sha256": {
-        "log": "a8f8a2acbbb7c390982bb04370fd0a6cf58d9529abb9d30fc316d893c1ee3422",
-        "capture": "3b46b876b95a2debf10de5da1b55aec36dd066c056e2a4a741845fa947d06417"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -534,9 +1484,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/cars-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/cars.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "4efab1e366cc9501c4c0a17c76a590b6c029eec69e2e729329aa3cfebf62ea0d",
+        "log": "e34368fdecf0650ff704757e0ac875959e022eccdeaad2fd04ffdf9466d76eb4",
+        "capture": "95e602b7df327047f05b8b43b1f8f66a668f74d33905cd2e94b6c30c05df1a6f"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/cars.png"
     },
     {
       "name": "options",
@@ -544,17 +1521,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/options.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/options.png",
-      "evidence_sha256": {
-        "log": "5bc82583761f2e9239a0fd5737cd90578a5cd38c424d639b04f6b4cbb921b3d3",
-        "capture": "bd913b62a8fbd643cf5cb7c88f4c45fec5a8fc3bcf71289a316e921b6d536de9"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -566,9 +1533,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/options-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/options.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "1eedbbca0c5016f1a3c065477a65e44dd54d68228c69fa2f5ae59a7dabbda6d9",
+        "log": "dbf55dc9a69f4b575a7979c16bd658aac479f7bff0bd605a4759f5a183a2a12f",
+        "capture": "d2244a6296f20f59349000fd3aabe55c6de683ae893c8ba4646ea166222520e1"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/options.png"
     },
     {
       "name": "session-qualifying",
@@ -576,17 +1570,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/session-qualifying.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/session-qualifying.png",
-      "evidence_sha256": {
-        "log": "54cc8f9b541c9fe1b8eaa7e61cb51cbcb63bd8f7f66c3c886a5897f65c2323a9",
-        "capture": "ac3319613ad0ae9baa45b68288566195d1ac3b63098499e203ad309f01a1f0d0"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -598,9 +1582,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/session-qualifying-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/session-qualifying.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "82088ef4c9d9449d8e7b923815180ccc9da33b3fa035681cb29ea42ea90a4c5e",
+        "log": "28e541c979b8a7f502e74d55c318e424ad47dfd04b901ac226e62f7806f035d6",
+        "capture": "88242320b3aab917cece0d5037b8e55b9f065a2319276a1be6934e5f08e0448a"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/session-qualifying.png"
     },
     {
       "name": "session-results",
@@ -608,17 +1619,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/session-results.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/session-results.png",
-      "evidence_sha256": {
-        "log": "16ec1632948225f54f37acd03b3f1b033b03ff556161d12956af0157d934558a",
-        "capture": "65acf1874ddef0ee6557799d627b12707fe048b9b7dc98074ee0395d418d5e82"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -630,9 +1631,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/session-results-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/session-results.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "6fce4b8993c9ea81cc62338dada4183423f61c00766bde6f24efad0d12278b6b",
+        "log": "891e1b984b8f07c176da8d5f959d040fb672d887d260fd3da12f2ec8ca2eba89",
+        "capture": "3c6b9b14474e067d985cc5706b982af95557015f822f074fe792cdcfcf4360b1"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/session-results.png"
     },
     {
       "name": "session-arcade",
@@ -640,17 +1668,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/session-arcade.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/session-arcade.png",
-      "evidence_sha256": {
-        "log": "86f9581af3fb44d4b8c0b5ed1e2a7538f72896788e196659f4ae03739995711d",
-        "capture": "f342a05ff610fabe3e07db14ad3a0586b2edce1f35219c40e7776802b473f1e0"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -662,9 +1680,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/session-arcade-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/session-arcade.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "85a27abf23a21e57b5ac6099acce572ab78df47a993eab65dccf2655c1710e7f",
+        "log": "d3121dc6972e5bd5e8000a5223e07c79ac1c0547e82cf1f35ecad160f0b7542c",
+        "capture": "aa353ee666341789657763715b0147e02886ae3a3952fada87248f9328d72818"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/session-arcade.png"
     },
     {
       "name": "session-pit",
@@ -672,17 +1717,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/session-pit.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/session-pit.png",
-      "evidence_sha256": {
-        "log": "4a5fb6d47ad608b1f51605f192234fc8561cb3d16e02eb921395f4075a687077",
-        "capture": "484019be9a77adb4b86874e73fd297c13d6e152e11f96b3d951d8211a82d961d"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -694,9 +1729,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/session-pit-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/session-pit.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "3a09d6dc0a8d17b3a10dbfc615c6e867b79422c8fa5fdb377dd3652a504d75ee",
+        "log": "59d11f4cbec9969fac0fa16e259a5942fb7f4f57a24bce485edd2cd96164f488",
+        "capture": "f8a3fc1de27db92600bff5867fa9eb825e3b915d47c7cf109792f3b4d4d0081e"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/session-pit.png"
     },
     {
       "name": "session-controls",
@@ -704,17 +1766,7 @@
       "checks": [
         "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
       ],
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/session-controls.log",
-      "offscreen": true,
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.30.0/20260913-030921-package/session-controls.png",
-      "evidence_sha256": {
-        "log": "7692d0ba805c2f124aafb2cc14496dbc770e70765765ce04c2930354b41f8749",
-        "capture": "b311df3292a8ac1b8a77d456c1752477eaf65f24d8505b443222f7a06a68650c"
-      },
+      "offscreen": false,
       "status": "PASS",
       "request": {
         "flags": [
@@ -726,9 +1778,36 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/session-controls-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/session-controls.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "ac5a19a1fccc31f4c930fbcc90c9d9b6f2f176e3beaaf7be472aa20fa155be12",
+        "log": "54ea3b8a8b37675361bb614b02ed1daa5e5a43d680347a1f5d0186b2b0ef0c56",
+        "capture": "0da8dfcc7c754317f7195b5e80853f18781438b0c4b4b506bd9b5ab7f2ac7611"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/session-controls.png"
     },
     {
       "name": "perf-1440",
@@ -752,26 +1831,30 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.30.0/20260913-030921-package/perf-1440-stdout.log",
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/perf-1440.log",
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/perf-1440-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/perf-1440.log",
       "foreground": {
-        "exit": 5,
-        "stdout": "foreground_before=0 foreground_after=0 locked=1\n",
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
         "stderr": "",
-        "status": "foreground_before=0 foreground_after=0 locked=1",
-        "locked": true,
-        "display_mode": "onscreen_locked",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
         "interaction_verified": false
       },
-      "display_mode": "onscreen_locked",
-      "interaction_verified": false,
+      "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "log": "6447e3fb19c47467588cd91fbb4493098851acafbf52da6d5b2e5a9ab60a1622",
-        "stdout": "845096ec15443e21cbf46cf136df456d1a0c25b8ac648081b5d0b5e6367ba18e"
-      },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+        "stdout": "de36669c90971e0bb3f403c36d6e640475c88ebb0f71702e33af72d417c1de01",
+        "log": "14a61af8cf3a2a9ae252331b4317bf39ff10c965475626920b90066b391121ec"
+      }
     },
     {
       "name": "perf-2560",
@@ -795,26 +1878,30 @@
           2560,
           1664
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.30.0/20260913-030921-package/perf-2560-stdout.log",
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/perf-2560.log",
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/perf-2560-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/perf-2560.log",
       "foreground": {
-        "exit": 5,
-        "stdout": "foreground_before=0 foreground_after=0 locked=1\n",
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
         "stderr": "",
-        "status": "foreground_before=0 foreground_after=0 locked=1",
-        "locked": true,
-        "display_mode": "onscreen_locked",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
         "interaction_verified": false
       },
-      "display_mode": "onscreen_locked",
-      "interaction_verified": false,
+      "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "log": "e52331834fbc5a96c7cb98254bea10977c5ec1e6e5069fe51449ca4fcb5fc0f0",
-        "stdout": "bac1f501c8f6fb6777f57085733b0dd65ebbffe700075a869fc77f4f814f0774"
-      },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+        "stdout": "c9156423b4e35dc6a5c820748a41a711a8910088a66f256b2ae93d84228e29f6",
+        "log": "fa1e27a8e327a5917fe46409828323d729b35f3968c25292ae0539d5ec48ad59"
+      }
     },
     {
       "name": "soak-track-1",
@@ -841,26 +1928,30 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-1-stdout.log",
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-1.log",
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-1-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-1.log",
       "foreground": {
-        "exit": 5,
-        "stdout": "foreground_before=0 foreground_after=0 locked=1\n",
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
         "stderr": "",
-        "status": "foreground_before=0 foreground_after=0 locked=1",
-        "locked": true,
-        "display_mode": "onscreen_locked",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
         "interaction_verified": false
       },
-      "display_mode": "onscreen_locked",
-      "interaction_verified": false,
+      "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "log": "5e00366bca7b508db59287bbc8e49cfc334030ae508490f251ab65c2a1da6fcb",
-        "stdout": "5bf9013b28f4a9ec98eed1b621bd97c76d61e21904a34b8f7e4f5671aec5f5ed"
-      },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+        "stdout": "f253394b7c4d9af669f5dc11045c8002dbc7ced5995c3bca3e84a2d2f40d9fc7",
+        "log": "59abe5cbe96861d9bbe2c0b86ebb6613ffca9909c274ccd6e23615042b161c2a"
+      }
     },
     {
       "name": "soak-track-2",
@@ -887,26 +1978,30 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-2-stdout.log",
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-2.log",
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-2-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-2.log",
       "foreground": {
-        "exit": 5,
-        "stdout": "foreground_before=0 foreground_after=0 locked=1\n",
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
         "stderr": "",
-        "status": "foreground_before=0 foreground_after=0 locked=1",
-        "locked": true,
-        "display_mode": "onscreen_locked",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
         "interaction_verified": false
       },
-      "display_mode": "onscreen_locked",
-      "interaction_verified": false,
+      "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "log": "e3084e73780ebd2ed924c427a7333289afe09ef567317d4d7d8ac01160f2dd1d",
-        "stdout": "ee2d71e000c1fe0f5a26b75db01dec94afc2f5730c0b1cba2eba0edfad052eed"
-      },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+        "stdout": "cd7abf39f18c8606cdbf22c20385731609038d5de192af0fe5da1e8b4cf8618f",
+        "log": "a6120d27b97f1beffc98d7ac0593895f310b1240a530172d0ac225dc92c65426"
+      }
     },
     {
       "name": "soak-track-3",
@@ -933,26 +2028,30 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-3-stdout.log",
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-3.log",
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-3-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-3.log",
       "foreground": {
-        "exit": 5,
-        "stdout": "foreground_before=0 foreground_after=0 locked=1\n",
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
         "stderr": "",
-        "status": "foreground_before=0 foreground_after=0 locked=1",
-        "locked": true,
-        "display_mode": "onscreen_locked",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
         "interaction_verified": false
       },
-      "display_mode": "onscreen_locked",
-      "interaction_verified": false,
+      "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "log": "505df8a497d24d6475ca9da863ae4c04785435eb9aacfe42fa79bc2430c5b291",
-        "stdout": "82f038508f1f778c8d2a3162b61ed3b003144fcf3d9f66fdbc577330e458894d"
-      },
-      "reused_from": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json"
+        "stdout": "8153d3b78a457819da38b2a8ab8c843c18a3798e396ba694e8f98ce322436426",
+        "log": "7ac80e618050e0b6a71551f5820075bc8d84953ee103f58109d266dba57d6991"
+      }
     },
     {
       "name": "soak-track-4",
@@ -979,24 +2078,29 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-4-stdout.log",
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-4.log",
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-4-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-4.log",
       "foreground": {
-        "exit": 5,
-        "stdout": "foreground_before=0 foreground_after=0 locked=1\n",
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
         "stderr": "",
-        "status": "foreground_before=0 foreground_after=0 locked=1",
-        "locked": true,
-        "display_mode": "onscreen_locked",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
         "interaction_verified": false
       },
-      "display_mode": "onscreen_locked",
-      "interaction_verified": false,
+      "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "fcfedc5b54b14b58b51d5beb00e6f471394f6c72ffc2ba367d0b3d57c95956ae",
-        "log": "506000c237976727328e18eb32e15cdb586c3108b5d2ddf3a6f5541bc88bd4ca"
+        "stdout": "d7560023957328e3767e7cb04f6a90e7d2654d322bf74959d746a04fa815d923",
+        "log": "31dff86e0b5ed59eaf87720b12d648d250028a85555bdc3b71ace65a7c9d89ba"
       }
     },
     {
@@ -1024,24 +2128,29 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-5-stdout.log",
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-5.log",
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-5-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-5.log",
       "foreground": {
-        "exit": 5,
-        "stdout": "foreground_before=0 foreground_after=0 locked=1\n",
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
         "stderr": "",
-        "status": "foreground_before=0 foreground_after=0 locked=1",
-        "locked": true,
-        "display_mode": "onscreen_locked",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
         "interaction_verified": false
       },
-      "display_mode": "onscreen_locked",
-      "interaction_verified": false,
+      "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "418db9af7c2956935b0a0f01dbbb33ac13a24e39bcee76a6ef4db21e5aa634cb",
-        "log": "8e31c007c892f2752eb261f1cf8db7c3b5c4cea568554042e37f9f72e959f3e6"
+        "stdout": "9016627dbe782aba0ddbb4d96f878f7548d2045dd1cd60d6b0522dc696f076be",
+        "log": "56994d2910795d008492d4f9b36bb080eba16fe9f55545ba9f3625f3d80a3734"
       }
     },
     {
@@ -1069,24 +2178,29 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-6-stdout.log",
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-6.log",
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-6-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-6.log",
       "foreground": {
-        "exit": 5,
-        "stdout": "foreground_before=0 foreground_after=0 locked=1\n",
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
         "stderr": "",
-        "status": "foreground_before=0 foreground_after=0 locked=1",
-        "locked": true,
-        "display_mode": "onscreen_locked",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
         "interaction_verified": false
       },
-      "display_mode": "onscreen_locked",
-      "interaction_verified": false,
+      "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "8599fbb91e364ef728e3b75e6c031511e693281eca6041ca6df086185c25d12f",
-        "log": "d9e226d685cbfeeea572ed8155c7919e7ce4d1b4ded0d4915dd01ff9fa76e1c7"
+        "stdout": "3cf3ddb691a3c3c132c3a1c4e0a592852e3439d75d31db324e7e55ff3304c8d2",
+        "log": "4373ec25b3bb888462074a3c03c2911ad4fbf29d81a7abd93c7422a77aaf3594"
       }
     },
     {
@@ -1110,24 +2224,29 @@
           1440,
           900
         ],
-        "capture_after": 3
+        "capture_after": 3,
+        "graphics_preset": "performance",
+        "visible": true,
+        "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.30.0/20260913-030921-package/motion-stdout.log",
-      "log": "Saved/Validation/v0.30.0/20260913-030921-package/motion.log",
+      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/motion-stdout.log",
+      "graphics_applied": [
+        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+      ],
+      "log": "Saved/Validation/v0.33.0/20260919-174842-package/motion.log",
       "foreground": {
-        "exit": 5,
-        "stdout": "foreground_before=0 foreground_after=0 locked=1\n",
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
         "stderr": "",
-        "status": "foreground_before=0 foreground_after=0 locked=1",
-        "locked": true,
-        "display_mode": "onscreen_locked",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
         "interaction_verified": false
       },
-      "display_mode": "onscreen_locked",
-      "interaction_verified": false,
+      "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "6b057cb68009aa32d5187f6e88e9370b86a9530e7725d916b137635b626d8914",
-        "log": "8ad97f1f00f8796ccbabe3890a72d2f7f7cc52b49883d6b97594e5d926617acf"
+        "stdout": "aa19c85ecb827dd22798f588d7729d90d4ea9cdc12e76ab3c022aa008dc90aaf",
+        "log": "3aa49fd884a040cab3927f34120de211b505d5d3874803112e5d25cfee096490"
       }
     }
   ],
@@ -1143,9 +2262,9 @@
       "distance": 3295,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/Profile(20260913_024923).csv",
-          "size_bytes": 5890602,
-          "modified_utc": "2026-09-13T00:49:56.335987+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_175711).csv",
+          "size_bytes": 5890461,
+          "modified_utc": "2026-09-19T15:57:47.090000+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -1159,35 +2278,35 @@
         },
         "missing_columns": [],
         "analyzed_frames": 1680,
-        "analyzed_duration_seconds": 28.0067804,
-        "mean_fps": 59.98547408898169,
+        "analyzed_duration_seconds": 28.0056632,
+        "mean_fps": 59.987867025409344,
         "frame_time": {
           "samples": 1680,
-          "mean_ms": 16.670702619047617,
-          "p95_ms": 16.86101,
-          "p99_ms": 16.925925,
-          "max_ms": 17.0602,
+          "mean_ms": 16.67003761904762,
+          "p95_ms": 16.840915000000003,
+          "p99_ms": 16.926234,
+          "max_ms": 17.0308,
           "over_20_ms_count": 0
         },
         "gpu_time": {
           "samples": 1680,
-          "mean_ms": 5.744122380952381,
-          "p95_ms": 8.681144999999995,
-          "p99_ms": 9.308724999999999,
-          "max_ms": 9.7525,
+          "mean_ms": 6.466161666666666,
+          "p95_ms": 9.502895,
+          "p99_ms": 10.484017,
+          "max_ms": 10.9875,
           "over_20_ms_count": 0
         },
         "game_thread_time": {
           "samples": 1680,
-          "mean_ms": 1.065377619047619,
-          "p95_ms": 1.20623,
-          "p99_ms": 1.275536,
-          "max_ms": 1.3847,
+          "mean_ms": 1.0971857738095236,
+          "p95_ms": 1.22581,
+          "p99_ms": 1.291226,
+          "max_ms": 1.449,
           "over_20_ms_count": 0
         }
       },
-      "csv_sha256": "2fd12171a082527a1e76a3f0c6da176e832082c92fce987d4868b4c54222cd32",
-      "display_mode": "onscreen_locked",
+      "csv_sha256": "955f2b8517e229dc4f1b7d93d85b1311f9c0f8868992dd71c27e50e3743f8774",
+      "display_mode": "onscreen_active",
       "interaction_verified": false
     },
     {
@@ -1201,9 +2320,9 @@
       "distance": 2190,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/Profile(20260913_024956).csv",
-          "size_bytes": 5885304,
-          "modified_utc": "2026-09-13T00:50:28.989568+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_175747).csv",
+          "size_bytes": 5871947,
+          "modified_utc": "2026-09-19T15:58:23.110612+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -1217,35 +2336,35 @@
         },
         "missing_columns": [],
         "analyzed_frames": 1680,
-        "analyzed_duration_seconds": 28.0060844,
-        "mean_fps": 59.986964832541894,
+        "analyzed_duration_seconds": 28.0042863,
+        "mean_fps": 59.990816477261916,
         "frame_time": {
           "samples": 1680,
-          "mean_ms": 16.670288333333332,
-          "p95_ms": 16.86522,
-          "p99_ms": 16.941173,
-          "max_ms": 17.0347,
+          "mean_ms": 16.669218035714284,
+          "p95_ms": 16.894215000000003,
+          "p99_ms": 16.962767,
+          "max_ms": 17.0496,
           "over_20_ms_count": 0
         },
         "gpu_time": {
           "samples": 1680,
-          "mean_ms": 13.37302494047619,
-          "p95_ms": 13.6809,
-          "p99_ms": 13.998546,
-          "max_ms": 14.4167,
+          "mean_ms": 13.996934821428571,
+          "p95_ms": 14.724264999999999,
+          "p99_ms": 14.851146,
+          "max_ms": 15.0763,
           "over_20_ms_count": 0
         },
         "game_thread_time": {
           "samples": 1680,
-          "mean_ms": 1.1714329166666666,
-          "p95_ms": 1.3333149999999998,
-          "p99_ms": 1.4427770000000002,
-          "max_ms": 1.628,
+          "mean_ms": 1.1089231547619047,
+          "p95_ms": 1.29003,
+          "p99_ms": 1.35781,
+          "max_ms": 1.4691,
           "over_20_ms_count": 0
         }
       },
-      "csv_sha256": "ac920f03a86aba6743d0767fae4871903f7953afb6983e9f6ab9fb0f45cddb15",
-      "display_mode": "onscreen_locked",
+      "csv_sha256": "d2374a90a884f91b709eac2b30867b3649394fdf26f58b24a938ca72f759778d",
+      "display_mode": "onscreen_active",
       "interaction_verified": false
     },
     {
@@ -1259,9 +2378,9 @@
       "distance": 0,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/Profile(20260913_025029).csv",
-          "size_bytes": 24921926,
-          "modified_utc": "2026-09-13T00:52:42.271766+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_175823).csv",
+          "size_bytes": 24912542,
+          "modified_utc": "2026-09-19T16:00:43.270119+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -1275,35 +2394,35 @@
         },
         "missing_columns": [],
         "analyzed_frames": 7680,
-        "analyzed_duration_seconds": 128.0296585,
-        "mean_fps": 59.98610079866768,
+        "analyzed_duration_seconds": 128.0214705,
+        "mean_fps": 59.98993739100974,
         "frame_time": {
           "samples": 7680,
-          "mean_ms": 16.670528450520834,
-          "p95_ms": 16.88302,
-          "p99_ms": 17.019235,
-          "max_ms": 18.0049,
+          "mean_ms": 16.6694623046875,
+          "p95_ms": 16.88361,
+          "p99_ms": 16.968705,
+          "max_ms": 18.1896,
           "over_20_ms_count": 0
         },
         "gpu_time": {
           "samples": 7680,
-          "mean_ms": 6.26574796875,
-          "p95_ms": 9.277989999999999,
-          "p99_ms": 10.031234,
-          "max_ms": 10.9701,
+          "mean_ms": 7.6022565755208324,
+          "p95_ms": 11.1543,
+          "p99_ms": 11.49831,
+          "max_ms": 12.3646,
           "over_20_ms_count": 0
         },
         "game_thread_time": {
           "samples": 7680,
-          "mean_ms": 1.0832036328124999,
-          "p95_ms": 1.241815,
-          "p99_ms": 1.3628570000000002,
-          "max_ms": 2.385,
+          "mean_ms": 1.1421079296875,
+          "p95_ms": 1.288705,
+          "p99_ms": 1.355931,
+          "max_ms": 2.5382,
           "over_20_ms_count": 0
         }
       },
-      "csv_sha256": "330ae17713e6d4baf9f61600d6b009aac0f12f32aba3607f13f94970ffd0d4dc",
-      "display_mode": "onscreen_locked",
+      "csv_sha256": "bcad2b0d0d3bf919e5d1f7ac31f71cc24b984f225f0b9bb409d9a693412c0442",
+      "display_mode": "onscreen_active",
       "interaction_verified": false
     },
     {
@@ -1317,9 +2436,9 @@
       "distance": 0,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/Profile(20260913_025242).csv",
-          "size_bytes": 24903998,
-          "modified_utc": "2026-09-13T00:54:55.422438+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_180043).csv",
+          "size_bytes": 24897111,
+          "modified_utc": "2026-09-19T16:03:01.211429+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -1333,35 +2452,35 @@
         },
         "missing_columns": [],
         "analyzed_frames": 7680,
-        "analyzed_duration_seconds": 128.0295186,
-        "mean_fps": 59.98616634648504,
+        "analyzed_duration_seconds": 128.0219347,
+        "mean_fps": 59.98971987102769,
         "frame_time": {
           "samples": 7680,
-          "mean_ms": 16.670510234374998,
-          "p95_ms": 16.9155,
-          "p99_ms": 17.039515,
-          "max_ms": 20.0395,
-          "over_20_ms_count": 1
+          "mean_ms": 16.669522747395835,
+          "p95_ms": 16.89971,
+          "p99_ms": 16.976789,
+          "max_ms": 18.4328,
+          "over_20_ms_count": 0
         },
         "gpu_time": {
           "samples": 7680,
-          "mean_ms": 6.014653502604166,
-          "p95_ms": 9.037939999999994,
-          "p99_ms": 9.463641,
-          "max_ms": 10.037,
+          "mean_ms": 7.6291813020833334,
+          "p95_ms": 10.677,
+          "p99_ms": 11.072562000000001,
+          "max_ms": 11.8217,
           "over_20_ms_count": 0
         },
         "game_thread_time": {
           "samples": 7680,
-          "mean_ms": 1.0973859895833333,
-          "p95_ms": 1.2593,
-          "p99_ms": 1.379999,
-          "max_ms": 4.4965,
+          "mean_ms": 1.1483639453125,
+          "p95_ms": 1.310805,
+          "p99_ms": 1.3795,
+          "max_ms": 2.9025,
           "over_20_ms_count": 0
         }
       },
-      "csv_sha256": "3b6a64fdba7ced2bdff29724a66c55162b0bab012d59b8566b12246a0ec030df",
-      "display_mode": "onscreen_locked",
+      "csv_sha256": "2fbad93d7d13d56e549e347e8a888855545ec51d46b89c20827d196477339979",
+      "display_mode": "onscreen_active",
       "interaction_verified": false
     },
     {
@@ -1375,9 +2494,9 @@
       "distance": 0,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/Profile(20260913_025456).csv",
-          "size_bytes": 24905488,
-          "modified_utc": "2026-09-13T00:57:08.972617+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_180301).csv",
+          "size_bytes": 24884965,
+          "modified_utc": "2026-09-19T16:05:22.054214+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -1391,35 +2510,35 @@
         },
         "missing_columns": [],
         "analyzed_frames": 7680,
-        "analyzed_duration_seconds": 128.0282552,
-        "mean_fps": 59.986758298022956,
+        "analyzed_duration_seconds": 128.0274274,
+        "mean_fps": 59.987146160526535,
         "frame_time": {
           "samples": 7680,
-          "mean_ms": 16.670345729166666,
-          "p95_ms": 16.892905000000003,
-          "p99_ms": 17.029704,
-          "max_ms": 20.2939,
-          "over_20_ms_count": 1
+          "mean_ms": 16.670237942708333,
+          "p95_ms": 16.881005000000002,
+          "p99_ms": 16.966084000000002,
+          "max_ms": 18.0308,
+          "over_20_ms_count": 0
         },
         "gpu_time": {
           "samples": 7680,
-          "mean_ms": 6.063453255208334,
-          "p95_ms": 9.115834999999999,
-          "p99_ms": 9.593237,
-          "max_ms": 10.8737,
+          "mean_ms": 6.612718229166666,
+          "p95_ms": 9.782484999999996,
+          "p99_ms": 10.928665,
+          "max_ms": 11.37,
           "over_20_ms_count": 0
         },
         "game_thread_time": {
           "samples": 7680,
-          "mean_ms": 1.1031262630208334,
-          "p95_ms": 1.26,
-          "p99_ms": 1.38813,
-          "max_ms": 4.5934,
+          "mean_ms": 1.1415444270833333,
+          "p95_ms": 1.2805,
+          "p99_ms": 1.3666,
+          "max_ms": 2.3598,
           "over_20_ms_count": 0
         }
       },
-      "csv_sha256": "ebf0b63264b501ee41c5cfee33fe45df22feed0e46ae9b7f9d697bc29782b2c9",
-      "display_mode": "onscreen_locked",
+      "csv_sha256": "66200426483e92936318b9aef7359dee5c14c52fd335c2409f656b653ebd6209",
+      "display_mode": "onscreen_active",
       "interaction_verified": false
     },
     {
@@ -1433,9 +2552,9 @@
       "distance": 0,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/Profile(20260913_030929).csv",
-          "size_bytes": 24861873,
-          "modified_utc": "2026-09-13T01:11:41.735098+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_180522).csv",
+          "size_bytes": 24893777,
+          "modified_utc": "2026-09-19T16:07:40.140303+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -1449,35 +2568,35 @@
         },
         "missing_columns": [],
         "analyzed_frames": 7680,
-        "analyzed_duration_seconds": 128.0360584,
-        "mean_fps": 59.98310238516371,
+        "analyzed_duration_seconds": 128.0247085,
+        "mean_fps": 59.9884201259478,
         "frame_time": {
           "samples": 7680,
-          "mean_ms": 16.671361770833332,
-          "p95_ms": 17.232675,
-          "p99_ms": 17.481405000000002,
-          "max_ms": 22.8332,
-          "over_20_ms_count": 1
+          "mean_ms": 16.669883919270834,
+          "p95_ms": 16.92032,
+          "p99_ms": 17.008121,
+          "max_ms": 19.9378,
+          "over_20_ms_count": 0
         },
         "gpu_time": {
           "samples": 7680,
-          "mean_ms": 5.992159908854166,
-          "p95_ms": 9.00748,
-          "p99_ms": 9.477656999999999,
-          "max_ms": 10.5106,
+          "mean_ms": 7.4786330078125,
+          "p95_ms": 10.802279999999998,
+          "p99_ms": 11.121221,
+          "max_ms": 11.5168,
           "over_20_ms_count": 0
         },
         "game_thread_time": {
           "samples": 7680,
-          "mean_ms": 1.1408083072916668,
-          "p95_ms": 1.598705,
-          "p99_ms": 1.7735470000000002,
-          "max_ms": 4.0844,
+          "mean_ms": 1.1542952604166667,
+          "p95_ms": 1.324215,
+          "p99_ms": 1.421342,
+          "max_ms": 4.3419,
           "over_20_ms_count": 0
         }
       },
-      "csv_sha256": "1c71e60c85cbfbb5167e6c10035612446f6b487350f6c0bfe47c4062c7f01a42",
-      "display_mode": "onscreen_locked",
+      "csv_sha256": "d1cc07a40cd90719abda2093d7fdd6252ff5750e07b2a09f9ca357a8d2d673be",
+      "display_mode": "onscreen_active",
       "interaction_verified": false
     },
     {
@@ -1491,9 +2610,9 @@
       "distance": 0,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/Profile(20260913_031142).csv",
-          "size_bytes": 24851729,
-          "modified_utc": "2026-09-13T01:13:54.990182+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_180740).csv",
+          "size_bytes": 24851443,
+          "modified_utc": "2026-09-19T16:09:58.704775+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -1507,35 +2626,35 @@
         },
         "missing_columns": [],
         "analyzed_frames": 7680,
-        "analyzed_duration_seconds": 128.02994569999998,
-        "mean_fps": 59.98596623633498,
+        "analyzed_duration_seconds": 128.0227365,
+        "mean_fps": 59.98934415841049,
         "frame_time": {
           "samples": 7680,
-          "mean_ms": 16.670565846354165,
-          "p95_ms": 16.8907,
-          "p99_ms": 17.101303,
-          "max_ms": 18.4934,
+          "mean_ms": 16.6696271484375,
+          "p95_ms": 16.8697,
+          "p99_ms": 16.9459,
+          "max_ms": 18.2544,
           "over_20_ms_count": 0
         },
         "gpu_time": {
           "samples": 7680,
-          "mean_ms": 6.142434036458334,
-          "p95_ms": 9.185685,
-          "p99_ms": 9.921981,
-          "max_ms": 10.7166,
+          "mean_ms": 7.7340417578125,
+          "p95_ms": 11.04784,
+          "p99_ms": 11.3331,
+          "max_ms": 12.1599,
           "over_20_ms_count": 0
         },
         "game_thread_time": {
           "samples": 7680,
-          "mean_ms": 1.0996154557291669,
-          "p95_ms": 1.270205,
-          "p99_ms": 1.436105,
-          "max_ms": 2.8795,
+          "mean_ms": 1.1359835286458333,
+          "p95_ms": 1.2943,
+          "p99_ms": 1.381021,
+          "max_ms": 2.6318,
           "over_20_ms_count": 0
         }
       },
-      "csv_sha256": "1c1e995d391528c463a61c594ba9f398280b9d69942da1f31ec79e608a3bacbb",
-      "display_mode": "onscreen_locked",
+      "csv_sha256": "d66c3b2506644e5dff3aec85f01a9e08d47377766a4b3447764515026ba0525c",
+      "display_mode": "onscreen_active",
       "interaction_verified": false
     },
     {
@@ -1549,9 +2668,9 @@
       "distance": 0,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/Profile(20260913_031355).csv",
-          "size_bytes": 24877895,
-          "modified_utc": "2026-09-13T01:16:08.430704+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_180959).csv",
+          "size_bytes": 24868697,
+          "modified_utc": "2026-09-19T16:12:17.728274+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -1565,42 +2684,44 @@
         },
         "missing_columns": [],
         "analyzed_frames": 7680,
-        "analyzed_duration_seconds": 128.0297349,
-        "mean_fps": 59.986065002779284,
+        "analyzed_duration_seconds": 128.0281292,
+        "mean_fps": 59.986817334514335,
         "frame_time": {
           "samples": 7680,
-          "mean_ms": 16.6705383984375,
-          "p95_ms": 16.873705,
-          "p99_ms": 17.002682,
-          "max_ms": 18.1488,
+          "mean_ms": 16.670329322916665,
+          "p95_ms": 16.842805000000002,
+          "p99_ms": 16.919447,
+          "max_ms": 18.1963,
           "over_20_ms_count": 0
         },
         "gpu_time": {
           "samples": 7680,
-          "mean_ms": 6.014272955729167,
-          "p95_ms": 9.102334999999998,
-          "p99_ms": 9.585826,
-          "max_ms": 10.4363,
+          "mean_ms": 7.0499846875,
+          "p95_ms": 11.034025,
+          "p99_ms": 11.30121,
+          "max_ms": 11.5066,
           "over_20_ms_count": 0
         },
         "game_thread_time": {
           "samples": 7680,
-          "mean_ms": 1.0938257942708334,
-          "p95_ms": 1.2528,
-          "p99_ms": 1.39081,
-          "max_ms": 2.6913,
+          "mean_ms": 1.1301761979166665,
+          "p95_ms": 1.293105,
+          "p99_ms": 1.385115,
+          "max_ms": 2.4707,
           "over_20_ms_count": 0
         }
       },
-      "csv_sha256": "47dc42eb2d297313fff60e079266ec22f6e5ea3ffb3abe8102ff96e16377e1c9",
-      "display_mode": "onscreen_locked",
+      "csv_sha256": "3428cd9c250d54b7ff50f7d98918d63a963ca55242230a79c6d7ca1f5460e8c0",
+      "display_mode": "onscreen_active",
       "interaction_verified": false
     }
   ],
   "requested": {
     "profile": true,
-    "soak": true
+    "soak": true,
+    "visible": true
   },
+  "graphics_preset": "performance",
   "release_limits": {
     "performance": {
       "min_mean_fps": 59.0,
@@ -1613,10 +2734,10 @@
       "max_yaw_acceleration": 300.0
     }
   },
-  "executable_sha256": "3094777016a987055bf8f3a733db00faeaed47c71f96e372effb28108ec1bab0",
+  "executable_sha256": "a3af96417a81859a643010c80aebcb52ebc4135a44b0d76680c0b69c9df9a35d",
   "package_data_sha256": {
     "Contents/UE/Vroom/Content/Data/amiga_sound.bin": "dceb608931b6368917db94a96660634fbb3fc8142e7f8996c0a50fda5a10ad03",
-    "Contents/UE/Vroom/Content/Data/gloves.json": "2d94b8b8f1ed15e33c3901b25448736690bfc85fcf9ff6b625d10ee07c91326e",
+    "Contents/UE/Vroom/Content/Data/gloves.json": "cc4beb60aba7e86bd629ed687d88da05fbf064b8d8c76ef2163a78495b3804bc",
     "Contents/UE/Vroom/Content/Data/hud/banner_autriche.png": "b6e5620d3994ac77a3a4fa48ad470dcdc926a2c7b2bed8f4155f2beb0e3bd082",
     "Contents/UE/Vroom/Content/Data/hud/banner_france.png": "36aacabfed258c505dbe7d8d86bcba138f4484a2119da53fe528a805daada824",
     "Contents/UE/Vroom/Content/Data/hud/banner_japon.png": "1d95a9dbec380b2e511292e422cf07068b1d9e21be1cb60027fbf6724e0cfa50",
@@ -1638,52 +2759,21 @@
     "Contents/UE/Vroom/Content/Data/hud/title_suede.png": "2a8873414ec2ec7d99f952c095b8a6772bc55f69a441636a6470ba33ed5d44f6",
     "Contents/UE/Vroom/Content/Data/hud/title_usa.png": "6241a511b0a6ee07f27328b029720a7f8e4846121e97c0e16e2043c53467b1be",
     "Contents/UE/Vroom/Content/Data/tracks.json": "4bb70d72a523399950ea21bb1649e76e071722a52e45da9f5004806d9e10d83b",
-    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.pak": "6fc69e3c2092e0473f42adb55baf4f19c11206a29ca1357ab50ae61bfeb33f4e",
-    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.ucas": "24a8ba20b1b96691d8d32049fad19797855ea4c0a2c914c221b72d8d6173516f",
-    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.utoc": "44dee7472990701ea6cc48cda1b752bafeac2411a85005898a37a1b5c32cb00f",
+    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.pak": "2dbba10b1c3636f41d90b1637db63d934105d93b4c9519d944b10007ae7e997b",
+    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.ucas": "a081103719e87ff1a8d8c1aae3d3d0e359b4dcd4e2c07dacbf3b7093b12ba4e8",
+    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.utoc": "b68c26c39e581806b1b274c0133fc9b369a912a2392bfd4a9f6b4d0a62ce9e7d",
     "Contents/UE/Vroom/Content/Paks/global.ucas": "f0297aca8595383225c4b003ba2ba7b58104f7a381aad66d48fa8a974eb194b4",
     "Contents/UE/Vroom/Content/Paks/global.utoc": "fb7540d22928a02629ff8d4aa9e36655176f8f395ff55fcdcb96d38b95dff1a6"
   },
-  "history": [
-    {
-      "report": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-023133-package/results.json",
-      "date": "2026-09-13T02:31:33.806391",
-      "completed": false,
-      "failures": [
-        {
-          "name": "perf-1440-foreground",
-          "reasons": [
-            "Unable to activate the benchmark window"
-          ]
-        }
-      ],
-      "report_sha256": "541ce6c3d3915c7380b508b62f4192dbf4cfdd4e4b8534ce508506e5a05f5673"
-    },
-    {
-      "report": "/Users/david/Documents/Codex/2026-09-05/su/work/vroom-unreal/Saved/Validation/v0.30.0/20260913-024921-package/results.json",
-      "date": "2026-09-13T02:49:21.678823",
-      "completed": false,
-      "failures": [
-        {
-          "name": "soak-track-4",
-          "reasons": [
-            "max_ms 145.190 > 33.5"
-          ]
-        }
-      ],
-      "report_sha256": "bcd4ea21e4046062c558bab867ef62947644cbdaac7c128ddaeb813f668c858d"
-    }
-  ],
-  "locked_session_measurements": true,
   "soak_motion": [
     {
       "track": 0,
       "complete": true,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-1.log",
-          "size_bytes": 1661936,
-          "modified_utc": "2026-09-13T00:52:42.469174+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-1.log",
+          "size_bytes": 1666740,
+          "modified_utc": "2026-09-19T16:00:43.498363+00:00"
         },
         "warmup_requested_samples": 120,
         "warmup_discarded_samples": 120,
@@ -1699,36 +2789,36 @@
         "first_distance_backsteps": [],
         "yaw_delta_degrees": {
           "samples": 7674,
-          "min_signed": -0.4666300000000092,
-          "max_signed": 1.6645680000000027,
-          "mean_absolute": 0.13862858339848833,
-          "p95_absolute": 0.42033784999998564,
-          "p99_absolute": 0.5115217400000123,
-          "max_absolute": 1.6645680000000027
+          "min_signed": -0.467410000000001,
+          "max_signed": 1.2464860000000044,
+          "mean_absolute": 0.13859094540005226,
+          "p95_absolute": 0.4205447500000076,
+          "p99_absolute": 0.5117433599999851,
+          "max_absolute": 1.2464860000000044
         },
         "yaw_rate_degrees_per_second": {
           "samples": 7674,
-          "min_signed": -27.997240055199445,
-          "max_signed": 33.801643967119865,
-          "mean_absolute": 8.305338008016976,
-          "p95_absolute": 25.208722455077837,
-          "p99_absolute": 30.588294784241693,
-          "max_absolute": 33.801643967119865
+          "min_signed": -28.044039119217672,
+          "max_signed": 33.87406251874846,
+          "mean_absolute": 8.30699410367376,
+          "p95_absolute": 25.22218755624872,
+          "p99_absolute": 30.638951794693483,
+          "max_absolute": 33.87406251874846
         },
         "yaw_acceleration_degrees_per_second_squared": {
           "samples": 7673,
-          "min_signed": -54.50901961740219,
-          "max_signed": 42.021119138432475,
-          "mean_absolute": 3.823011760273324,
-          "p95_absolute": 14.85084596015296,
-          "p99_absolute": 26.695956151099733,
-          "max_absolute": 54.50901961740219
+          "min_signed": -57.09011637242857,
+          "max_signed": 35.31098754643996,
+          "mean_absolute": 3.8218429587769718,
+          "p95_absolute": 15.395498988922817,
+          "p99_absolute": 24.689351495761542,
+          "max_absolute": 57.09011637242857
         },
         "peak_yaw_acceleration": {
-          "line": 4849,
-          "distance_m": 3409.376468,
-          "signed_deg_per_s2": -54.50901961740219,
-          "absolute_deg_per_s2": 54.50901961740219
+          "line": 4883,
+          "distance_m": 3409.134769,
+          "signed_deg_per_s2": -57.09011637242857,
+          "absolute_deg_per_s2": 57.09011637242857
         }
       }
     },
@@ -1737,9 +2827,9 @@
       "complete": true,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-2.log",
-          "size_bytes": 1639548,
-          "modified_utc": "2026-09-13T00:54:55.610310+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-2.log",
+          "size_bytes": 1644520,
+          "modified_utc": "2026-09-19T16:03:01.439335+00:00"
         },
         "warmup_requested_samples": 120,
         "warmup_discarded_samples": 120,
@@ -1755,36 +2845,36 @@
         "first_distance_backsteps": [],
         "yaw_delta_degrees": {
           "samples": 7674,
-          "min_signed": -0.6804190000000006,
-          "max_signed": 0.7502479999999991,
-          "mean_absolute": 0.19162698175658066,
-          "p95_absolute": 0.5575456499999987,
-          "p99_absolute": 0.6350955400000096,
-          "max_absolute": 0.7502479999999991
+          "min_signed": -0.6397519999999872,
+          "max_signed": 1.0180599999999913,
+          "mean_absolute": 0.18989230661975495,
+          "p95_absolute": 0.5433922999999949,
+          "p99_absolute": 0.603697810000009,
+          "max_absolute": 1.0180599999999913
         },
         "yaw_rate_degrees_per_second": {
           "samples": 7674,
-          "min_signed": -40.82432351352976,
-          "max_signed": 38.70805590546549,
-          "mean_absolute": 11.491459279292934,
-          "p95_absolute": 33.44385632604098,
-          "p99_absolute": 38.06872716041205,
-          "max_absolute": 40.82432351352976
+          "min_signed": -38.38435231295297,
+          "max_signed": 36.68416631667329,
+          "mean_absolute": 11.38690411765457,
+          "p95_absolute": 32.59710105042191,
+          "p99_absolute": 36.22092038159222,
+          "max_absolute": 38.38435231295297
         },
         "yaw_acceleration_degrees_per_second_squared": {
           "samples": 7673,
-          "min_signed": -184.17758977433573,
-          "max_signed": 219.36978045377063,
-          "mean_absolute": 10.748940548740922,
-          "p95_absolute": 42.713161121081164,
-          "p99_absolute": 110.33435300055741,
-          "max_absolute": 219.36978045377063
+          "min_signed": -106.55573772792718,
+          "max_signed": 101.76530249939687,
+          "mean_absolute": 8.343932017727031,
+          "p95_absolute": 33.30345322264876,
+          "p99_absolute": 59.658000290494904,
+          "max_absolute": 106.55573772792718
         },
         "peak_yaw_acceleration": {
-          "line": 6611,
-          "distance_m": 4853.811934,
-          "signed_deg_per_s2": 219.36978045377063,
-          "absolute_deg_per_s2": 219.36978045377063
+          "line": 2084,
+          "distance_m": 890.908346,
+          "signed_deg_per_s2": -106.55573772792718,
+          "absolute_deg_per_s2": 106.55573772792718
         }
       }
     },
@@ -1793,9 +2883,9 @@
       "complete": true,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-3.log",
-          "size_bytes": 1643927,
-          "modified_utc": "2026-09-13T00:57:09.172608+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-3.log",
+          "size_bytes": 1648884,
+          "modified_utc": "2026-09-19T16:05:22.281956+00:00"
         },
         "warmup_requested_samples": 120,
         "warmup_discarded_samples": 120,
@@ -1811,36 +2901,36 @@
         "first_distance_backsteps": [],
         "yaw_delta_degrees": {
           "samples": 7674,
-          "min_signed": -0.6994950000000131,
-          "max_signed": 0.6022239999999783,
-          "mean_absolute": 0.16791114099556936,
-          "p95_absolute": 0.4894637000000129,
-          "p99_absolute": 0.583576339999995,
-          "max_absolute": 0.6994950000000131
+          "min_signed": -0.5630339999999876,
+          "max_signed": 0.73171099999999,
+          "mean_absolute": 0.16797591047693505,
+          "p95_absolute": 0.4785835499999957,
+          "p99_absolute": 0.558085699999987,
+          "max_absolute": 0.73171099999999
         },
         "yaw_rate_degrees_per_second": {
           "samples": 7674,
-          "min_signed": -41.96886062278833,
-          "max_signed": 36.132717345651784,
-          "mean_absolute": 10.06975211343189,
-          "p95_absolute": 29.35049799004094,
-          "p99_absolute": 35.0058406635621,
-          "max_absolute": 41.96886062278833
+          "min_signed": -33.76110811296921,
+          "max_signed": 35.932797793898175,
+          "mean_absolute": 10.072002032613277,
+          "p95_absolute": 28.684129528674617,
+          "p99_absolute": 33.461262538214726,
+          "max_absolute": 35.932797793898175
         },
         "yaw_acceleration_degrees_per_second_squared": {
           "samples": 7673,
-          "min_signed": -177.85450482522583,
-          "max_signed": 185.143697062284,
-          "mean_absolute": 7.875424392632393,
-          "p95_absolute": 27.256025406603356,
-          "p99_absolute": 76.67059714544924,
-          "max_absolute": 185.143697062284
+          "min_signed": -74.41262346537343,
+          "max_signed": 43.75928156678113,
+          "mean_absolute": 6.100459873081968,
+          "p95_absolute": 22.722291099276646,
+          "p99_absolute": 35.21274002134954,
+          "max_absolute": 74.41262346537343
         },
         "peak_yaw_acceleration": {
-          "line": 6359,
-          "distance_m": 4795.657321,
-          "signed_deg_per_s2": 185.143697062284,
-          "absolute_deg_per_s2": 185.143697062284
+          "line": 2392,
+          "distance_m": 1180.916971,
+          "signed_deg_per_s2": -74.41262346537343,
+          "absolute_deg_per_s2": 74.41262346537343
         }
       }
     },
@@ -1849,9 +2939,9 @@
       "complete": true,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-4.log",
-          "size_bytes": 1632490,
-          "modified_utc": "2026-09-13T01:11:41.928438+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-4.log",
+          "size_bytes": 1637147,
+          "modified_utc": "2026-09-19T16:07:40.361316+00:00"
         },
         "warmup_requested_samples": 120,
         "warmup_discarded_samples": 120,
@@ -1867,36 +2957,36 @@
         "first_distance_backsteps": [],
         "yaw_delta_degrees": {
           "samples": 7674,
-          "min_signed": -1.309568000000013,
-          "max_signed": 0.6849789999999985,
-          "mean_absolute": 0.23729626192337758,
-          "p95_absolute": 0.6205475000000117,
-          "p99_absolute": 0.6562778600000063,
-          "max_absolute": 1.309568000000013
+          "min_signed": -0.6373229999999808,
+          "max_signed": 0.6480639999999767,
+          "mean_absolute": 0.23971352593171746,
+          "p95_absolute": 0.5993526999999929,
+          "p99_absolute": 0.6343950800000041,
+          "max_absolute": 0.6480639999999767
         },
         "yaw_rate_degrees_per_second": {
           "samples": 7674,
-          "min_signed": -40.25653477218085,
-          "max_signed": 41.09791804163907,
-          "mean_absolute": 14.226682551876918,
-          "p95_absolute": 37.19511609767783,
-          "p99_absolute": 39.34268800971658,
-          "max_absolute": 41.09791804163907
+          "min_signed": -38.23861522769429,
+          "max_signed": 38.88306233875182,
+          "mean_absolute": 14.378101417760348,
+          "p95_absolute": 35.96044279114374,
+          "p99_absolute": 38.06294354112942,
+          "max_absolute": 38.88306233875182
         },
         "yaw_acceleration_degrees_per_second_squared": {
           "samples": 7673,
-          "min_signed": -206.47747462386877,
-          "max_signed": 213.75944953653078,
-          "mean_absolute": 15.06193021077553,
-          "p95_absolute": 64.80591047901439,
-          "p99_absolute": 158.45443428757758,
-          "max_absolute": 213.75944953653078
+          "min_signed": -80.14359422410523,
+          "max_signed": 85.99696008718671,
+          "mean_absolute": 10.18328545157857,
+          "p95_absolute": 36.390159620267724,
+          "p99_absolute": 58.38056464538407,
+          "max_absolute": 85.99696008718671
         },
         "peak_yaw_acceleration": {
-          "line": 3509,
-          "distance_m": 1623.182963,
-          "signed_deg_per_s2": 213.75944953653078,
-          "absolute_deg_per_s2": 213.75944953653078
+          "line": 3215,
+          "distance_m": 1603.238482,
+          "signed_deg_per_s2": 85.99696008718671,
+          "absolute_deg_per_s2": 85.99696008718671
         }
       }
     },
@@ -1905,9 +2995,9 @@
       "complete": true,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-5.log",
-          "size_bytes": 1628874,
-          "modified_utc": "2026-09-13T01:13:55.202329+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-5.log",
+          "size_bytes": 1633494,
+          "modified_utc": "2026-09-19T16:09:58.931369+00:00"
         },
         "warmup_requested_samples": 120,
         "warmup_discarded_samples": 120,
@@ -1923,36 +3013,36 @@
         "first_distance_backsteps": [],
         "yaw_delta_degrees": {
           "samples": 7674,
-          "min_signed": -0.7561800000000005,
-          "max_signed": 0.6990949999999998,
-          "mean_absolute": 0.16444439249413598,
-          "p95_absolute": 0.5824449499999939,
-          "p99_absolute": 0.6956879400000013,
-          "max_absolute": 0.7561800000000005
+          "min_signed": -0.747337999999985,
+          "max_signed": 1.2089190000000087,
+          "mean_absolute": 0.16436307896794372,
+          "p95_absolute": 0.5622595500000037,
+          "p99_absolute": 0.6902847500000047,
+          "max_absolute": 1.2089190000000087
         },
         "yaw_rate_degrees_per_second": {
           "samples": 7674,
-          "min_signed": -45.34812593703152,
-          "max_signed": 41.89961042852861,
-          "mean_absolute": 9.861115849621232,
-          "p95_absolute": 34.90135452266069,
-          "p99_absolute": 41.72217217997794,
-          "max_absolute": 45.34812593703152
+          "min_signed": -44.839383212334845,
+          "max_signed": 40.23297534049412,
+          "mean_absolute": 9.852646948784724,
+          "p95_absolute": 33.693886122277256,
+          "p99_absolute": 41.402677579446234,
+          "max_absolute": 44.839383212334845
         },
         "yaw_acceleration_degrees_per_second_squared": {
           "samples": 7673,
-          "min_signed": -213.26266940796103,
-          "max_signed": 194.10920231460827,
-          "mean_absolute": 9.004572540586164,
-          "p95_absolute": 37.4121920060115,
-          "p99_absolute": 118.39908739084666,
-          "max_absolute": 213.26266940796103
+          "min_signed": -82.83628651539318,
+          "max_signed": 74.927402873817,
+          "mean_absolute": 6.53047171373316,
+          "p95_absolute": 27.69801206842868,
+          "p99_absolute": 48.84932600735928,
+          "max_absolute": 82.83628651539318
         },
         "peak_yaw_acceleration": {
-          "line": 3323,
-          "distance_m": 1979.212268,
-          "signed_deg_per_s2": -213.26266940796103,
-          "absolute_deg_per_s2": 213.26266940796103
+          "line": 3444,
+          "distance_m": 2043.677546,
+          "signed_deg_per_s2": -82.83628651539318,
+          "absolute_deg_per_s2": 82.83628651539318
         }
       }
     },
@@ -1961,9 +3051,9 @@
       "complete": true,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.30.0/20260913-030921-package/soak-track-6.log",
-          "size_bytes": 1642383,
-          "modified_utc": "2026-09-13T01:16:08.631286+00:00"
+          "path": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-6.log",
+          "size_bytes": 1647197,
+          "modified_utc": "2026-09-19T16:12:17.932308+00:00"
         },
         "warmup_requested_samples": 120,
         "warmup_discarded_samples": 120,
@@ -1979,50 +3069,50 @@
         "first_distance_backsteps": [],
         "yaw_delta_degrees": {
           "samples": 7674,
-          "min_signed": -0.40246300000001156,
-          "max_signed": 0.5607469999999921,
-          "mean_absolute": 0.1287153967943706,
-          "p95_absolute": 0.4052480999999971,
-          "p99_absolute": 0.4920283699999944,
-          "max_absolute": 0.5607469999999921
+          "min_signed": -0.26716399999997975,
+          "max_signed": 0.5240080000000091,
+          "mean_absolute": 0.1286368208235601,
+          "p95_absolute": 0.40309035000001214,
+          "p99_absolute": 0.4907598599999863,
+          "max_absolute": 0.5240080000000091
         },
         "yaw_rate_degrees_per_second": {
           "samples": 7674,
-          "min_signed": -24.14729705405961,
-          "max_signed": 33.64414711705718,
-          "mean_absolute": 7.720672516743151,
-          "p95_absolute": 24.306490288964596,
-          "p99_absolute": 29.513357559622293,
-          "max_absolute": 33.64414711705718
+          "min_signed": -16.029519409610593,
+          "max_signed": 31.439851202976485,
+          "mean_absolute": 7.714967140691192,
+          "p95_absolute": 24.184937301254703,
+          "p99_absolute": 29.443094824912112,
+          "max_absolute": 31.439851202976485
         },
         "yaw_acceleration_degrees_per_second_squared": {
           "samples": 7673,
-          "min_signed": -159.39646604338358,
-          "max_signed": 212.60029590309912,
-          "mean_absolute": 6.712600624284031,
-          "p95_absolute": 23.0901963829305,
-          "p99_absolute": 70.8191738278081,
-          "max_absolute": 212.60029590309912
+          "min_signed": -53.689563760067486,
+          "max_signed": 123.47866080407135,
+          "mean_absolute": 5.443840933985406,
+          "p95_absolute": 19.50468101568816,
+          "p99_absolute": 35.1640993775265,
+          "max_absolute": 123.47866080407135
         },
         "peak_yaw_acceleration": {
-          "line": 5331,
-          "distance_m": 4018.001781,
-          "signed_deg_per_s2": 212.60029590309912,
-          "absolute_deg_per_s2": 212.60029590309912
+          "line": 5401,
+          "distance_m": 4053.139342,
+          "signed_deg_per_s2": 123.47866080407135,
+          "absolute_deg_per_s2": 123.47866080407135
         }
       }
     }
   ],
   "motion": {
     "source": {
-      "path": "Saved/Validation/v0.30.0/20260913-030921-package/motion.log",
-      "size_bytes": 395361,
-      "modified_utc": "2026-09-13T01:16:36.442310+00:00"
+      "path": "Saved/Validation/v0.33.0/20260919-174842-package/motion.log",
+      "size_bytes": 396139,
+      "modified_utc": "2026-09-19T16:12:48.923292+00:00"
     },
     "warmup_requested_samples": 120,
     "warmup_discarded_samples": 120,
-    "trace_samples": 1500,
-    "analyzed_samples": 1380,
+    "trace_samples": 1491,
+    "analyzed_samples": 1371,
     "malformed_samples_after_warmup": 0,
     "nonfinite_samples_after_warmup": 0,
     "nonpositive_dt_samples_after_warmup": 0,
@@ -2032,93 +3122,37 @@
     "largest_distance_backstep_m": 0.0,
     "first_distance_backsteps": [],
     "yaw_delta_degrees": {
-      "samples": 1379,
-      "min_signed": -0.06410999999999945,
-      "max_signed": 0.5680859999999939,
-      "mean_absolute": 0.14484457215373506,
-      "p95_absolute": 0.5361339999999842,
-      "p99_absolute": 0.5632835800000043,
-      "max_absolute": 0.5680859999999939
+      "samples": 1370,
+      "min_signed": -0.06414000000000897,
+      "max_signed": 0.567813000000001,
+      "mean_absolute": 0.14572977445255456,
+      "p95_absolute": 0.5360466000000116,
+      "p99_absolute": 0.5628000000000074,
+      "max_absolute": 0.567813000000001
     },
     "yaw_rate_degrees_per_second": {
-      "samples": 1379,
-      "min_signed": -3.8449082403742016,
-      "max_signed": 34.08447831043342,
-      "mean_absolute": 8.688616708412237,
-      "p95_absolute": 32.16565953569296,
-      "p99_absolute": 33.78527244669238,
-      "max_absolute": 34.08447831043342
+      "samples": 1370,
+      "min_signed": -3.8460154704088843,
+      "max_signed": 34.04253914921681,
+      "mean_absolute": 8.741764035300204,
+      "p95_absolute": 32.1491434906952,
+      "p99_absolute": 33.7578442431148,
+      "max_absolute": 34.04253914921681
     },
     "yaw_acceleration_degrees_per_second_squared": {
-      "samples": 1378,
-      "min_signed": -51.10485528907813,
-      "max_signed": 34.76740928962527,
-      "mean_absolute": 6.40104893270652,
-      "p95_absolute": 22.71922377544585,
-      "p99_absolute": 35.08746896674446,
-      "max_absolute": 51.10485528907813
+      "samples": 1369,
+      "min_signed": -51.093763018236004,
+      "max_signed": 33.07210145910776,
+      "mean_absolute": 6.401362701557397,
+      "p95_absolute": 23.09100191999878,
+      "p99_absolute": 35.723462094124095,
+      "max_absolute": 51.093763018236004
     },
     "peak_yaw_acceleration": {
-      "line": 1350,
-      "distance_m": 3404.490773,
-      "signed_deg_per_s2": -51.10485528907813,
-      "absolute_deg_per_s2": 51.10485528907813
+      "line": 1362,
+      "distance_m": 3399.47974,
+      "signed_deg_per_s2": -51.093763018236004,
+      "absolute_deg_per_s2": 51.093763018236004
     }
-  },
-  "validated_local_date": "2026-09-13",
-  "engine": "Unreal Engine 5.8 Mac arm64 Development",
-  "machine": "Apple M5, 24 GB",
-  "build_log": "Saved/Logs/vroom-stable-lines-package.log",
-  "build_success": true,
-  "build_cook_run_seconds": 61.62,
-  "portable_checks": 21,
-  "portable_log": "Saved/Validation/v030/release-portable-final.log",
-  "package_run": "Saved/Validation/v0.30.0/20260913-030921-package/results.json",
-  "package_report_sha256": "0b23939ba0cfaef821923d8a2fde4418237986355961321421384dbba698307f",
-  "installation": {
-    "version": "0.30.0",
-    "bundle": "/Users/david/Library/Application Support/Vroom/Releases/0.30.0-9dc508f3fb51/Vroom.app",
-    "executable_sha256": "3094777016a987055bf8f3a733db00faeaed47c71f96e372effb28108ec1bab0",
-    "validation": "/Users/david/Library/Application Support/Vroom/Releases/0.30.0-9dc508f3fb51/validation.json"
-  },
-  "installed_launch_checks": [
-    {
-      "entry": "native",
-      "launcher_exit": 0,
-      "version": true,
-      "verification": true,
-      "normal_shutdown": true,
-      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomInstalledCheck/native.log"
-    },
-    {
-      "entry": "desktop",
-      "launcher_exit": 0,
-      "version": true,
-      "verification": true,
-      "normal_shutdown": true,
-      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomInstalledCheck/desktop.log"
-    }
-  ],
-  "graphics_profile": {
-    "internal_resolution_percent": 70,
-    "anti_aliasing": "TAA",
-    "shadows": 1,
-    "global_illumination": 0,
-    "reflections": 0,
-    "foliage": 1,
-    "wind": true,
-    "effects": 1,
-    "motion_blur": false,
-    "fps_limit": 60,
-    "vsync": true,
-    "dlss": false
-  },
-  "validation_scope": {
-    "automated": true,
-    "interactive_playtest": false,
-    "screen_lock_recorded": true,
-    "windows_rtx5090_tested": false,
-    "amiga_original_executed": false,
-    "original_visual_reference": "Amiga sprites and longplay video inspected directly"
   }
 }

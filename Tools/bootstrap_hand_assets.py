@@ -117,17 +117,9 @@ def make_material(albedo, normal):
     detail = saturated(material, multiply(material, red, 3.0))
     detail = binary(material, unreal.MaterialExpressionAdd,
                     multiply(material, detail, .68), scalar(material, .32))
-    # Amiga Vroom gloves are palette gold (255,146,0), not Valve grey.
-    gold = color(material, (.98, .57, .06))
-    ivory = binary(material, unreal.MaterialExpressionMultiply, gold, detail)
-    recolored = blend(material, sample, ivory, mask)
-    luma = binary(material, unreal.MaterialExpressionAdd, red,
-                  binary(material, unreal.MaterialExpressionAdd, green, blue))
-    luma = binary(material, unreal.MaterialExpressionMultiply, luma, scalar(material, .33))
-    gold_shift = binary(material, unreal.MaterialExpressionMultiply, gold,
-                        binary(material, unreal.MaterialExpressionAdd, luma, scalar(material, .12)))
-    tinted = blend(material, recolored, gold_shift, scalar(material, .78))
-    output(tinted, unreal.MaterialProperty.MP_BASE_COLOR)
+    ivory = binary(material, unreal.MaterialExpressionMultiply,
+                   color(material, (.72, .68, .56)), detail)
+    output(blend(material, sample, ivory, mask), unreal.MaterialProperty.MP_BASE_COLOR)
     output(scalar(material, .8), unreal.MaterialProperty.MP_ROUGHNESS)
     output(scalar(material, 0.0), unreal.MaterialProperty.MP_METALLIC)
     normal_sample = expression(material, unreal.MaterialExpressionTextureSample, texture=normal,
@@ -137,7 +129,7 @@ def make_material(albedo, normal):
     MATERIALS.recompile_material(material)
     LIBRARY.set_metadata_tag(material, TAG, GENERATOR)
     require(LIBRARY.save_asset(path, only_if_is_dirty=False), f"Cannot save {path}")
-    unreal.log(f"VROOM HAND: {path}: Amiga gold panels, original black/details, roughness .8, metallic0")
+    unreal.log(f"VROOM HAND: {path}: ivory panels, original black/details, roughness .8, metallic0")
 
 
 def main():

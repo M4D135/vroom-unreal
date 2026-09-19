@@ -8,6 +8,7 @@ namespace Vroom
 {
 enum class ContactKind { None, SlowImpact, Crash, TyreJump };
 enum class ContactPhase { Driving, Airborne, Crashed, Recovering };
+enum class ContactFace { Front, Rear, Side };
 
 // Gaps are OTHER minus PLAYER, in the same continuous circuit-local frame.
 // Unwrap longitudinal gaps across the start line before supplying both endpoints.
@@ -17,6 +18,7 @@ struct ContactQuery
     double PreviousGapM = 0, GapM = 0;
     double PreviousLateralGapM = 0, LateralGapM = 0;
     double PlayerSpeedMps = 0, OpponentSpeedMps = 0;
+    double StepSeconds = 1.0 / 120.0;
 };
 
 struct ContactResult
@@ -26,6 +28,9 @@ struct ContactResult
     double RelativeSpeedMps = 0;
     int ImpactSide = 0; // -1 opponent left, +1 opponent right, 0 central.
     double LateralShoveMps = 0;
+    double HitFraction = 0;
+    ContactFace Face = ContactFace::Front;
+    bool ControlledTyreHop = false;
 };
 
 struct ContactState
@@ -41,6 +46,16 @@ struct ContactState
     bool ControlsLocked = false;
     bool JumpWillBreakTyres = false;
     bool TyresBroken = false;
+    bool ControlledTyreHop = false;
+    double LandingControl = .5;
+};
+
+struct ContactLanding
+{
+    bool JustLanded = false;
+    double LandingControl = .5;
+    double SpeedRetention = 1;
+    double LateralVelocityRetention = 1;
 };
 
 // Source facts (preserved July 1991 Atari ST snapshot, final-release parity unknown):
@@ -59,6 +74,8 @@ struct ContactState
 // sprite coordinates; the 3D jump arc, crash/recovery timings, input lock, forced
 // gradual return and brief immunity are prototype behavior. We do NOT reproduce
 // CRASHCJ's twice-doubled speed gap, annotated "*** BUG ***" in the source.
+// Rear/side impacts, small recoverable wheel hops and countersteer landing are
+// modern arcade additions. They never add speed or bypass severe-crash recovery.
 // This model emits contact response; its owner controls car position and speed.
 class ContactModel
 {
@@ -81,6 +98,9 @@ public:
     inline static constexpr double RecoveryDurationSeconds = 2.80;
     inline static constexpr double RespawnInvulnerabilitySeconds = 1.6;
     inline static constexpr double ClearContactMarginM = 0.25;
+    inline static constexpr double PairContactCooldownSeconds = 0.35;
+    inline static constexpr double ControlledHopCooldownSeconds = 1.25;
+    inline static constexpr double SideCrashSpeedMps = 9.0;
 
     void Reset()
     {
@@ -89,16 +109,20 @@ public:
         NextLatch = 0;
         RespawnPending = false;
         JumpPeakHeightM = 0;
+        JumpStartHeightM = 0;
         RecoverOntoRoad = false;
         AirSteer = false;
         RecoveryStartLateralM = RecoveryTargetLateralM = 0;
         RecoverySeconds = RecoveryDurationSeconds;
         CrashStartHeightM = 0;
+        ControlledHopCooldown = 0;
+        HopControlIntegral = HopControlSeconds = 0;
+        PendingLanding = ContactLanding{};
     }
 
     // Call once per opponent per fixed step, including when no longer touching.
-    // A pair rearms only after separation, so persistent overlaps do not subtract
-    // 50 km/h every image. Airborne/crash/recovery/immunity contacts are ignored.
+    // A pair rearms only after separation AND a short cooldown. A controlled
+    // wheel hop is not immunity to a second severe hit from a different car.
     ContactResult TryContact(const ContactQuery& q)
     {
         ContactResult result;
@@ -117,31 +141,74 @@ public:
         double hitFraction = 0;
         if (!SweptOverlap(q, hitFraction))
             return result;
-        // The original path treats the player's front overtaking a car ahead.
-        // Contacts from a pursuing car behind and equal-speed parked overlaps
-        // require a separate behavior, rather than reversing this source rule.
-        const double closing = SafeSpeed(q.PlayerSpeedMps) - SafeSpeed(q.OpponentSpeedMps);
-        if (closing <= 0.05 || q.PreviousGapM < -LongitudinalReachM)
+        if (latch.Cooldown > 0)
+        {
+            latch.Touching = true;
             return result;
-        latch.Touching = true;
-        if (State.Phase != ContactPhase::Driving || State.InvulnerabilityRemaining > 0 || RespawnPending)
-            return result;
-
+        }
+        const double gapAtHit = q.PreviousGapM + (q.GapM - q.PreviousGapM) * hitFraction;
         const double lateralAtHit = q.PreviousLateralGapM +
             (q.LateralGapM - q.PreviousLateralGapM) * hitFraction;
+        const double relativeLongitudinal = SafeSpeed(q.PlayerSpeedMps) - SafeSpeed(q.OpponentSpeedMps);
+        const double longitudinalClosing = std::max(0.0, (gapAtHit >= 0 ? 1 : -1) * relativeLongitudinal);
+        const double lateralVelocity = (q.LateralGapM - q.PreviousLateralGapM) / q.StepSeconds;
+        const double lateralClosing = std::clamp(-(lateralAtHit >= 0 ? 1 : -1) * lateralVelocity, 0.0, 150.0);
+        // The entering slab identifies the contact face. If initially inside,
+        // use the axis actually approaching, avoiding equal-speed parked hits.
+        const bool sideEntry = std::abs(q.PreviousLateralGapM) > LateralReachM
+            && std::abs(lateralAtHit) >= LateralReachM - 1.e-6;
+        const bool sideImpact = sideEntry || (lateralClosing > longitudinalClosing
+            && std::abs(gapAtHit) < LongitudinalReachM - .05);
+        // A glancing wheel still catches when the cars have a huge longitudinal
+        // speed difference; it must not become harmless because the side entry
+        // itself is shallow. Tangential coupling is deliberately weaker.
+        const double closing = sideImpact ? std::max(lateralClosing, .35 * std::abs(relativeLongitudinal))
+                                          : longitudinalClosing;
+        if (closing <= .05) return result;
+        latch.Touching = true;
+        const bool controlledAirborne = State.Phase == ContactPhase::Airborne && State.ControlledTyreHop;
+        // Deriving velocity from small metre-space deltas can land a few ULPs
+        // below an exact threshold; keep the branch identical at 30/60/120 Hz.
+        const bool severeSide = sideImpact && lateralClosing + 1.e-9 >= SideCrashSpeedMps;
+        const bool severe = severeSide || closing + 1.e-9 >= FastClosingSpeedMps;
+        if ((State.Phase != ContactPhase::Driving && !controlledAirborne)
+            || (controlledAirborne && !severe) || State.InvulnerabilityRemaining > 0 || RespawnPending)
+            return result;
+        latch.Cooldown = PairContactCooldownSeconds;
         result.RelativeSpeedMps = closing;
+        result.HitFraction = hitFraction;
+        result.Face = sideImpact ? ContactFace::Side : (gapAtHit >= 0 ? ContactFace::Front : ContactFace::Rear);
         result.ImpactSide = lateralAtHit > 0.05 ? 1 : (lateralAtHit < -0.05 ? -1 : 0);
-
-        // Order matters: low relative speed always produces a small impact,
-        // including tyre contact. The wheel branch is considered only at >=70 km/h.
+        const bool wheelContact = std::abs(lateralAtHit) >= TyreBandInnerM;
         const double shoveAway = (result.ImpactSide != 0 ? -result.ImpactSide : (lateralAtHit >= 0 ? -1.0 : 1.0));
-        if (closing < FastClosingSpeedMps)
+        State.ControlledTyreHop = false;
+        if (wheelContact && !severe && closing >= .65
+            && std::max(q.PlayerSpeedMps, q.OpponentSpeedMps) >= 8 && ControlledHopCooldown <= 0)
+        {
+            result.Kind = ContactKind::TyreJump;
+            result.ControlledTyreHop = State.ControlledTyreHop = true;
+            const double strength = std::clamp(closing / FastClosingSpeedMps, 0.0, 1.0);
+            result.SpeedAfterMps = std::max(0.0, result.SpeedAfterMps - std::min(1.2, closing * .08));
+            result.LateralShoveMps = shoveAway * (.40 + .055 * closing);
+            JumpPeakHeightM = .10 + .22 * strength;
+            State.JumpWillBreakTyres = State.TyresBroken = false;
+            HopControlIntegral = HopControlSeconds = 0;
+            State.LandingControl = .5;
+            RecoverOntoRoad = false;
+            AirSteer = true;
+            ControlledHopCooldown = ControlledHopCooldownSeconds;
+            EnterPhase(ContactPhase::Airborne, .28 + .14 * strength);
+        }
+        else if (!severe)
         {
             result.Kind = ContactKind::SlowImpact;
-            result.SpeedAfterMps = std::max(0.0, result.SpeedAfterMps - SlowSpeedLossMps);
-            result.LateralShoveMps = shoveAway * (3.6 + 0.07 * closing);
+            const bool gentle = wheelContact || result.Face != ContactFace::Front;
+            const double loss = gentle ? std::min(2.5, closing * .18)
+                : SlowSpeedLossMps * std::min(1.0, closing / 8.0);
+            result.SpeedAfterMps = std::max(0.0, result.SpeedAfterMps - loss);
+            result.LateralShoveMps = shoveAway * (gentle ? .35 + .07 * closing : 3.6 + .07 * closing);
         }
-        else if (std::abs(lateralAtHit) >= TyreBandInnerM)
+        else if (wheelContact && !severeSide && !controlledAirborne)
         {
             result.Kind = ContactKind::TyreJump;
             const double impulse = std::clamp(closing * 5.4 * 2.0, 120.0, 400.0);
@@ -157,7 +224,8 @@ public:
         else
         {
             result.Kind = ContactKind::Crash;
-            result.SpeedAfterMps = std::max(0.0, SafeSpeed(q.OpponentSpeedMps) - SlowSpeedLossMps * 0.65);
+            result.SpeedAfterMps = std::max(0.0, std::min(SafeSpeed(q.PlayerSpeedMps),
+                SafeSpeed(q.OpponentSpeedMps)) - SlowSpeedLossMps * .65);
             result.LateralShoveMps = shoveAway * (7.0 + 0.12 * closing);
             State.JumpWillBreakTyres = false;
             State.TyresBroken = true;
@@ -168,17 +236,19 @@ public:
         State.LastKind = result.Kind;
         State.RelativeSpeedMps = result.RelativeSpeedMps;
         State.ImpactSide = result.ImpactSide;
-        State.ImpactFlash = result.Kind == ContactKind::SlowImpact ? 0.22 : 0.4;
+        State.ImpactFlash = result.ControlledTyreHop ? .10 : (result.Kind == ContactKind::SlowImpact ? .22 : .4);
         return result;
     }
 
     // Seconds, normally 1/120. Phase integration uses elapsed time, not frame count.
     // The owner pauses calls when gameplay is paused. A hitch is bounded at 0.25 s.
-    void Step(double dt)
+    void Step(double dt, double steering = 0)
     {
         if (!std::isfinite(dt) || dt <= 0)
             return;
         double remaining = std::min(dt, 0.25);
+        ControlledHopCooldown = std::max(0.0, ControlledHopCooldown - remaining);
+        for (auto& latch : Latches) latch.Cooldown = std::max(0.0, latch.Cooldown - remaining);
         State.ImpactFlash = std::max(0.0, State.ImpactFlash - remaining);
         // At most airborne -> crashed -> recovering -> driving in one call.
         for (int transitions = 0; remaining > 0 && transitions < 4; ++transitions)
@@ -189,7 +259,19 @@ public:
                 break;
             }
             const double slice = std::min(remaining, std::max(0.0, State.PhaseDuration - State.PhaseElapsed));
+            const double oldElapsed = State.PhaseElapsed;
             State.PhaseElapsed += slice;
+            if (State.Phase == ContactPhase::Airborne && State.ControlledTyreHop)
+            {
+                // Ignore the first 50ms, then integrate opposing the lateral
+                // shove. Positive ImpactSide means shove left, correction right.
+                const double window = std::max(0.0, State.PhaseElapsed - std::max(oldElapsed, .05));
+                const double control = std::isfinite(steering) ? std::clamp(steering, -1.0, 1.0) * State.ImpactSide : 0;
+                HopControlIntegral += control * window;
+                HopControlSeconds += window;
+                State.LandingControl = HopControlSeconds > 0
+                    ? std::clamp(.5 + .75 * HopControlIntegral / HopControlSeconds, 0.0, 1.0) : .5;
+            }
             State.TimeRemaining = std::max(0.0, State.PhaseDuration - State.PhaseElapsed);
             remaining -= slice;
             State.InvulnerabilityRemaining = std::max(0.0, State.InvulnerabilityRemaining - slice);
@@ -207,8 +289,16 @@ public:
                 }
                 else
                 {
+                    if (State.ControlledTyreHop)
+                    {
+                        PendingLanding.JustLanded = true;
+                        PendingLanding.LandingControl = State.LandingControl;
+                        PendingLanding.SpeedRetention = .94 + .06 * State.LandingControl;
+                        PendingLanding.LateralVelocityRetention = .75 - .45 * State.LandingControl;
+                    }
                     EnterPhase(ContactPhase::Driving, 0);
                     State.JumpWillBreakTyres = false;
+                    State.ControlledTyreHop = false;
                     AirSteer = false;
                 }
             }
@@ -235,6 +325,32 @@ public:
         const bool result = RespawnPending;
         RespawnPending = false;
         return result;
+    }
+
+    // Apply these multipliers once to speed and the residual collision shove.
+    // Never modifies position, grants speed or rewards repeated contacts.
+    ContactLanding ConsumeLanding()
+    {
+        const ContactLanding result = PendingLanding;
+        PendingLanding = ContactLanding{};
+        return result;
+    }
+
+    // Transfer the separate kerb/drift hop immediately after a tyre jump or
+    // crash, before its owner clears that hop. Preserve the combined height,
+    // then ease the inherited offset to zero without restarting the phase.
+    void InheritHopHeight(double heightM)
+    {
+        if (!std::isfinite(heightM) || heightM <= 0 || State.PhaseDuration <= 0
+            || (State.Phase != ContactPhase::Airborne && State.Phase != ContactPhase::Crashed))
+            return;
+        const double remaining = std::clamp(1.0 - State.PhaseElapsed / State.PhaseDuration, 0.0, 1.0);
+        const double decay = remaining * remaining;
+        if (decay <= 1.e-12) return;
+        const double inherited = std::min(heightM, 10.0);
+        if (State.Phase == ContactPhase::Airborne) JumpStartHeightM += inherited / decay;
+        else CrashStartHeightM += inherited / decay;
+        State.HeightM += inherited;
     }
 
     // Prepare after an impact, then refresh when the wreck has finished sliding.
@@ -277,6 +393,7 @@ public:
         State.ImpactSide = result.ImpactSide;
         State.ImpactFlash = 0.4;
         State.JumpWillBreakTyres = false;
+        State.ControlledTyreHop = false;
         State.TyresBroken = SafeSpeed(playerSpeedMps) > ObjectBigCrashMps;
         RecoverOntoRoad = true;
         AirSteer = false;
@@ -299,14 +416,35 @@ public:
         result.RelativeSpeedMps = Speed;
         result.SpeedAfterMps = Speed * 0.42;
         result.ImpactSide = std::clamp(impactSide, -1, 1);
-        result.LateralShoveMps = 4.5 * result.ImpactSide;
+        // ImpactSide names the obstacle side, like opponent contacts. Push
+        // away from that side so a low-speed touch cannot pin us to the wall.
+        result.LateralShoveMps = -4.5 * result.ImpactSide;
         State.LastKind = ContactKind::SlowImpact;
+        if (State.Phase != ContactPhase::Airborne) State.ControlledTyreHop = false;
         State.RelativeSpeedMps = Speed;
         State.ImpactSide = result.ImpactSide;
         State.ImpactFlash = 0.22;
         RecoverOntoRoad = false;
         AirSteer = false;
         return result;
+    }
+
+    // Ignore only initial, separating/tangential contacts during motion. Test
+    // this per obstacle, so a touching wall cannot mask another incoming hit.
+    // Static geometry audits deliberately keep their original overlap result.
+    static bool SeparatingAtStart(double fraction, const std::array<double, 3>& previous,
+        const std::array<double, 3>& current, const std::array<double, 3>& normal)
+    {
+        if (!std::isfinite(fraction) || fraction < 0 || fraction > 1.e-6) return false;
+        double motionDotNormal = 0, normalLengthSquared = 0;
+        for (int axis = 0; axis < 3; ++axis)
+        {
+            if (!std::isfinite(previous[axis]) || !std::isfinite(current[axis]) || !std::isfinite(normal[axis]))
+                return false;
+            motionDotNormal += (current[axis] - previous[axis]) * normal[axis];
+            normalLengthSquared += normal[axis] * normal[axis];
+        }
+        return normalLengthSquared > 1.e-12 && motionDotNormal >= -1.e-7;
     }
 
     // Sweep a point through a box already expanded by the car's projected
@@ -414,6 +552,7 @@ public:
         State.JumpWillBreakTyres = strength > 0.92 && v > 55.0;
         State.TyresBroken = false;
         State.LastKind = ContactKind::TyreJump;
+        State.ControlledTyreHop = false;
         State.ImpactSide = side;
         State.ImpactFlash = 0.12;
         RecoverOntoRoad = false;
@@ -422,16 +561,20 @@ public:
     }
 
 private:
-    struct PairLatch { int Id = -1; bool Touching = false; };
+    struct PairLatch { int Id = -1; bool Touching = false; double Cooldown = 0; };
     std::array<PairLatch, 32> Latches{};
     unsigned NextLatch = 0;
     double JumpPeakHeightM = 0;
+    double JumpStartHeightM = 0;
     bool RespawnPending = false;
     bool RecoverOntoRoad = false;
     bool AirSteer = false;
     double RecoveryStartLateralM = 0, RecoveryTargetLateralM = 0;
     double RecoverySeconds = RecoveryDurationSeconds;
     double CrashStartHeightM = 0;
+    double ControlledHopCooldown = 0;
+    double HopControlIntegral = 0, HopControlSeconds = 0;
+    ContactLanding PendingLanding;
 
     static double SafeSpeed(double speed)
     {
@@ -443,6 +586,7 @@ private:
         return std::isfinite(q.PreviousGapM) && std::isfinite(q.GapM) &&
             std::isfinite(q.PreviousLateralGapM) && std::isfinite(q.LateralGapM) &&
             std::isfinite(q.PlayerSpeedMps) && std::isfinite(q.OpponentSpeedMps) &&
+            std::isfinite(q.StepSeconds) && q.StepSeconds > 0 && q.StepSeconds <= .25 &&
             std::abs(q.PreviousGapM) < 1e9 && std::abs(q.GapM) < 1e9 &&
             std::abs(q.PreviousLateralGapM) < 1e6 && std::abs(q.LateralGapM) < 1e6;
     }
@@ -489,6 +633,8 @@ private:
 
     void EnterPhase(ContactPhase phase, double duration)
     {
+        if (phase == ContactPhase::Airborne)
+            JumpStartHeightM = std::max(0.0, State.HeightM);
         if (phase == ContactPhase::Crashed)
             CrashStartHeightM = std::max(0.0, State.HeightM);
         State.Phase = phase;
@@ -505,9 +651,11 @@ private:
             std::clamp(State.PhaseElapsed / State.PhaseDuration, 0.0, 1.0) : 1;
         if (State.Phase == ContactPhase::Airborne)
         {
-            State.HeightM = 4 * JumpPeakHeightM * progress * (1 - progress);
-            State.PitchRad = 0.18 * std::sin(2 * Pi * progress);
-            State.RollRad = -State.ImpactSide * 0.11 * std::sin(Pi * progress);
+            State.HeightM = JumpStartHeightM * (1 - progress) * (1 - progress)
+                + 4 * JumpPeakHeightM * progress * (1 - progress);
+            const double poseScale = State.ControlledTyreHop ? .20 : 1.0;
+            State.PitchRad = poseScale * .18 * std::sin(2 * Pi * progress);
+            State.RollRad = -State.ImpactSide * poseScale * .11 * std::sin(Pi * progress);
         }
         else if (State.Phase == ContactPhase::Crashed)
         {

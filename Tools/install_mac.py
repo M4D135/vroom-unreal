@@ -6,12 +6,15 @@ import hashlib
 import json
 from pathlib import Path
 import plistlib
+import re
 import shutil
 import subprocess
 import tempfile
 from regression_gates import performance_failures, motion_failures
 
 ROOT = Path(__file__).resolve().parents[1]
+LAUNCHER_IDENTIFIER = 'fr.estrasse.vroom.launcher'
+GAME_IDENTIFIER = 'com.YourCompany.Vroom'
 
 
 def sha256(path):
@@ -37,8 +40,11 @@ def copy_validation_report(source, destination):
 
 
 def check_validation(report, bundle):
-    if report.get('editor') or report.get('failures') or report.get('completed') is not True:
+    if (report.get('forced') or report.get('editor') or report.get('failures') or
+            report.get('completed') is not True):
         raise ValueError('Only a successful packaged-game validation may be installed')
+    if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){2}', str(report.get('version', ''))):
+        raise ValueError('Missing or invalid release version')
     if len(report.get('soak_motion', [])) != 6 or len(report.get('performance', [])) < 8:
         raise ValueError('Missing six-circuit soak or both resolution profiles')
     if {row['track'] for row in report['soak_motion']} != set(range(6)) or not report.get('motion'):
@@ -67,10 +73,16 @@ def check_validation(report, bundle):
         raise ValueError('Final camera regression gate failed')
     required = {'neutral', 'left', 'right', 'options', 'collision-slow', 'collision-crash', 'collision-tyre', 'collision-scenery',
                 'progress-data', 'menu-flow', 'pit-service', 'drift-feedback'}
+    # Preserve rollback to earlier fully validated releases; these scenarios
+    # became mandatory with the 0.33 driving/start correction.
+    if tuple(map(int, report['version'].split('.'))) >= (0, 33, 0):
+        required.update({'offroad-left', 'offroad-right', 'start-sequence', 'start-restart', 'start-pause', 'start-mute'})
+        required.update({'drift-unskilled', 'collision-rub', 'collision-rear'})
+        required.update(f'track-audit-{track + 1}' for track in range(6))
     if not required <= {case['name'] for case in report.get('cases', [])}:
         raise ValueError('Missing required visual/collision cases')
-    if any(case.get('exit') != 0 for case in report['cases']):
-        raise ValueError('A required game process failed')
+    if any(case.get('exit') != 0 or case.get('status') != 'PASS' for case in report['cases']):
+        raise ValueError('A required game case failed or has no PASS result')
     expected = report.get('executable_sha256')
     if not expected or sha256(bundle / 'Contents/MacOS/Vroom') != expected:
         raise ValueError('Binary differs from the validated artifact')
@@ -86,80 +98,140 @@ def check_validation(report, bundle):
             raise ValueError(f'Packaged data differs from validation: {relative}')
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--validation', required=True, type=Path)
-    parser.add_argument('--bundle', type=Path, default=ROOT / 'Saved/Packages/Mac/Vroom.app')
-    parser.add_argument('--force', action='store_true',
-                        help='install this bundle even if soak/perf gates failed')
-    args = parser.parse_args()
-    report = json.loads(args.validation.read_text())
-    bundle = args.bundle.resolve()
-    if args.force:
-        print('WARNING: installing without a completed soak (--force).', flush=True)
-        if not (bundle / 'Contents/MacOS/Vroom').is_file():
-            raise ValueError('Package executable missing')
-        paks = bundle / 'Contents/UE/Vroom/Content/Paks'
-        if not paks.is_dir() or not list(paks.glob('*.ucas')):
-            raise ValueError('Incomplete packaged game: cooked data missing')
-        report['executable_sha256'] = sha256(bundle / 'Contents/MacOS/Vroom')
-        report['package_data_sha256'] = {path: sha256(bundle / path) for path in sorted(package_data_paths(bundle))}
-        report['forced'] = True
-    else:
-        check_validation(report, bundle)
-    storage = Path.home() / 'Library/Application Support/Vroom'
+def path_exists(path):
+    return path.exists() or path.is_symlink()
+
+
+def check_app_destination(path, identifiers):
+    """Never displace an unrelated app, even when its filename happens to match."""
+    if not path_exists(path):
+        return
+    plist = path / 'Contents/Info.plist'
+    try:
+        identifier = plistlib.loads(plist.read_bytes()).get('CFBundleIdentifier')
+    except (OSError, ValueError, plistlib.InvalidFileException):
+        identifier = None
+    if identifier not in identifiers:
+        raise ValueError(f'Refusing to replace unrelated application: {path}')
+
+
+def build_launcher(prepared, version):
+    executable = prepared / 'Contents/MacOS/VroomLauncher'
+    executable.parent.mkdir(parents=True)
+    subprocess.run(['xcrun', 'clang', '-O2', '-fobjc-arc', '-Wno-deprecated-declarations',
+                    '-framework', 'Cocoa', str(ROOT / 'Tools/mac_launcher.m'), '-o', str(executable)], check=True)
+    (prepared / 'Contents/Info.plist').write_bytes(plistlib.dumps({
+        'CFBundleIdentifier': LAUNCHER_IDENTIFIER, 'CFBundleExecutable': 'VroomLauncher',
+        'CFBundleName': 'Vroom', 'CFBundleDisplayName': 'Vroom', 'CFBundlePackageType': 'APPL',
+        'CFBundleShortVersionString': version, 'CFBundleVersion': version,
+        'LSUIElement': True, 'NSHighResolutionCapable': True,
+    }))
+    subprocess.run(['codesign', '--force', '--sign', '-', str(prepared)], check=True)
+
+
+def activate_release(home, prepared, manifest):
+    """Keep previous entry points recoverable; publish the manifest only after all are ready."""
+    storage = home / 'Library/Application Support/Vroom'
+    launcher = home / 'Applications/Vroom.app'
+    desktop_app = home / 'Desktop/Vroom.app'
+    desktop_command = home / 'Desktop/Vroom.command'
+    # Recheck immediately before touching any entry point.
+    check_app_destination(launcher, {LAUNCHER_IDENTIFIER})
+    check_app_destination(desktop_app, {LAUNCHER_IDENTIFIER, GAME_IDENTIFIER})
+    backups = storage / 'Launchers' / datetime.now().strftime('%Y%m%d-%H%M%S-%f')
+    backups.mkdir(parents=True)
+    replaced = []
+
+    def replace(source, destination, backup_name):
+        backup = backups / backup_name if path_exists(destination) else None
+        if backup is not None:
+            destination.rename(backup)
+        # Record even a failed move so the old entry can be restored.
+        replaced.append((destination, backup))
+        source.rename(destination)
+
+    pending = storage / 'active.json.tmp'
+    try:
+        with tempfile.TemporaryDirectory(prefix='.vroom-shortcuts-', dir=home / 'Desktop') as temporary:
+            temporary = Path(temporary)
+            shortcut = temporary / 'Vroom.app'
+            shortcut.symlink_to(launcher, target_is_directory=True)
+            command = temporary / 'Vroom.command'
+            shutil.copy2(ROOT / 'Tools/play_latest.command', command)
+            command.chmod(0o755)
+            replace(prepared, launcher, 'Applications-Vroom.app')
+            replace(shortcut, desktop_app, 'Desktop-Vroom.app')
+            replace(command, desktop_command, 'Desktop-Vroom.command')
+            active = storage / 'active.json'
+            if active.exists():
+                shutil.copy2(active, backups / 'active.json')
+        pending.write_text(json.dumps(manifest, indent=2) + '\n')
+        pending.replace(active)
+    except Exception:
+        pending.unlink(missing_ok=True)
+        for destination, backup in reversed(replaced):
+            if destination.is_symlink() or destination.is_file():
+                destination.unlink()
+            elif destination.is_dir():
+                shutil.rmtree(destination)
+            if backup is not None:
+                backup.rename(destination)
+        raise
+
+
+def install_release(validation, bundle, home=None):
+    home = Path.home() if home is None else Path(home)
+    report = json.loads(validation.read_text())
+    bundle = bundle.resolve()
+    check_validation(report, bundle)
+    applications = home / 'Applications'
+    desktop = home / 'Desktop'
+    # Reject conflicting apps before creating a release or touching the active one.
+    check_app_destination(applications / 'Vroom.app', {LAUNCHER_IDENTIFIER})
+    check_app_destination(desktop / 'Vroom.app', {LAUNCHER_IDENTIFIER, GAME_IDENTIFIER})
+    storage = home / 'Library/Application Support/Vroom'
     releases = storage / 'Releases'
-    artifact = hashlib.sha256(json.dumps([report['executable_sha256'], report.get('package_data_sha256')], sort_keys=True).encode()).hexdigest()
+    artifact = hashlib.sha256(json.dumps([report['executable_sha256'], report['package_data_sha256']], sort_keys=True).encode()).hexdigest()
     release = releases / (report['version'] + '-' + artifact[:12])
     installed = release / 'Vroom.app'
     releases.mkdir(parents=True, exist_ok=True)
     if installed.exists():
-        if not args.force:
-            check_validation(report, installed)
+        check_validation(report, installed)
     else:
         with tempfile.TemporaryDirectory(prefix='.install-', dir=releases) as temporary:
             stage = Path(temporary) / 'Vroom.app'
             shutil.copytree(bundle, stage, symlinks=True)
-            if not args.force:
-                check_validation(report, stage)
+            check_validation(report, stage)
             release.mkdir(exist_ok=True)
             stage.rename(installed)
-    copy_validation_report(args.validation, release / 'validation.json')
-    applications = Path.home() / 'Applications'
+    stored_validation = release / 'validation.json'
+    if stored_validation.exists():
+        # Keep an already installed report immutable so an interrupted reinstall
+        # cannot invalidate the currently active manifest's report digest.
+        check_validation(json.loads(stored_validation.read_text()), installed)
+    else:
+        copy_validation_report(validation, stored_validation)
     applications.mkdir(exist_ok=True)
-    launcher = applications / 'Vroom.app'
-    identifier = 'fr.estrasse.vroom.launcher'
-    if launcher.exists():
-        plist = launcher / 'Contents/Info.plist'
-        if not plist.is_file() or plistlib.loads(plist.read_bytes()).get('CFBundleIdentifier') != identifier:
-            raise ValueError(f'Refusing to replace unrelated application: {launcher}')
+    desktop.mkdir(exist_ok=True)
+    manifest = dict(version=report['version'], bundle=str(installed),
+                    executable_sha256=report['executable_sha256'], validation=str(release / 'validation.json'),
+                    validation_sha256=sha256(release / 'validation.json'))
     with tempfile.TemporaryDirectory(prefix='.vroom-launcher-', dir=applications) as temporary:
         prepared = Path(temporary) / 'Vroom.app'
-        executable = prepared / 'Contents/MacOS/VroomLauncher'
-        executable.parent.mkdir(parents=True)
-        subprocess.run(['xcrun', 'clang', '-O2', '-fobjc-arc', '-Wno-deprecated-declarations',
-                        '-framework', 'Cocoa', str(ROOT / 'Tools/mac_launcher.m'), '-o', str(executable)], check=True)
-        (prepared / 'Contents/Info.plist').write_bytes(plistlib.dumps({
-            'CFBundleIdentifier': identifier, 'CFBundleExecutable': 'VroomLauncher',
-            'CFBundleName': 'Vroom', 'CFBundleDisplayName': 'Vroom', 'CFBundlePackageType': 'APPL',
-            'CFBundleShortVersionString': report['version'], 'CFBundleVersion': report['version'],
-            'LSUIElement': True, 'NSHighResolutionCapable': True,
-        }))
-        subprocess.run(['codesign', '--force', '--sign', '-', str(prepared)], check=True)
-        if launcher.exists():
-            backups = storage / 'Launchers'
-            backups.mkdir(exist_ok=True)
-            launcher.rename(backups / (datetime.now().strftime('%Y%m%d-%H%M%S') + '.app'))
-        prepared.rename(launcher)
-    manifest = dict(version=report['version'], bundle=str(installed),
-                    executable_sha256=report['executable_sha256'], validation=str(release / 'validation.json'))
-    pending = storage / 'active.json.tmp'
-    pending.write_text(json.dumps(manifest, indent=2) + '\n')
-    pending.replace(storage / 'active.json')
-    desktop = Path.home() / 'Desktop/Vroom.command'
-    shutil.copy2(ROOT / 'Tools/play_latest.command', desktop)
-    desktop.chmod(0o755)
-    print(f"Installed Vroom {report['version']}: {launcher}\nManifest: {storage / 'active.json'}")
+        build_launcher(prepared, report['version'])
+        activate_release(home, prepared, manifest)
+    return manifest
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--validation', required=True, type=Path)
+    parser.add_argument('--bundle', type=Path, default=ROOT / 'Saved/Packages/Mac/Vroom.app')
+    args = parser.parse_args()
+    manifest = install_release(args.validation, args.bundle)
+    print(f"Installed Vroom {manifest['version']}: {Path.home() / 'Applications/Vroom.app'}\n"
+          f"Desktop: {Path.home() / 'Desktop/Vroom.app'}\n"
+          f"Manifest: {Path.home() / 'Library/Application Support/Vroom/active.json'}")
 
 
 if __name__ == '__main__':

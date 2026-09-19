@@ -1,7 +1,8 @@
 """Bake low-cost regional tree silhouettes and stone for instanced scenery.
 
 Run with UnrealEditor-Cmd's Python commandlet; --audit is ordinary Python.
-All geometry is original, deterministic and rebuilt only into owned packages.
+Regional tree silhouettes are procedural; pinned CC0 rock and PBR maps are
+imported from Content/ArtSource/realistic. Only owned packages are rebuilt.
 """
 import json
 import math
@@ -112,8 +113,132 @@ def build_assets(meshes):
         require(description.get_triangle_count()==len(geometry.faces),'Triangle mismatch '+name)
         unreal.log('VROOM ENVIRONMENT: '+name+': '+str(geometry.audit()))
 
+    build_realistic_assets(owned, save, subsystem, h)
+    runpy.run_path(str(Path(__file__).with_name('bootstrap_tree_assets.py')))['build_tree_assets']()
+
+
+def build_realistic_assets(owned, save, subsystem, helpers):
+    import unreal
+    source = runpy.run_path(str(Path(__file__).with_name('environment_asset_data.py')))
+    source['verify']()
+    root = source['SOURCE']
+    require, expression, output, scalar, color, connect, multiply, blend = (
+        helpers[n] for n in ('require','expression','output','scalar','color','connect','multiply','blend'))
+    library = unreal.EditorAssetLibrary
+    editor = unreal.MaterialEditingLibrary
+    tools = unreal.AssetToolsHelpers.get_asset_tools()
+    library.make_directory('/Game/Textures/Environment')
+
+    def texture(filename, name, kind, gl_normal=False):
+        path = '/Game/Textures/Environment/' + name
+        if library.does_asset_exist(path):
+            previous = library.load_asset(path)
+            require(library.get_metadata_tag(previous,TAG)==GENERATOR,'Foreign PBR texture '+path)
+        task = unreal.AssetImportTask()
+        task.filename = str(filename); task.destination_path = '/Game/Textures/Environment'
+        task.destination_name = name; task.automated = True; task.replace_existing = True; task.save = False
+        tools.import_asset_tasks([task])
+        tex = require(library.load_asset(path),'Cannot import PBR texture '+path)
+        tex.set_editor_property('srgb',kind=='color')
+        tex.set_editor_property('compression_settings',
+            unreal.TextureCompressionSettings.TC_NORMALMAP if kind=='normal' else
+            unreal.TextureCompressionSettings.TC_MASKS if kind=='rough' else unreal.TextureCompressionSettings.TC_DEFAULT)
+        tex.set_editor_property('lod_group',unreal.TextureGroup.TEXTUREGROUP_WORLD)
+        tex.set_editor_property('max_texture_size',1024)
+        tex.set_editor_property('flip_green_channel',gl_normal)
+        # Nine compressed 1K maps stay resident: runtime-created mesh sections
+        # have no baked streaming bounds. This avoids texture IO in a corner.
+        tex.set_editor_property('never_stream',True)
+        save(tex)
+        return tex
+
+    def maps(identifier, prefix):
+        if identifier=='rock_moss_set_02':
+            folder=root/identifier/'textures'
+            names=(identifier+'_diff_1k.jpg',identifier+'_nor_gl_1k.jpg',identifier+'_rough_1k.jpg')
+        else:
+            folder=root/identifier
+            names=(identifier+'_1K-JPG_Color.jpg',identifier+'_1K-JPG_NormalDX.jpg',identifier+'_1K-JPG_Roughness.jpg')
+        return [texture(folder/name,'T_'+prefix+'_'+kind.title(),kind,
+            identifier=='rock_moss_set_02' and kind=='normal')
+            for name,kind in zip(names,('color','normal','rough'))]
+
+    def pbr(material, textures, world_tile_cm=None, ground_tint=False):
+        editor.delete_all_material_expressions(material)
+        material.set_editor_property('used_with_instanced_static_meshes',True)
+        if world_tile_cm:
+            world=expression(material,unreal.MaterialExpressionWorldPosition)
+            xy=expression(material,unreal.MaterialExpressionComponentMask,r=True,g=True,b=False,a=False)
+            connect(world,xy)
+            uv=multiply(material,xy,1.0/world_tile_cm)
+        else:
+            uv=expression(material,unreal.MaterialExpressionTextureCoordinate)
+        samples=[]
+        for tex,kind in zip(textures,('color','normal','rough')):
+            sample=expression(material,unreal.MaterialExpressionTextureSample,texture=tex)
+            sample.set_editor_property('sampler_type',unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL if kind=='normal'
+                else unreal.MaterialSamplerType.SAMPLERTYPE_MASKS if kind=='rough' else unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
+            connect(uv,sample); samples.append(sample)
+        rgb=samples[0]
+        if ground_tint:
+            tint=multiply(material,expression(material,unreal.MaterialExpressionVertexColor),7.0)
+            tint=blend(material,color(material,(1,1,1)),tint,scalar(material,.25))
+            product=expression(material,unreal.MaterialExpressionMultiply)
+            connect(rgb,product,'A');connect(tint,product,'B');rgb=product
+        output(rgb,unreal.MaterialProperty.MP_BASE_COLOR)
+        output(samples[1],unreal.MaterialProperty.MP_NORMAL)
+        output(samples[2],unreal.MaterialProperty.MP_ROUGHNESS)
+        output(scalar(material,.0),unreal.MaterialProperty.MP_METALLIC)
+        output(scalar(material,.22),unreal.MaterialProperty.MP_SPECULAR)
+        editor.recompile_material(material)
+        require(library.save_loaded_asset(material,only_if_is_dirty=False),'Cannot save PBR '+material.get_name())
+
+    asphalt=maps('Asphalt010','Asphalt')
+    ground=maps('Grass004','GroundGrass')
+    rock=maps('rock_moss_set_02','MossRock')
+    # M_Asphalt belongs to bootstrap_assets.py. Preserve its ownership tag so
+    # a full clean bootstrap remains repeatable on the following build.
+    asphalt_material=require(library.load_asset('/Game/Materials/M_Asphalt'),'Missing base asphalt material')
+    require(library.get_metadata_tag(asphalt_material,TAG)=='bootstrap_assets.py:1','Foreign asphalt material')
+    pbr(asphalt_material,asphalt,400.0)
+    pbr(owned('/Game/Materials/M_EnvironmentGround',unreal.Material),ground,140.0,True)
+    rock_material=owned('/Game/Materials/M_EnvironmentRock',unreal.Material)
+    pbr(rock_material,rock)
+
+    positions,uvs,indices=source['rock_geometry']()
+    mesh=owned('/Game/Meshes/SM_EnvironmentRock',unreal.StaticMesh)
+    mesh.set_editor_property('static_materials',[unreal.StaticMaterial(material_interface=rock_material,material_slot_name='M_EnvironmentRock')])
+    description=unreal.StaticMesh.create_static_mesh_description(mesh)
+    group=description.create_polygon_group();description.set_polygon_group_material_slot_name(group,'M_EnvironmentRock')
+    vertices=[]
+    for position in positions:
+        vertex=description.create_vertex();description.set_vertex_position(vertex,unreal.Vector(*position));vertices.append(vertex)
+    for offset in range(0,len(indices),3):
+        instances=[]
+        for index in indices[offset:offset+3]:
+            instance=description.create_vertex_instance(vertices[index])
+            description.set_vertex_instance_uv(instance,unreal.Vector2D(*uvs[index]),0);instances.append(instance)
+        description.create_triangle(group,instances)
+    mesh.build_from_static_mesh_descriptions([description],False,False)
+    settings=subsystem.get_lod_build_settings(mesh,0)
+    settings.recompute_normals=True;settings.recompute_tangents=True;settings.generate_lightmap_u_vs=False
+    subsystem.set_lod_build_settings(mesh,0,settings)
+    options=unreal.StaticMeshReductionOptions()
+    options.auto_compute_lod_screen_size=False
+    # LOD0 is reduced from the 8K source; later LODs use that reduced LOD0.
+    options.reduction_settings=[unreal.StaticMeshReductionSettings(percent_triangles=ratio,screen_size=screen)
+        for ratio,screen in ((.25,1.0),(.40,.14),(.12,.045))]
+    require(subsystem.set_lods(mesh,options)==3,'Cannot build the three rock LODs')
+    save(mesh)
+    triangles=[mesh.get_num_triangles(i) for i in range(3)]
+    require(0<triangles[2]<=320 and triangles[2]<=triangles[1]<=960 and triangles[1]<=triangles[0]<=2400,
+        'Rock LOD triangle budget exceeded: '+str(triangles))
+    unreal.log('VROOM ENVIRONMENT PBR: PASS 9 compressed 1K maps, CC0 rock LOD triangles='+str(triangles))
+
 if __name__=='__main__':
     geometry=make_geometry();audit={name:mesh.audit()for name,mesh in geometry.items()}
     assert max(m['triangles']for m in audit.values()) <= 1200
-    if '--audit' in sys.argv:print(json.dumps(audit,indent=2))
+    if '--audit' in sys.argv:
+        audit['CC0_sources']=runpy.run_path(str(Path(__file__).with_name('environment_asset_data.py')))['audit']()
+        print(json.dumps(audit,indent=2))
     else:build_assets(geometry)

@@ -34,49 +34,51 @@ int main()
     Check(Solo.FuelPerThrottleSecond < 0.001, "solo sessions keep mild fuel use");
     const double Lengths[] = {3813, 4018, 4359, 4778, 5911, 6405};
     const char* Names[] = {"France", "Suède", "Japon", "Royaume-Uni", "Autriche", "USA"};
-    std::cout << "Race resource budget (3 laps, mean throttle 0.78, 48 m/s):\n";
-    std::cout << "Circuit        Diff   FuelLaps TyreLaps NeedPit\n";
     for (int Track = 0; Track < 6; ++Track)
     {
-        for (int Level = 0; Level < 3; ++Level)
+        for (int Laps : {2, 3, 6}) for (int Level = 0; Level < 3; ++Level)
         {
             const auto Diff = static_cast<RaceDifficulty>(Level);
-            const ResourceBudget B = MakeResourceBudget(true, Diff, Lengths[Track], 3);
+            const ResourceBudget B = MakeResourceBudget(true, Diff, Lengths[Track], Laps);
             DriveModel Car;
             Car.FuelBurnPerThrottleSecond = B.FuelPerThrottleSecond;
             Car.TyreWearPerMetre = B.TyreWearPerMetre;
-            Car.State.SpeedMps = 48;
-            Car.State.Gear = 5;
-            DriveInput Hold; Hold.Throttle = 0.78;
-            const double RaceDistance = Lengths[Track] * 3;
-            int Stops = 0;
-            bool CanReachPit = true;
-            for (int Step = 0; Step < 120 * 900 && Car.State.DistanceM < RaceDistance; ++Step)
+            DriveInput Hold; Hold.Throttle = .78;
+            for (int Step = 0; Step < 120 * 900 && Car.State.DistanceM < Lengths[Track] * Laps; ++Step)
             {
                 Car.Step(Hold, 1.0 / 120, 0.0, 4.75);
-                if (Car.Fuel <= 0.001 && Car.State.SpeedMps < 0.2)
-                {
-                    CanReachPit = false;
-                    break;
-                }
-                if (Car.Fuel < 0.18 || Car.TyreCondition() < 0.20)
-                {
-                    const double Along = std::fmod(Car.State.DistanceM, Lengths[Track]);
-                    const double ToPit = Along <= 102 ? 102 - Along : Lengths[Track] - Along + 102;
-                    if (ToPit > 1800 && (Car.Fuel < 0.08 || Car.TyreCondition() < 0.08))
-                        CanReachPit = false;
-                    Car.Refuel();
-                    Car.ChangeTyres();
-                    ++Stops;
-                }
+                if (Car.Fuel == 0 && Car.State.SpeedMps < .2) break;
             }
-            const double FuelLaps = (1.0 / B.FuelPerThrottleSecond) * 0.78 * 48.0 / Lengths[Track];
+            Check(Car.State.DistanceM < Lengths[Track] * Laps, "normal race throttle cannot finish the race without fuel");
+            const double FuelLaps = 60.0 / (B.FuelPerThrottleSecond * .78 * Lengths[Track]);
             const double TyreLaps = 2048.0 / (B.TyreWearPerMetre * Lengths[Track]);
-            Check(Stops >= 1, "a full race needs at least one stop");
-            Check(CanReachPit && Stops <= 3, "the pit window remains reachable");
-            std::cout << Names[Track] << "  " << (Level == 0 ? "Facile" : Level == 1 ? "Normal" : "Expert")
-                      << "  " << FuelLaps << "  " << TyreLaps << "  stops=" << Stops << "\n";
+            Check(FuelLaps > 1 && FuelLaps < Laps, "the next pit entry is reachable before the tank runs dry");
+            Check(TyreLaps > FuelLaps && TyreLaps < Laps, "tyres need service during the race too");
+            std::cout << Names[Track] << " laps=" << Laps << " difficulty=" << Level << " fuelLaps=" << FuelLaps
+                      << " tyreLaps=" << TyreLaps << " noStopDistance=" << Car.State.DistanceM << "\n";
         }
+    }
+    const auto Two = MakeResourceBudget(true, RaceDifficulty::Normal, 4359, 2);
+    const auto Six = MakeResourceBudget(true, RaceDifficulty::Normal, 4359, 6);
+    Check(Two.FuelPerThrottleSecond > Six.FuelPerThrottleSecond * 2, "budget scales with race length");
+    Check(MakeResourceBudget(true, RaceDifficulty::Normal, 4359, 1).FuelPerThrottleSecond < .001,
+        "one-lap qualification keeps a reachable finish without a mandatory stop");
+    for (StartSignal Signal : {StartSignal::Red, StartSignal::Orange, StartSignal::Green})
+    {
+        StartToneVoice Voice;
+        Voice.Trigger(Signal);
+        const int Count = Voice.SampleCount;
+        double Energy = 0, Maximum = 0;
+        for (int I = 0; I < Count + 100; ++I)
+        {
+            const double Sample = Voice.NextSample();
+            Energy += Sample * Sample;
+            Maximum = std::max(Maximum, std::abs(Sample));
+            if (I == 0 || I >= Count - 1) Check(Sample == 0, "start tone has silent endpoints and finite duration");
+        }
+        Check(Energy > Count * .02 && Maximum <= BeepFor(Signal).Volume, "start tone is audible and amplitude-bounded");
+        Voice.Trigger(Signal);
+        Check(Voice.Sample == 0 && Voice.SampleCount == Count, "a restart resets the audio cue");
     }
 
     LapValidator Lap;
@@ -132,7 +134,7 @@ int main()
     Check(Pack[0].Distance > Pack[1].Distance, "the red profile pulls away from the technician on a straight");
 
     std::vector<TrafficCar> Pitter(1);
-    Pitter[0].Fuel = 0.10; Pitter[0].TyreHealth = 300; Pitter[0].Distance = 40; Pitter[0].Speed = 18;
+    Pitter[0].Fuel = 0.10; Pitter[0].TyreHealth = 300; Pitter[0].Distance = 20; Pitter[0].Speed = 18;
     Pitter[0].FuelBurn = 0.004; Pitter[0].TyreWearPerMetre = 0.2;
     bool Committed = false;
     for (int I = 0; I < 120 * 8; ++I)

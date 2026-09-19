@@ -1,4 +1,14 @@
-# Validation — Vroom 0.30
+# Validation — Vroom 0.33
+
+## Série du 19 septembre 2026
+
+**PASS — 30/30 suites portables et 45/45 contrôles du package Mac.** Le [rapport 0.33](FINALISATION_033.md) détaille les corrections, les cas réellement exécutés, les résultats des huit profils et l’état de l’installation. La série `Saved/Validation/v0.33.0/20260919-174842-package/results.json` est complète, sans échec : 36 scénarios fonctionnels/visuels, huit profils et une trace courte. Les six parcours couvrent un tour entier. Toutes les fenêtres sont visibles et actives ; les commandes de course sont automatisées.
+
+Le profil Performance mesure environ 60 FPS, un P99 maximal de **17,008 ms**, un maximum de **19,938 ms** et zéro image au-delà de 20 ms. Il utilise **70 % de résolution interne**, avec sorties 1440 × 900 et 2560 × 1664. Les traces ne contiennent ni donnée invalide ni recul de position. Les réglages Élevé/Ultra, Windows/DLSS et les périphériques physiques ne sont pas certifiés par cette série.
+
+Le [rapport JSON courant](validation-results.json) correspond au SHA-256 exécutable `a3af96417a81859a643010c80aebcb52ebc4135a44b0d76680c0b69c9df9a35d`. Les mesures antérieures restent conservées dans [validation-results-030.json](validation-results-030.json) et ci-dessous.
+
+## Archive — Vroom 0.30
 
 ## État du rapport final
 
@@ -22,7 +32,7 @@ La série `20260913-024921-package` passe cinq profils (deux définitions, Autri
 | Préparation | Canvas prête et `pending=0` dans les huit profils ; étape mesurée de 0,056 à 0,102 s ; aucun message PSO lent |
 | Installation et lancement de la version active | **PASS**, `installation-final.log` et `installed-launch-checks.json` sous `Saved/Validation/v030` ; lanceur natif et Bureau vérifiés |
 
-SHA-256 du binaire mesuré : `3094777016a987055bf8f3a733db00faeaed47c71f96e372effb28108ec1bab0`. Le récapitulatif [validation-results.json](validation-results.json) et les images publiées doivent correspondre à cette série et à cette empreinte ; les captures anciennes ne certifient pas automatiquement ce package. Les huit profils détaillés et les sept traces de mouvement sont dans [PERFORMANCE.md](PERFORMANCE.md#résultats-du-package-final).
+SHA-256 du binaire mesuré : `3094777016a987055bf8f3a733db00faeaed47c71f96e372effb28108ec1bab0`. Le récapitulatif [validation-results-030.json](validation-results-030.json) et les images publiées doivent correspondre à cette série et à cette empreinte ; les captures anciennes ne certifient pas automatiquement ce package. Les huit profils détaillés et les sept traces de mouvement sont dans [PERFORMANCE.md](PERFORMANCE.md#résultats-du-package-final).
 
 ## Procédure reproductible
 

@@ -1,19 +1,20 @@
-"""Fit the closed glove to the steering rim in its recorded driving pose."""
+"""Fit glove vertices to the rim; this is not a triangle collision solver."""
 import copy
 import math
 
 
-def fit(document):
+def fit(document, grip_depth=-2.8):
     result = copy.deepcopy(document)
     vertices = result['vertices']
     # Same fixed grip as DrivingHandPose. Rotating both around the wheel keeps
     # this clearance unchanged in every steering pose and for the mirrored hand.
-    pose = result['driving_grip'] = {'neutral_angle_deg': 30., 'wrist_tilt_deg': 80., 'scale': 1.05}
+    pose = result['driving_grip'] = {'neutral_angle_deg': 30., 'wrist_tilt_deg': 80., 'scale': 1.05,
+        'grip_depth_cm': grip_depth, 'grip_reach_cm': 19.1}
     angle, tilt = math.radians(180-pose['neutral_angle_deg']), math.radians(pose['wrist_tilt_deg'])
     scale = pose['scale']
     ca, sa, ct, st = math.cos(angle-math.pi), math.sin(angle-math.pi), math.cos(tilt), math.sin(tilt)
     contact = (0, 18.8*math.cos(angle), 18.8*math.sin(angle))
-    grip = (-2.5, 19.1, -5.4)
+    grip = (pose['grip_depth_cm'], pose['grip_reach_cm'], -5.4)
     changed, maximum = [], 0
     for index, original in enumerate(vertices):
         x, y, z = ((original[k]-grip[k])*scale for k in range(3))
@@ -60,5 +61,20 @@ def fit(document):
             result['normals'][index] = [round(n/length,9) for n in normal]
     result['validation']['rim_clearance'] = {'adjusted_vertices': len(changed),
         'max_displacement_world_cm': maximum, 'rim_radius_cm':18.8, 'tube_radius_cm':1.2,
-        'surface_clearance_cm':.015, 'pose_changed':False}
+        'surface_clearance_cm':.015, 'clearance_scope':'vertices_only', 'pose_changed':False,
+        'grip_depth_cm':grip_depth}
+    if grip_depth != -2.5:
+        # Quantify the small refit against the unchanged white 0.30 glove.
+        # Grip rotation/scale/height, topology and UVs remain identical. The
+        # inward grip translation is separate from this local mesh correction.
+        reference = fit(document, grip_depth=-2.5)
+        differences = [math.dist(a, b)*scale
+            for a, b in zip(vertices, reference['vertices'])]
+        result['validation']['grip_tightening'] = {
+            'reference_grip_depth_cm':-2.5,
+            'grip_translation_world_cm':abs(grip_depth+2.5)*scale,
+            'locally_adjusted_vertices':sum(d > 1.e-6 for d in differences),
+            'max_local_refit_vs_030_world_cm':max(differences, default=0.),
+            'rotation_scale_height_changed':False,
+            'topology_and_uvs_changed':False}
     return result

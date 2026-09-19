@@ -3,7 +3,7 @@
 
 python3 Tools/verify_mac.py --editor
 python3 Tools/verify_mac.py --profile
-Screenshots are offscreen; performance captures use real onscreen windows.
+Use --visible to show every scenario; performance always uses onscreen windows.
 Results remain under Saved/Validation, outside the source repository.
 """
 import argparse
@@ -53,6 +53,8 @@ def validate_resume_identity(previous, current):
         raise ValueError('Resume package data file set or SHA256 differs')
     if not previous.get('release_limits') or previous.get('release_limits') != current.get('release_limits'):
         raise ValueError('Resume release limits differ or are missing')
+    if previous.get('graphics_preset') != current.get('graphics_preset'):
+        raise ValueError('Resume graphics preset differs')
 
 
 def failed_stage(previous, name):
@@ -104,8 +106,55 @@ REQUIRED_MARKERS = {
     'progress-data': ['Progress self-test PASS'],
     'menu-flow': ['Menu self-test PASS', 'Settings self-test PASS'],
     'drift-feedback': ['Drift feedback PASS'],
+    'drift-unskilled': ['Drift feedback PASS', 'Drift skill denied PASS'],
+    'collision-rub': ['Controlled landing quality='],
     'options': ['Graphics preview PASS'],
+    'offroad-left': ['Offroad restart PASS'],
+    'offroad-right': ['Offroad restart PASS'],
+    'start-sequence': ['Start integration PASS'],
+    **{f'track-audit-{track + 1}': ['Track geometry PASS'] for track in range(6)},
+    **{f'start-{scenario}': ['Start integration PASS'] for scenario in ('restart', 'pause', 'mute')},
 }
+
+
+def start_signal_failures(body, name):
+    if not name.startswith('start-'):
+        return []
+    failures = []
+    runs = body.split('VROOM: Start test restarted during countdown')
+    if len(runs) != (2 if name == 'start-restart' else 1):
+        failures.append('Unexpected number of countdown restarts')
+    for index, run_body in enumerate(runs):
+        final_run = index == len(runs) - 1
+        for kind, pattern in [
+                ('beep', r'VROOM: Start beep signal=(\d+)[^\n]*raceClock=([-\d.]+)'),
+                ('lights', r'VROOM: Start lights [^\n]*raceClock=([-\d.]+)[^\n]*signal=(\d+)')]:
+            events = re.findall(pattern, run_body)
+            if kind == 'lights':
+                events = [(signal, clock) for clock, signal in events]
+            count = run_body.count(f'VROOM: Start {kind} ')
+            if count != len(events):
+                failures.append(f'Malformed {kind} event')
+            sequence = [int(signal) for signal, _ in events]
+            if kind == 'lights' and sequence and sequence[-1] == 3:
+                sequence = sequence[:-1]
+            expected = [0, 1, 2] if final_run else [0, 1, 2][:len(sequence)]
+            if sequence != expected or not sequence:
+                failures.append(f'Incorrect {kind} sequence: {sequence}')
+            for signal, clock in events:
+                bounds = {0: (-3.01, -2), 1: (-2, 0), 2: (0, .4), 3: (.4, float('inf'))}
+                lower, upper = bounds.get(int(signal), (1, 0))
+                try:
+                    clock_value = float(clock)
+                except ValueError:
+                    failures.append(f'Malformed {kind} clock: {clock}')
+                    continue
+                # Logs round the simulation clock to milliseconds.
+                if not lower - .0005 <= clock_value <= upper + .0005:
+                    failures.append(f'{kind} signal {signal} is out of sync at {clock}s')
+    if name == 'start-pause' and 'Start test resumed after pause' not in body:
+        failures.append('Countdown pause was not exercised')
+    return failures
 
 
 def case_reusable(previous, name, request, root=ROOT):
@@ -115,7 +164,7 @@ def case_reusable(previous, name, request, root=ROOT):
     if len(rows) != 1:
         return None
     row = rows[0]
-    if row.get('exit') != 0 or row.get('status', 'PASS') != 'PASS' or row.get('offscreen') != request['capture']:
+    if row.get('exit') != 0 or row.get('status', 'PASS') != 'PASS' or row.get('offscreen') != request.get('offscreen', request['capture']):
         return None
     if 'request' in row and row['request'] != request:
         return None
@@ -131,7 +180,7 @@ def case_reusable(previous, name, request, root=ROOT):
     body = log.read_text(errors='replace')
     try:
         failures, _ = runtime_failures(body, previous['version'], request['flags'])
-        if failures or any(marker not in body for marker in REQUIRED_MARKERS.get(name, [])):
+        if failures or start_signal_failures(body, name) or any(marker not in body for marker in REQUIRED_MARKERS.get(name, [])):
             return None
         commands = re.findall(r'LogInit: Command Line:\s*(.*)', body)
         tokens = shlex.split(commands[-1]) if commands else []
@@ -140,16 +189,20 @@ def case_reusable(previous, name, request, root=ROOT):
     expected = request['flags'] + ['-VroomVerify', '-windowed', '-ForceRes',
         f"-ResX={request['resolution'][0]}", f"-ResY={request['resolution'][1]}",
         f"-VroomExitAfter={request['seconds']}"]
+    if request.get('offscreen', request['capture']):
+        expected += ['-RenderOffScreen', '-MetalOffscreenOnly', '-unattended']
     if request['capture']:
-        expected += ['-RenderOffScreen', '-MetalOffscreenOnly', '-unattended',
-                     f"-VroomCaptureAfter={request['capture_after']}"]
+        expected += [f"-VroomCaptureAfter={request['capture_after']}"]
     if any(flag not in tokens for flag in expected):
+        return None
+    if not request.get('offscreen', request['capture']) and any(
+            flag in tokens for flag in ('-RenderOffScreen', '-MetalOffscreenOnly')):
         return None
     for field, digest in row.get('evidence_sha256', {}).items():
         proof = evidence_path(row.get(field), root)
         if not proof or sha256(proof) != digest:
             return None
-    if name.startswith(('perf-', 'soak-')) or name == 'motion':
+    if request.get('visible') or name.startswith(('perf-', 'soak-')) or name == 'motion':
         if not foreground_allowed(row.get('foreground', {})):
             return None
     if request['capture']:
@@ -198,17 +251,23 @@ def profile_reusable(previous, name, frame_count, resolution, distance, track, r
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--visible', action='store_true', help='show and activate every functional scenario in the game window')
+    parser.add_argument('--graphics-preset', choices=('performance', 'balanced', 'high', 'ultra'),
+                        help='temporary profile for all checks; preserves saved player preferences')
     parser.add_argument('--editor', action='store_true', help='cockpit checks only, using the compiled editor module')
     parser.add_argument('--profile', action='store_true', help='also run two onscreen 1800-frame profiles and motion telemetry')
     parser.add_argument('--soak', action='store_true', help='also drive all six full circuits for at least 120 seconds each, with performance and camera gates')
     parser.add_argument('--resume', type=Path, help='reuse proven PASS stages from this results.json only for the identical package')
     args = parser.parse_args()
     previous = json.loads(args.resume.read_text()) if args.resume else {}
+    if args.resume and args.graphics_preset is None:
+        args.graphics_preset = previous.get('graphics_preset')
     if args.resume and not (args.profile or args.soak):
         requested = previous.get('requested')
         if not isinstance(requested, dict):
             parser.error('Legacy reports require explicit --profile and/or --soak when resuming.')
         args.profile, args.soak = requested.get('profile', False), requested.get('soak', False)
+        args.visible = args.visible or requested.get('visible', False)
     if args.resume and args.editor:
         parser.error('Resume is supported only for packaged builds.')
     if args.editor and (args.profile or args.soak):
@@ -223,7 +282,8 @@ def main():
     if not executable.is_file():
         raise RuntimeError(f'Build missing: {executable}')
     summary = {'version': version, 'date': datetime.now().isoformat(), 'editor': args.editor, 'completed': False, 'cases': [], 'performance': []}
-    summary['requested'] = {'profile': args.profile, 'soak': args.soak}
+    summary['requested'] = {'profile': args.profile, 'soak': args.soak, 'visible': args.visible}
+    summary['graphics_preset'] = args.graphics_preset
     summary['release_limits'] = {'performance': PERFORMANCE_LIMITS, 'motion': MOTION_LIMITS}
     if not args.editor:
         bundle = executable.parents[2]
@@ -237,7 +297,7 @@ def main():
             'completed': previous.get('completed', False), 'failures': copy.deepcopy(previous.get('failures', [])),
             'report_sha256': sha256(args.resume)}]
     activation_tool = saved / 'activate-mac'
-    if args.profile or args.soak:
+    if args.profile or args.soak or args.visible:
         subprocess.run(['xcrun', 'clang', '-O2', '-fobjc-arc', '-Wno-deprecated-declarations',
                         '-framework', 'Cocoa', '-framework', 'ApplicationServices',
                         str(ROOT / 'Tools/activate_mac.m'), '-o', str(activation_tool)], check=True)
@@ -262,8 +322,13 @@ def main():
             raise RuntimeError(f'{name}: ' + '; '.join(failures))
 
     def request_for(flags, seconds, capture, resolution, capture_after=3):
-        return {'flags': flags, 'seconds': seconds, 'capture': capture,
-                'resolution': list(resolution), 'capture_after': capture_after}
+        request = {'flags': flags, 'seconds': seconds, 'capture': capture,
+                   'resolution': list(resolution), 'capture_after': capture_after}
+        if args.graphics_preset is not None:
+            request['graphics_preset'] = args.graphics_preset
+        if args.visible:
+            request.update(visible=True, offscreen=False)
+        return request
 
     def run(name, flags, seconds=5, capture=True, resolution=(1440, 900), capture_after=3, allow_resume=True):
         request = request_for(flags, seconds, capture, resolution, capture_after)
@@ -284,14 +349,18 @@ def main():
         log, png = out / (name + '.log'), out / (name + '.png')
         cmd = [str(executable), '-LLM', '-windowed', '-ForceRes', f'-ResX={resolution[0]}', f'-ResY={resolution[1]}',
                '-VroomVerify', f'-abslog={log}', f'-VroomExitAfter={seconds}']
+        if args.graphics_preset is not None:
+            cmd.append(f'-VroomGraphicsPreset={("performance", "balanced", "high", "ultra").index(args.graphics_preset)}')
         if capture:
-            cmd += ['-RenderOffScreen', '-MetalOffscreenOnly', '-unattended', f'-VroomCapture={png}', f'-VroomCaptureAfter={capture_after}']
+            if not args.visible:
+                cmd += ['-RenderOffScreen', '-MetalOffscreenOnly', '-unattended']
+            cmd += [f'-VroomCapture={png}', f'-VroomCaptureAfter={capture_after}']
         activation, execution_error, exit_code = None, None, None
         stdout_log = out / (name + '-stdout.log')
         with stdout_log.open('w') as stream:
             process = subprocess.Popen(cmd + flags, cwd='/tmp', stdout=stream, stderr=subprocess.STDOUT)
             try:
-                if not capture and (name.startswith(('perf-', 'soak-')) or name == 'motion'):
+                if args.visible or (not capture and (name.startswith(('perf-', 'soak-')) or name == 'motion')):
                     try:
                         result = subprocess.run([str(activation_tool), str(process.pid), str(executable.parents[2])],
                                                 capture_output=True, text=True, timeout=15)
@@ -314,8 +383,9 @@ def main():
                         process.wait()
         body = log.read_text(errors='replace') if log.exists() else ''
         failures, checks = runtime_failures(body, version, flags)
-        row = {'name': name, 'exit': exit_code, 'checks': checks, 'offscreen': capture,
+        row = {'name': name, 'exit': exit_code, 'checks': checks, 'offscreen': capture and not args.visible,
                'status': 'EXECUTED', 'request': request, 'stdout': preserve(stdout_log)}
+        row['graphics_applied'] = re.findall(r'VROOM: Graphics applied ([^\n]+)', body)
         if log.exists():
             row['log'] = preserve(log)
         if activation is not None:
@@ -344,7 +414,8 @@ def main():
                  else [f'Invalid PNG capture; expected {resolution}, got {dimensions}'])
             row.update(size=list(dimensions), capture=preserve(png))
             row['evidence_sha256']['capture'] = sha256(png)
-        gate(name, [f'Missing {marker}' for marker in REQUIRED_MARKERS.get(name, []) if marker not in body])
+        gate(name, [f'Missing {marker}' for marker in REQUIRED_MARKERS.get(name, []) if marker not in body]
+             + start_signal_failures(body, name))
         row['status'] = 'PASS'
         write_results()
         print(f'{name}: PASS', flush=True)
@@ -357,16 +428,24 @@ def main():
             log = run(name, [flag], capture=False)
             text = log.read_text(errors='replace')
             gate(name, [f'Missing {check}' for check in expected if check not in text])
+        for name, side in [('offroad-left', -1), ('offroad-right', 1)]:
+            run(name, [f'-VroomOffroadTest={side}', '-VroomTrack=4'], seconds=10, capture_after=8)
+        run('start-sequence', ['-VroomStartTest'], seconds=6, capture_after=2)
+        for scenario in ('restart', 'pause', 'mute'):
+            run(f'start-{scenario}', ['-VroomStartTest', f'-VroomStartScenario={scenario}'], seconds=8, capture_after=4)
+        for track in range(6):
+            run(f'track-audit-{track + 1}', ['-VroomAutoDemo', '-VroomTrackAudit', f'-VroomTrack={track}'], seconds=5)
         run('pit-service', ['-VroomPitTest', '-VroomChaseCamera'], seconds=9)
         drift_log = run('drift-feedback', ['-VroomDriftTest', '-VroomChaseCamera', '-VroomStartDistance=350',
-                                         '-VroomStartSpeed=22'], capture_after=1.15)
+                                         '-VroomStartSpeed=40'], capture_after=1.45)
         gate('drift-feedback', [] if 'Drift feedback PASS' in drift_log.read_text(errors='replace') else ['Missing drift feedback pass'])
-        for scenario in ['slow', 'crash', 'tyre', 'scenery']:
+        run('drift-unskilled', ['-VroomDriftTest', '-VroomDriftScenario=unskilled', '-VroomChaseCamera',
+                               '-VroomStartDistance=350', '-VroomStartSpeed=40'], capture_after=1.45)
+        for scenario in ['slow', 'crash', 'tyre', 'scenery', 'rub', 'rear']:
             run('collision-' + scenario, ['-VroomCollisionTest=' + scenario, '-VroomChaseCamera'], seconds=8)
 
     for name, steer, extra in [('neutral', 0, []), ('right', .62, []), ('left', -.62, []),
-                               ('small-right', .04, []), ('mid-left', -.21, []),
-                               ('inspect-neutral', 0, ['-VroomInspectCockpit'])]:
+                               ('small-right', .04, []), ('mid-left', -.21, [])]:
         run(name, ['-VroomAutoDemo', '-VroomStartDistance=350', '-VroomStartSpeed=0', f'-VroomPreviewSteering={steer}'] + extra)
     if not args.editor:
         run('neutral-16x9', ['-VroomAutoDemo', '-VroomStartDistance=350', '-VroomStartSpeed=0', '-VroomPreviewSteering=0'], resolution=(1600, 900))

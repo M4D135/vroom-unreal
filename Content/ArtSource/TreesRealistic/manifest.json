@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "source": "https://opengameart.org/content/free-vegetation-asset-pack",
+  "download": "https://opengameart.org/sites/default/files/free_vegetation_pack.zip",
+  "author": "rubberduck",
+  "license": "CC0-1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "checked": "2026-09-19",
+  "archive_sha256": "eda8b21ea4723589ece0667be9a1a72fe7d7a0d22c7cd9ac33748c7346e8d29c",
+  "source_files": {
+    "free_vegetation_pack.blend": "dba94d0f6aba9a2bd54ac1e0d5f52fe577283a3cc411a1dea321103c6b09189c",
+    "textures/branches_small_leaves.png": "487221415ae6470c0a8c3593681228376dc52231a0913b7ae502a5ab01b27715",
+    "textures/bark.JPG": "81dc62b2a57c4369bd6ea2eee535d7316661ea8b0771fe713b90898e2bb9e9a0",
+    "textures/branches_leaves.png": "1bd3b52b2fabcebf025daea9afa873fd13defa82f1c27885edc16176ef866557",
+    "LICENSE-CC0.txt": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+  },
+  "generated_files": {
+    "trees.json": "e6553e9af0bb144be0924516b387fbbb291b4edf33b54a71a9e17b2497a14ff9"
+  }
+}
