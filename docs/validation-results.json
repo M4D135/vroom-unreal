@@ -1,9 +1,269 @@
 {
-  "version": "0.33.0",
-  "date": "2026-09-19T17:48:42.221068",
+  "version": "0.34.0",
+  "date": "2026-09-19T23:11:25.647956",
   "editor": false,
   "completed": true,
   "cases": [
+    {
+      "name": "neutral",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomAutoDemo",
+          "-VroomStartDistance=350",
+          "-VroomStartSpeed=0",
+          "-VroomPreviewSteering=0"
+        ],
+        "seconds": 5,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "photorealism",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/neutral-stdout.log",
+      "graphics_applied": [
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
+      ],
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/neutral.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "92414bd40c2a648748381a1108a75802a0414aada2d9953d856b062564a81a09",
+        "log": "be515e7a913e9435319eb5857f6932ab1e2089daa43adeaf7ffa78a69114bedd",
+        "capture": "707a7cad4202d4e93a7bf95688cd052f4bcae9174bbae0f10b0d2965a136eaf5"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/neutral.png"
+    },
+    {
+      "name": "right",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomAutoDemo",
+          "-VroomStartDistance=350",
+          "-VroomStartSpeed=0",
+          "-VroomPreviewSteering=0.62"
+        ],
+        "seconds": 5,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "photorealism",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/right-stdout.log",
+      "graphics_applied": [
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
+      ],
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/right.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "775c92ece18c43de00f46cf24c219b101385d1bdbefbc2607b827c6d8038184c",
+        "log": "faac636085b6f107a5d6a1190e2f825bf9f473e7fff48b5b16ea69fd95fe4a80",
+        "capture": "9a5b1e45f4ff4744dff191e1fc38ba24f240f901337e7fa1b02add1b5bab4295"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/right.png"
+    },
+    {
+      "name": "left",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomAutoDemo",
+          "-VroomStartDistance=350",
+          "-VroomStartSpeed=0",
+          "-VroomPreviewSteering=-0.62"
+        ],
+        "seconds": 5,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "photorealism",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/left-stdout.log",
+      "graphics_applied": [
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
+      ],
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/left.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "577ac2905d35a688ca478570c375d2d82ff36d8275fd3d638990be98451abb1c",
+        "log": "7095ae210e060eb85649b00a6efa9a124de549f580f63d2fc9fcbd3b4c51558f",
+        "capture": "4775e5d157cdd975fb2add0b979ee48c28de103681803ab21c09fc86ec78ed9f"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/left.png"
+    },
+    {
+      "name": "small-right",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomAutoDemo",
+          "-VroomStartDistance=350",
+          "-VroomStartSpeed=0",
+          "-VroomPreviewSteering=0.04"
+        ],
+        "seconds": 5,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "photorealism",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/small-right-stdout.log",
+      "graphics_applied": [
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
+      ],
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/small-right.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "e0225293640c5f2e7e620353bcd4c8dda9be22db4f8fb399e384cddf787c5fd8",
+        "log": "6700d5918dd5283a21a2934d075721f22eb42f75472f555926265b2089c25d07",
+        "capture": "b1a7991702e38a923225f5999f0120bd36a1fc7493625832d7515d616bb6eee8"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/small-right.png"
+    },
+    {
+      "name": "mid-left",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomAutoDemo",
+          "-VroomStartDistance=350",
+          "-VroomStartSpeed=0",
+          "-VroomPreviewSteering=-0.21"
+        ],
+        "seconds": 5,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "photorealism",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/mid-left-stdout.log",
+      "graphics_applied": [
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
+      ],
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/mid-left.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "b670eba22aa67c8a078429480668937c168961ca92167f65e095785f77192e59",
+        "log": "ccbe40eb987f3dda242757c17863adbd75419f1c29c0f74eb49966412133c97e",
+        "capture": "ada1a6abb72c72cd179fbbe5d117fddaafeaf2222de86fc6a8891da7cdd3c31d"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/mid-left.png"
+    },
     {
       "name": "progress-data",
       "exit": 0,
@@ -23,15 +283,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/progress-data-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/progress-data-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/progress-data.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/progress-data.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -43,8 +303,8 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "a44ebd464fde70f9ba55e0d1c93c8746b9a9e313bc508fac7c2579dabf5209a3",
-        "log": "1fd4c35b6305a56f70a15b7a6bcf69cdf97d3aa656fa0fe7ff372a92e03f0ded"
+        "stdout": "49910b890f0f1f2dea1278234271ec029dd440fb7de13ff84890d6ca4145d475",
+        "log": "a46ecf124b747d74ab267342374560b1da36ba4cb1a17c6bcbf89d81107e2a66"
       }
     },
     {
@@ -66,15 +326,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/menu-flow-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/menu-flow-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/menu-flow.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/menu-flow.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -86,8 +346,8 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "dcedc6798e2df901727e9a9f7e86611930c29003bddd3ae0f13fbad45ccdf05d",
-        "log": "f69bd55d9f195524d8e4f1c5bff7235be74c60619942c906e162e8928332554c"
+        "stdout": "130012151b1b77862536d956600dceb1ac41bba96fd1ebcf55f73105e64ed5a3",
+        "log": "6db85b975f7d9fba4a57cf1f2cb98e1d5c8e589eaf8ec4d506e9d5658b68b27e"
       }
     },
     {
@@ -110,15 +370,15 @@
           900
         ],
         "capture_after": 8,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/offroad-left-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/offroad-left-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/offroad-left.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/offroad-left.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -130,15 +390,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "be429c5fb13618804cd7a2c7a7b1485bdd584d6e09c061ba44cc0c86d95ad188",
-        "log": "a70f18936275fc233230c554f8ac7b1d323a87fc73911bf560818d91a7208e8c",
-        "capture": "654b5c33e00f0e536acd0c6f18c1b4cdaea504f71bc67c13d416a8dceca46239"
+        "stdout": "2a7f6db9f33a5c1a3e2c2a4230d135573017fbfdcebb367c45a8eb607979b0a5",
+        "log": "54947d9352127355e7d8ddf2bac716b3bb8da24e16f2768472738e3ec6313eb6",
+        "capture": "17d20e538027a5063ef83ff081cde4059cda0d179a203235ed04122fba130a4c"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/offroad-left.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/offroad-left.png"
     },
     {
       "name": "offroad-right",
@@ -160,15 +420,15 @@
           900
         ],
         "capture_after": 8,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/offroad-right-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/offroad-right-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/offroad-right.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/offroad-right.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -180,15 +440,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "bc802542fd52dad6fee1a05ffa877baa274ef4a09e8f7ac3620d56f870f39910",
-        "log": "0038b2b23937998a7910160dbfb8a9a0ac7436ef727e97c3429d78a838371d4f",
-        "capture": "9b08eb2cbe23b5a9cde9b8570789a1416ad5ffd6a7c4696d4f45b7797023039e"
+        "stdout": "e176a530d2efce4d4259d8823e73704c5351b31fd62a6629d06e65c103cd4004",
+        "log": "a66633ba1a047b417dae8cbd946407be4e8665057e2a892f121b48befb35352f",
+        "capture": "f747aee1b472401160b8f90437a54e32fbc084d52754a57da6b238bc3128ec1f"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/offroad-right.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/offroad-right.png"
     },
     {
       "name": "start-sequence",
@@ -209,15 +469,15 @@
           900
         ],
         "capture_after": 2,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/start-sequence-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/start-sequence-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/start-sequence.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/start-sequence.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -229,15 +489,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "d8aa19e47ef76f74f9461d5bc3b6ebff80168f8ca3977ea7abd2c50fa2c0a350",
-        "log": "1a34109bce23ab95a5abdbd1bccd6f043292e22652579f4604e6082434a23aa0",
-        "capture": "55bc54a349410a7c1d9773db6226ceeefb9bd63a2ee08861873e3bf7c9c911e0"
+        "stdout": "89733fdcc18debdc406b2f6d0e665cdda8914e1d5dddd98ecf52f4723b1e8b9e",
+        "log": "9d30c245a196bcfb5224a0b166a4f5c18151eac87f443dae660ac09af08cf1be",
+        "capture": "4342d5e280a2cade7ad8e308ac3e2128a53ed6b8f3bbc22bd89608d58358477b"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/start-sequence.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/start-sequence.png"
     },
     {
       "name": "start-restart",
@@ -259,15 +519,15 @@
           900
         ],
         "capture_after": 4,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/start-restart-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/start-restart-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/start-restart.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/start-restart.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -279,15 +539,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "7d4b198c4f81b1ea256935d4181f84a226c956cc8f709c0ef2a2cb5b3e45ce9c",
-        "log": "f00297a42d06e8a515bd9048fb4f6d413acf7214d7471d56a1e75ecf5180aaae",
-        "capture": "204ddbea864ab8a55d77a500135c9c77f5c006a45cb1ed1fbdfb0103e25a96f9"
+        "stdout": "fdec2ba01cb6e2d1216e937a9252a2dab5562f9eada4abe446e882ff577d6874",
+        "log": "1dba1982170748ca5ee8c62e272cbda51e090fafe0a3139805c628ec877cb9c3",
+        "capture": "9eccd64d2ad2b01652f912bc4d2756dc0841b2697364ec3d89f61b7b1c20a463"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/start-restart.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/start-restart.png"
     },
     {
       "name": "start-pause",
@@ -309,15 +569,15 @@
           900
         ],
         "capture_after": 4,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/start-pause-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/start-pause-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/start-pause.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/start-pause.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -329,15 +589,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "e2840d651967cca628ddcf522b0c5e315b6321fe3ce5f98c111831924adb9a54",
-        "log": "2ad836b508110b81c74f0fc8032ab985be8c91795d32663cdd987eb34b0a5aa0",
-        "capture": "01ab36b083174d3913e57dc10c6823096821acc4d42332961af8a560ef4e8075"
+        "stdout": "5ec7e98b1d606e45f3de68bd7ccbf5af7491005e5445ed3a5886d7c823d539e9",
+        "log": "e946bd1fa0f0e9d1179ee6d4a0b126cdb142b9edfa7654e122daa39e5c6126fb",
+        "capture": "cfb7600fac60d73dcbba4083ee61888053f21555d993084c87ef252c82e2df28"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/start-pause.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/start-pause.png"
     },
     {
       "name": "start-mute",
@@ -359,15 +619,15 @@
           900
         ],
         "capture_after": 4,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/start-mute-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/start-mute-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/start-mute.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/start-mute.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -379,15 +639,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "076214421a87bd6985d60fb082ecc78f4a05b52d02e7993ed724448d1ac739d4",
-        "log": "8ec60956b544e55be3c26c41dfb9f8d74f69f760fefebebfed3f465ce1e2f70d",
-        "capture": "1bfca6c392eabb3f133da2547576d8af07d36f132d2dacff03f42e651e7e0e65"
+        "stdout": "05fdc4a5b2c26a1bc1c8b24176e73b81fe35456cb76415b7264ace0991b6d322",
+        "log": "4233ff54109cfdb52c171804ce33f316deea5f9434434726267548700b2fb91e",
+        "capture": "f956c2d108d5feea168c5994c91c1d99c5836d4acfa5cf8fdd51d3a5cf94e10f"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/start-mute.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/start-mute.png"
     },
     {
       "name": "track-audit-1",
@@ -410,15 +670,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-1-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-1-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-1.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-1.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -430,15 +690,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "9099b31550a55e94068c7cfca1cf71bd11b13be8b51c94627128335d55012eaf",
-        "log": "ed57178e69dccaa2e70fefe589f6da79ed9d5d9a6a55c28b7b04916bed235e1f",
-        "capture": "845dea21ea846de17a6130757542cbe033d2e4a0d3a45a7ab142dbedea5df179"
+        "stdout": "d5c968b42e2c78ed21a1ce7d4f872f857883557e8fea3eb673f00357b7224ff9",
+        "log": "981760ac424f6e8b3ab9ef65285efb364f7ef105404d55b050a58f20474fe969",
+        "capture": "925fc88d9e80d9d1842202f2004c227ac4eb7bb8bffa502662d8dcdf1e1903f9"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-1.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-1.png"
     },
     {
       "name": "track-audit-2",
@@ -461,15 +721,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-2-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-2-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-2.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-2.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -481,15 +741,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "e2e511d2e647862f1f7835688af458032410c79f887bbc5d1a471c5a867ec685",
-        "log": "d27c88c18d306cafd75222f9d6ff540a68027263622b860465f88a320f682d55",
-        "capture": "7459096d9aeb64cc409ac26d2653bfd78d1e0629789fa9b4390cda8c6bc46c0b"
+        "stdout": "49d3033303a628cfa3cd4c6f47244ac2ba5fb20419b8a6fc20389c1634a9be89",
+        "log": "dba467cd3161018414da130fe6ebd8d30844ead0ff82bc57bb4e265ffdf413ac",
+        "capture": "9dfcb6e3eefe2a1bced53432ad7c2e1c82b1cb1e9e78e0a13498c8b0ed06adeb"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-2.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-2.png"
     },
     {
       "name": "track-audit-3",
@@ -512,15 +772,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-3-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-3-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-3.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-3.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -532,15 +792,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "3b3f0f69769f782effbb2cca55d2ed0c9248f8984bea9bd519ca152bf8c6524f",
-        "log": "f8618956e0d838b900d2f34db3ad275f144c3ac6ad6f01207af7bc7d0709920c",
-        "capture": "074990f4edbdf8987d8f984d32124a5d320addb3d379fbd918117d18e5ad4929"
+        "stdout": "b4cdce67d65844c4f652127f46eaa9ea49b12c8b49dd3726e6a28e646eb57127",
+        "log": "67e5358cf8f9140783eb9fc8ba5465faf3909954a9db594cad153a58fa9b6f91",
+        "capture": "bbe9838493d255498e7221d89f8c586daa81336679b68a6eb5db1ed1cd84b16f"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-3.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-3.png"
     },
     {
       "name": "track-audit-4",
@@ -563,15 +823,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-4-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-4-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-4.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-4.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -583,15 +843,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "9904b82da1d08f7ac798ed24bb69f442ccf8dc1d871913b1e9884b1c410eb0d6",
-        "log": "98ab6ebf0f5a3e40057636e9422ceb671649fe66e29e2232f2d5b7015b249018",
-        "capture": "8cc93bc3dd2e9cb55ca8c96baf42a3fd024e422e495be5c030045dfa11533339"
+        "stdout": "cb0e703dc4d89215a973869ba01fe04e2129d2989dc2ee1aec8945baccd11b6d",
+        "log": "09dcbd1df47dfea68fbf3ceef4d882e69a932ae5774d4eb9ee24c411ab43ffaf",
+        "capture": "949ad15760dd97ff585bcdeda57deb821a429184368a47147783a212b8b632a5"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-4.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-4.png"
     },
     {
       "name": "track-audit-5",
@@ -614,15 +874,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-5-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-5-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-5.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-5.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -634,15 +894,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "591c29b190bb13204d6a5201e15d90bd27401c26c5c99688b90846412f4c0937",
-        "log": "480aba1761a5bd9c6d6da19b19c4cafb45eec5d1f202f9152a8517f3106740bb",
-        "capture": "96047dadd1b59db801d77d43681c8e7c46868b47d97e243f2d414cb84881236a"
+        "stdout": "a234d7bcd458381c61a4d9cebaa346344b9c11bc19cb0db7d41476b23e58c157",
+        "log": "0eb21161fd725f67a2fcef247fff6f7d905d392ba1b592280a77fcc346701e1e",
+        "capture": "85e386ccd794aac6df27e6a4bc897436f0406555b00aefcc5fcd6a1a4d16e41c"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-5.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-5.png"
     },
     {
       "name": "track-audit-6",
@@ -665,15 +925,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-6-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-6-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-6.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-6.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -685,15 +945,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "6345143973586cb82f4e0d91d8735adbc96c98c3461c40af4dca07275eaf1baa",
-        "log": "dfb7e7394bd014492ca782d4c9f598513c953376d77b7a7198b94ae81c6cc47d",
-        "capture": "ec2dcc8c724b16aefa9764303ed80d5fd9ea22fb583e238649652b8347558239"
+        "stdout": "59febb6c83f667eb43d6dcfbed33c7127d361a7e8fdcd43ca0b49b28b494f8a2",
+        "log": "945be65606323f5634573c2eb3edb9b52903b61febf61172d9199ef12cb04aa1",
+        "capture": "8e1de266502790248cefc0193c3dac07f72087b55c3e258a9092b30dbf0fd072"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/track-audit-6.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/track-audit-6.png"
     },
     {
       "name": "pit-service",
@@ -715,15 +975,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/pit-service-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/pit-service-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/pit-service.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/pit-service.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -735,15 +995,64 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "6f353b78e5a98611dcccab952e0444ef13940184fbdfebb84393df43f02dd8c8",
-        "log": "cc95417027c0b63875a9f224890411253f96f849234520169b079c44b0cd3cd5",
-        "capture": "bfd13eee9fb6fe30f409f42d22f6fe7991a53a4d548356c0a3338d253501cbc1"
+        "stdout": "07b3fbcac58c8a2fca8eb304466127780f61294fcb4f3e0542ce9b8445c34329",
+        "log": "e7a983a50dc134c799e5584b3ffad1b22a22e155351d375a0ee6cf7a0d84b043",
+        "capture": "f17a1065080a23a8fd1be50c28701ecd11e61aaf05f93183fdb5ab6531e35ee7"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/pit-service.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/pit-service.png"
+    },
+    {
+      "name": "traffic-overtake",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomTrafficTest"
+        ],
+        "seconds": 15,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 3,
+        "graphics_preset": "photorealism",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/traffic-overtake-stdout.log",
+      "graphics_applied": [
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
+      ],
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/traffic-overtake.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "8e59442113743ab8d14b9af5f7243e309987dc3dcd4a73c889d56d03f00e7834",
+        "log": "4e21829c405a2b23460ac444e72ba64519cded83dd2acec73c138fc2aef47dc0",
+        "capture": "6c86ebd985eccc7606b39906331f1fc0bfb30dda672b7caacb65998a443527d6"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/traffic-overtake.png"
     },
     {
       "name": "drift-feedback",
@@ -767,15 +1076,15 @@
           900
         ],
         "capture_after": 1.45,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/drift-feedback-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/drift-feedback-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/drift-feedback.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/drift-feedback.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -787,15 +1096,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "f8a15330d6ecb0f3ae44edfb356613abc1b1072605c7d339683a254942980fbb",
-        "log": "86308193fd60478e141f3eceee69269c0ec9329268043618409f4048ca5cb570",
-        "capture": "1ee52a7cb1ac11c44b0d0880e7095776b235171d03afd0b31be47eccf27557f1"
+        "stdout": "6aea2670c4fa80c4b854f78fed3bca3ffd63aad54973e9b8579af26714a0e0d0",
+        "log": "17040cc6e0cf0224d1e24474da2a9ad90ed9d79c14a396fcf06b4127298b6074",
+        "capture": "a967e597b08a97e901194a0820adcadbb98f66eceed6e5fde476b651534a0e39"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/drift-feedback.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/drift-feedback.png"
     },
     {
       "name": "drift-unskilled",
@@ -820,15 +1129,15 @@
           900
         ],
         "capture_after": 1.45,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/drift-unskilled-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/drift-unskilled-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/drift-unskilled.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/drift-unskilled.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -840,15 +1149,68 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "2e38a1364de9460d57d3c9ead596327b0fb60d8f6e18bf5596ca5f374ce2cfd2",
-        "log": "5a2ddc308845fb241b54ebe598ca8bc8ab896c89f0d00ab97e10f5e00d43a6df",
-        "capture": "b2e33ab8cb02416840af8ec20fd3ccd5791ce27992d2f61b9394363ebcb76053"
+        "stdout": "7f40aff5a7c037d9dba4d26e37bcd51210963958d3c31034654cda695e125d6f",
+        "log": "6c7027ce02050a66f5c020086c3ff1905b28bdf4bd5a882f9707c81a732905b4",
+        "capture": "49587b40132e720bf12a9e8b251495471de40beb127d1282837cb68f58626b6c"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/drift-unskilled.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/drift-unskilled.png"
+    },
+    {
+      "name": "drift-expert",
+      "exit": 0,
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "offscreen": false,
+      "status": "PASS",
+      "request": {
+        "flags": [
+          "-VroomDriftTest",
+          "-VroomDriftScenario=expert",
+          "-VroomChaseCamera",
+          "-VroomStartDistance=350",
+          "-VroomStartSpeed=40"
+        ],
+        "seconds": 7,
+        "capture": true,
+        "resolution": [
+          1440,
+          900
+        ],
+        "capture_after": 2.75,
+        "graphics_preset": "photorealism",
+        "visible": true,
+        "offscreen": false
+      },
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/drift-expert-stdout.log",
+      "graphics_applied": [
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
+      ],
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/drift-expert.log",
+      "foreground": {
+        "exit": 0,
+        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
+        "stderr": "",
+        "status": "foreground_before=0 foreground_after=1 locked=0",
+        "locked": false,
+        "display_mode": "onscreen_active",
+        "interaction_verified": false
+      },
+      "display_mode": "onscreen_active",
+      "evidence_sha256": {
+        "stdout": "28c3867fb6408a4396b1b39e5e376f1fd48ba2da2980fdd63580ea0323755f3f",
+        "log": "dc816e359ca20678f48d9c447d8a9a6c4261689e512bd2995315023038f6dc5f",
+        "capture": "3526ff6ba670d5ed83c38217be18e23259cb5bd81c8accc928d1d79152f1be64"
+      },
+      "size": [
+        1440,
+        900
+      ],
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/drift-expert.png"
     },
     {
       "name": "collision-slow",
@@ -870,15 +1232,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/collision-slow-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/collision-slow-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/collision-slow.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/collision-slow.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -890,15 +1252,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "97ea830f5d318c155b54a831a44cfbcc29fc49158c7286b4ab71f0d78bab01fa",
-        "log": "33a1f5a225e9195ff1940548adc7f1ef2b403f8dc0e53e389b1e7c59311a65aa",
-        "capture": "1b3dcebfe671a29439907ef6a0e69418038eaa626effdf79e52ea10d16258c91"
+        "stdout": "bb9fb62176a11401d726b04ebdc9b450049e777898c5b408094800826f13f037",
+        "log": "0c8ebbd47d44236b1697fc3149c2cc975aea480614c5bf5838edff9980d67384",
+        "capture": "e779546106af168d21b110d0b34e9f08b13a8dd04ea969ccd0688b990e807f00"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/collision-slow.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/collision-slow.png"
     },
     {
       "name": "collision-crash",
@@ -920,15 +1282,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/collision-crash-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/collision-crash-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/collision-crash.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/collision-crash.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -940,15 +1302,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "ca43d815e149b8234c993ff291c28b9102699dd04b05e029781403eafc46f825",
-        "log": "5c99742e8e7d3e94fcdcf2cebd17a31cf2866cd4b1bffb63244b84828138ac64",
-        "capture": "02701d55e74f6622a1903fca6b485e8f4a0430d283dfcc60b6f8641b3dcd0d79"
+        "stdout": "cf8c5d2f9c6e8a77fa00c983abd630515ffd298d080cf6115d8b16b74e1c088a",
+        "log": "0144cb5c8410836f018fc49c02cfd83ac367935b2b662aacece2f28032760876",
+        "capture": "0c840baa29891a141063313d32a60eb60d1fe6c84502e8942ff4143ec4d173f0"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/collision-crash.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/collision-crash.png"
     },
     {
       "name": "collision-tyre",
@@ -970,15 +1332,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/collision-tyre-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/collision-tyre-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/collision-tyre.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/collision-tyre.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -990,15 +1352,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "d08976ffe7884f1e86c0a352618577148384f0467572ec4a66762234af625a11",
-        "log": "e05351fdff609269a58c9044832adedd75d32915e3a9d60bf5f37d8b22eb9972",
-        "capture": "733df481f64804b74a1cbb5b74f0d06cb1986257fbebb0333f5b00a483951935"
+        "stdout": "b5f08b19883a1d636a0d1ff889ab86c70e75cbbf440b979c1aa7d78b085a7d44",
+        "log": "1f9dacda934384c9d4cd7cbdb83875002ef010d64757adefde69cee63b1a4368",
+        "capture": "0d1f02731311a43929dc6259bd444fbc9baa037e07558097a15a1a51511ad671"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/collision-tyre.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/collision-tyre.png"
     },
     {
       "name": "collision-scenery",
@@ -1020,15 +1382,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/collision-scenery-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/collision-scenery-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/collision-scenery.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/collision-scenery.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1040,15 +1402,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "88776d5473c6db9e6d1cfba3d5ef4405b4584bfbd132e136213f0e3cb660806b",
-        "log": "573df8147f0fd580c98986e723f0d1b73c7ae62e233905c90e12f83e9d86b16e",
-        "capture": "2b8757b122b2372331857a27127af69e7440261a14f688ad4e1cfee85d7696cb"
+        "stdout": "07cdf565eebf0c14be5a2fa427258bddf2e0c86fb258793c5fcfb54abf476985",
+        "log": "f097947a775d7d3c8ecd663571282024bfb43844a1454879ef135f7f27d0f097",
+        "capture": "4b07b64618c2fcbd5740cfb58035601a310d1ebd091adbfe89e40429d7456523"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/collision-scenery.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/collision-scenery.png"
     },
     {
       "name": "collision-rub",
@@ -1070,15 +1432,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/collision-rub-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/collision-rub-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/collision-rub.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/collision-rub.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1090,15 +1452,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "f1d86bdc9db8b74bfd45d53cd2268473134a9615e038968e4a1ceee685fa360d",
-        "log": "ac98f1a84d341394d19f2941c804ed915aac3377c1039a085abb4c73cc108dec",
-        "capture": "abfc1f0d54de45cc7b63db8cb14846a9f12d5d5447e3cecf50718e51a53d766d"
+        "stdout": "9244337f9ebd9c81decda54078632b61997444856b15914faf8cd0f350c81410",
+        "log": "f37fe1a2ab3e51e5b33079a04d6c982c68fef177368fe0aee4ac01068d438543",
+        "capture": "91d2d348d61e51040c7dfc917e01704acb9a8bef843f312561eeaff7de997ef4"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/collision-rub.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/collision-rub.png"
     },
     {
       "name": "collision-rear",
@@ -1120,15 +1482,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/collision-rear-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/collision-rear-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/collision-rear.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/collision-rear.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1140,275 +1502,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "26a3a314b64c2a3cdc10ede2390d84e232530eb2b29c5fd90592e0b749afb359",
-        "log": "7e6984549ebc1d6a6c3772891e9e5687a157dbcb057b658db12d02f84d11792c",
-        "capture": "9d5d8e3a2c8e67695a9752dabcd423772581657361174303877d1a23a6170f3a"
+        "stdout": "3d112aecdd4393a57e4394f1a55a28af4fda83acab3fcbce8171796d0391b1b0",
+        "log": "45a06d4e1ff2ae11f66059c788df9300c8ab06c24cdb889bb9373e076f7569b5",
+        "capture": "79cddc37ae1c57c4f1e8c578a3f665bbf52959ff704c5895a9c2ab2bd1f1c508"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/collision-rear.png"
-    },
-    {
-      "name": "neutral",
-      "exit": 0,
-      "checks": [
-        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
-      ],
-      "offscreen": false,
-      "status": "PASS",
-      "request": {
-        "flags": [
-          "-VroomAutoDemo",
-          "-VroomStartDistance=350",
-          "-VroomStartSpeed=0",
-          "-VroomPreviewSteering=0"
-        ],
-        "seconds": 5,
-        "capture": true,
-        "resolution": [
-          1440,
-          900
-        ],
-        "capture_after": 3,
-        "graphics_preset": "performance",
-        "visible": true,
-        "offscreen": false
-      },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/neutral-stdout.log",
-      "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
-      ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/neutral.log",
-      "foreground": {
-        "exit": 0,
-        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
-        "stderr": "",
-        "status": "foreground_before=0 foreground_after=1 locked=0",
-        "locked": false,
-        "display_mode": "onscreen_active",
-        "interaction_verified": false
-      },
-      "display_mode": "onscreen_active",
-      "evidence_sha256": {
-        "stdout": "8704b828c770632514ff97eb137b673b2cb853c76019afdfed32d0d05089e3d0",
-        "log": "450fdf0f5346973cbad252b55000468530c935772588025c26a4085092778bdd",
-        "capture": "abe5e7d545b80c30e1dcc8371b8ea03538b43284c4778895bb82556bbd6ad5c8"
-      },
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/neutral.png"
-    },
-    {
-      "name": "right",
-      "exit": 0,
-      "checks": [
-        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
-      ],
-      "offscreen": false,
-      "status": "PASS",
-      "request": {
-        "flags": [
-          "-VroomAutoDemo",
-          "-VroomStartDistance=350",
-          "-VroomStartSpeed=0",
-          "-VroomPreviewSteering=0.62"
-        ],
-        "seconds": 5,
-        "capture": true,
-        "resolution": [
-          1440,
-          900
-        ],
-        "capture_after": 3,
-        "graphics_preset": "performance",
-        "visible": true,
-        "offscreen": false
-      },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/right-stdout.log",
-      "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
-      ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/right.log",
-      "foreground": {
-        "exit": 0,
-        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
-        "stderr": "",
-        "status": "foreground_before=0 foreground_after=1 locked=0",
-        "locked": false,
-        "display_mode": "onscreen_active",
-        "interaction_verified": false
-      },
-      "display_mode": "onscreen_active",
-      "evidence_sha256": {
-        "stdout": "e23baf1fcd8acfc898da4063f2a05c012ba291b64a3c2302f571ecc952bdb2df",
-        "log": "37cf7c691c3361eae56cb3dcd3329e03932006b2405248e05cd2c983e5d58d37",
-        "capture": "9bd11143f767ce98d8d860fe1962540ae2ea60519739fc1b6f376c06dae374e9"
-      },
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/right.png"
-    },
-    {
-      "name": "left",
-      "exit": 0,
-      "checks": [
-        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
-      ],
-      "offscreen": false,
-      "status": "PASS",
-      "request": {
-        "flags": [
-          "-VroomAutoDemo",
-          "-VroomStartDistance=350",
-          "-VroomStartSpeed=0",
-          "-VroomPreviewSteering=-0.62"
-        ],
-        "seconds": 5,
-        "capture": true,
-        "resolution": [
-          1440,
-          900
-        ],
-        "capture_after": 3,
-        "graphics_preset": "performance",
-        "visible": true,
-        "offscreen": false
-      },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/left-stdout.log",
-      "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
-      ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/left.log",
-      "foreground": {
-        "exit": 0,
-        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
-        "stderr": "",
-        "status": "foreground_before=0 foreground_after=1 locked=0",
-        "locked": false,
-        "display_mode": "onscreen_active",
-        "interaction_verified": false
-      },
-      "display_mode": "onscreen_active",
-      "evidence_sha256": {
-        "stdout": "c2c27cd96becb2bbb6a2c8d7605dbb783ade5841018d7f7da5babfbcf01a0983",
-        "log": "be74b6ede40bf0dbdc675f5a3cbf6dd8549350a09eec389b66bf61aa19d8224b",
-        "capture": "d5143dac237816a80ed0ddc69f9fd61c6b76478fcaf750c6b011994f66a49f3a"
-      },
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/left.png"
-    },
-    {
-      "name": "small-right",
-      "exit": 0,
-      "checks": [
-        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
-      ],
-      "offscreen": false,
-      "status": "PASS",
-      "request": {
-        "flags": [
-          "-VroomAutoDemo",
-          "-VroomStartDistance=350",
-          "-VroomStartSpeed=0",
-          "-VroomPreviewSteering=0.04"
-        ],
-        "seconds": 5,
-        "capture": true,
-        "resolution": [
-          1440,
-          900
-        ],
-        "capture_after": 3,
-        "graphics_preset": "performance",
-        "visible": true,
-        "offscreen": false
-      },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/small-right-stdout.log",
-      "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
-      ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/small-right.log",
-      "foreground": {
-        "exit": 0,
-        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
-        "stderr": "",
-        "status": "foreground_before=0 foreground_after=1 locked=0",
-        "locked": false,
-        "display_mode": "onscreen_active",
-        "interaction_verified": false
-      },
-      "display_mode": "onscreen_active",
-      "evidence_sha256": {
-        "stdout": "653252aa3c58b86f5b042cdf635d98c22708045ac11f50d5186503de5c81166f",
-        "log": "ff5e703938fe93647405da2889a0b9217a384b2333efb0b9d66a80e3b8bc6feb",
-        "capture": "3f14b5f6cf9c8d302058801c6c6484f685b039f6462f21160afc3ac244f43bab"
-      },
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/small-right.png"
-    },
-    {
-      "name": "mid-left",
-      "exit": 0,
-      "checks": [
-        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
-      ],
-      "offscreen": false,
-      "status": "PASS",
-      "request": {
-        "flags": [
-          "-VroomAutoDemo",
-          "-VroomStartDistance=350",
-          "-VroomStartSpeed=0",
-          "-VroomPreviewSteering=-0.21"
-        ],
-        "seconds": 5,
-        "capture": true,
-        "resolution": [
-          1440,
-          900
-        ],
-        "capture_after": 3,
-        "graphics_preset": "performance",
-        "visible": true,
-        "offscreen": false
-      },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/mid-left-stdout.log",
-      "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
-      ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/mid-left.log",
-      "foreground": {
-        "exit": 0,
-        "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
-        "stderr": "",
-        "status": "foreground_before=0 foreground_after=1 locked=0",
-        "locked": false,
-        "display_mode": "onscreen_active",
-        "interaction_verified": false
-      },
-      "display_mode": "onscreen_active",
-      "evidence_sha256": {
-        "stdout": "953766dddcde29e04497166608e7b52064247efd3d4434e64a2b8133e5d72466",
-        "log": "f5a7d1377e02bc00bf62c43aab024e9a3ad2d545bf9599e77fefafcc92f7dcd1",
-        "capture": "9f7e09819c483261980c4e2524a1ae3a957d4961db9f93d323926ef82e5f66d3"
-      },
-      "size": [
-        1440,
-        900
-      ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/mid-left.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/collision-rear.png"
     },
     {
       "name": "neutral-16x9",
@@ -1432,15 +1534,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/neutral-16x9-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/neutral-16x9-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/neutral-16x9.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/neutral-16x9.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1452,15 +1554,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "ed8d4dd94fc65ea85a5b0c99bded52aac9897ac2e8eab68bfe7b30d3965e04d1",
-        "log": "0bbfb7a77182531d1322807ea083a20c45b96839b5ab12fcd44c0d2516a75399",
-        "capture": "f1c00f78d6456caa28bbdc5f3e72157cfa3007ba91150a2e2d93bd68284e4ef0"
+        "stdout": "ba63b925d9fde9844a7b83e50dac32f340dcb48ae6ac112890552f4634a46f1e",
+        "log": "077470cbd367aaa865049b8bea18177b9e66d9898a749c1ef537f19d8bd8b3ce",
+        "capture": "9ba31e017245b53b57468f2203e493bd434a985459fd1fa26800cb852a1acad5"
       },
       "size": [
         1600,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/neutral-16x9.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/neutral-16x9.png"
     },
     {
       "name": "cars",
@@ -1485,15 +1587,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/cars-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/cars-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/cars.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/cars.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1505,15 +1607,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "4efab1e366cc9501c4c0a17c76a590b6c029eec69e2e729329aa3cfebf62ea0d",
-        "log": "e34368fdecf0650ff704757e0ac875959e022eccdeaad2fd04ffdf9466d76eb4",
-        "capture": "95e602b7df327047f05b8b43b1f8f66a668f74d33905cd2e94b6c30c05df1a6f"
+        "stdout": "a1e61fa3e14bf3ce8c59d0b3c9e6b583870e1e99e4b7a10a90fd2b0a1acf27f7",
+        "log": "be81d51c7064aa3bd704d7cb5ae48fc2503a5a244648b887a76af1f6cadfd8cd",
+        "capture": "c65c720b4a1bf90e62c2a7a119c31bab764e9a37034a2208efeea72d8f26c3a7"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/cars.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/cars.png"
     },
     {
       "name": "options",
@@ -1534,15 +1636,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/options-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/options-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/options.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/options.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1554,15 +1656,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "1eedbbca0c5016f1a3c065477a65e44dd54d68228c69fa2f5ae59a7dabbda6d9",
-        "log": "dbf55dc9a69f4b575a7979c16bd658aac479f7bff0bd605a4759f5a183a2a12f",
-        "capture": "d2244a6296f20f59349000fd3aabe55c6de683ae893c8ba4646ea166222520e1"
+        "stdout": "d4e8b62472b6d48cf0806415376a161e6ffc16b698a1d63122eac8a92945dfd5",
+        "log": "8b0b9735e5ea192a07c38503c6a8622b9d03d481ad310822767e9431f86fd4ce",
+        "capture": "c7588bc08cfe6b285a4a288452cdfdfb97bd5e5f73ed55333d6fa08cf5045be6"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/options.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/options.png"
     },
     {
       "name": "session-qualifying",
@@ -1583,15 +1685,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/session-qualifying-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/session-qualifying-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/session-qualifying.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/session-qualifying.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1603,15 +1705,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "82088ef4c9d9449d8e7b923815180ccc9da33b3fa035681cb29ea42ea90a4c5e",
-        "log": "28e541c979b8a7f502e74d55c318e424ad47dfd04b901ac226e62f7806f035d6",
-        "capture": "88242320b3aab917cece0d5037b8e55b9f065a2319276a1be6934e5f08e0448a"
+        "stdout": "807c5fc5e6b0b3aca1fbc9d256d1d0ebd1624b13c413318eb67b6ef26df19fdb",
+        "log": "1bc32a362625d075d972380330326c2db0a9fd9486c20874e64b485d0c4432ee",
+        "capture": "f030652f093af1a8bc3df4247184b5d72958f4c46a9822a62321accfee7add4c"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/session-qualifying.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/session-qualifying.png"
     },
     {
       "name": "session-results",
@@ -1632,15 +1734,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/session-results-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/session-results-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/session-results.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/session-results.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1652,15 +1754,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "6fce4b8993c9ea81cc62338dada4183423f61c00766bde6f24efad0d12278b6b",
-        "log": "891e1b984b8f07c176da8d5f959d040fb672d887d260fd3da12f2ec8ca2eba89",
-        "capture": "3c6b9b14474e067d985cc5706b982af95557015f822f074fe792cdcfcf4360b1"
+        "stdout": "91cd485e5b1a072b26cd22a17ddde9ffbac98c5ded82078414bd6cd37ef02461",
+        "log": "e0278e7a358acf6ef9abf2b2873296f6555ed6f5e2c22b4d751c7f71187cca14",
+        "capture": "b7ef6b033e35a1d63f9528385b471a4a18e959e7990e0f6251155fdb8e9f8572"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/session-results.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/session-results.png"
     },
     {
       "name": "session-arcade",
@@ -1681,15 +1783,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/session-arcade-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/session-arcade-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/session-arcade.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/session-arcade.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1701,15 +1803,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "85a27abf23a21e57b5ac6099acce572ab78df47a993eab65dccf2655c1710e7f",
-        "log": "d3121dc6972e5bd5e8000a5223e07c79ac1c0547e82cf1f35ecad160f0b7542c",
-        "capture": "aa353ee666341789657763715b0147e02886ae3a3952fada87248f9328d72818"
+        "stdout": "8bc500de992c80ef3bd3681011679298c303917f0257c3bbb21993d7d8972caf",
+        "log": "6882fcf1161687914fac28d81335cfbb014040c2a9471256360df420927c91ca",
+        "capture": "5cbf279225e690d650169d6d84c43d79f8c9530483f9ab427defa456e173f423"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/session-arcade.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/session-arcade.png"
     },
     {
       "name": "session-pit",
@@ -1730,15 +1832,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/session-pit-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/session-pit-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/session-pit.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/session-pit.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1750,15 +1852,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "3a09d6dc0a8d17b3a10dbfc615c6e867b79422c8fa5fdb377dd3652a504d75ee",
-        "log": "59d11f4cbec9969fac0fa16e259a5942fb7f4f57a24bce485edd2cd96164f488",
-        "capture": "f8a3fc1de27db92600bff5867fa9eb825e3b915d47c7cf109792f3b4d4d0081e"
+        "stdout": "a83f3c6da12cef2e5a63219acc2157a2ae216f4334221dd978c69bea438e9761",
+        "log": "7c5b7ecafe6b7b5662615e6e420ef4cdc9cbf378e0786f08a80e8ef6cc59ab70",
+        "capture": "e52415e4174e9a39750a04b473bb3a4f5500fbba8e6cc239c52e1bf2ff764ab8"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/session-pit.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/session-pit.png"
     },
     {
       "name": "session-controls",
@@ -1779,15 +1881,15 @@
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/session-controls-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/session-controls-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/session-controls.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/session-controls.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1799,15 +1901,15 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "ac5a19a1fccc31f4c930fbcc90c9d9b6f2f176e3beaaf7be472aa20fa155be12",
-        "log": "54ea3b8a8b37675361bb614b02ed1daa5e5a43d680347a1f5d0186b2b0ef0c56",
-        "capture": "0da8dfcc7c754317f7195b5e80853f18781438b0c4b4b506bd9b5ab7f2ac7611"
+        "stdout": "621eca82220a5026990588297bdc2f8458d8445e457fff0b0cb8829633fbf62c",
+        "log": "a21a996eec857d80b875da941a1d26e34d50afec8caf47b8b5749e1e61bd9b3b",
+        "capture": "00c128bbaa25d98723668e3b70df56cad893f92e49fb6b218f8bf3d952568443"
       },
       "size": [
         1440,
         900
       ],
-      "capture": "Saved/Validation/v0.33.0/20260919-174842-package/session-controls.png"
+      "capture": "Saved/Validation/v0.34.0/20260919-231125-package/session-controls.png"
     },
     {
       "name": "perf-1440",
@@ -1825,22 +1927,22 @@
           "-ExitAfterCsvProfiling",
           "-LogCmds=LogPSOHitching Verbose"
         ],
-        "seconds": 60,
+        "seconds": 120,
         "capture": false,
         "resolution": [
           1440,
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/perf-1440-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/perf-1440-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/perf-1440.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/perf-1440.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1852,8 +1954,8 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "de36669c90971e0bb3f403c36d6e640475c88ebb0f71702e33af72d417c1de01",
-        "log": "14a61af8cf3a2a9ae252331b4317bf39ff10c965475626920b90066b391121ec"
+        "stdout": "5aa7a2e4675257b1aa28ebc86c844396f29db8224b51cec8fab881caa1c30077",
+        "log": "388af5b3f5e0dbb61766ec1cab091c82e0517622ddb36be92fb3c0d6afa14330"
       }
     },
     {
@@ -1872,22 +1974,22 @@
           "-ExitAfterCsvProfiling",
           "-LogCmds=LogPSOHitching Verbose"
         ],
-        "seconds": 60,
+        "seconds": 120,
         "capture": false,
         "resolution": [
           2560,
           1664
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/perf-2560-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/perf-2560-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/perf-2560.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/perf-2560.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1899,8 +2001,8 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "c9156423b4e35dc6a5c820748a41a711a8910088a66f256b2ae93d84228e29f6",
-        "log": "fa1e27a8e327a5917fe46409828323d729b35f3968c25292ae0539d5ec48ad59"
+        "stdout": "d9cf43457f271f5ed2d9b961f14dc3f711a5d254f0de6b2ce3f21fa20a3a5b7f",
+        "log": "0becf18b203a755a9bb4b4c25df3da4917560c7ee08ca85cf4712ec5406be1bc"
       }
     },
     {
@@ -1922,22 +2024,22 @@
           "-VroomTourDemo",
           "-VroomMotionTrace"
         ],
-        "seconds": 165,
+        "seconds": 330,
         "capture": false,
         "resolution": [
           1440,
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-1-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-1-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-1.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-1.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1949,8 +2051,8 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "f253394b7c4d9af669f5dc11045c8002dbc7ced5995c3bca3e84a2d2f40d9fc7",
-        "log": "59abe5cbe96861d9bbe2c0b86ebb6613ffca9909c274ccd6e23615042b161c2a"
+        "stdout": "1dcd32a2fe2b9ff380d981b8b5f2648e1a5d1b6f08c8f3b3f6483eb60e32a9b4",
+        "log": "5b557056edaa08a4c4698287c9447167524ff28ab2a46fbd95887a546f04d2e5"
       }
     },
     {
@@ -1972,22 +2074,22 @@
           "-VroomTourDemo",
           "-VroomMotionTrace"
         ],
-        "seconds": 165,
+        "seconds": 330,
         "capture": false,
         "resolution": [
           1440,
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-2-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-2-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-2.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-2.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -1999,8 +2101,8 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "cd7abf39f18c8606cdbf22c20385731609038d5de192af0fe5da1e8b4cf8618f",
-        "log": "a6120d27b97f1beffc98d7ac0593895f310b1240a530172d0ac225dc92c65426"
+        "stdout": "cef231fae764867ad2c17acc1c413c55ce5ed74129133fa7113e7ed566e57d63",
+        "log": "a33866ca3800f8fb4c13f429672af1a59692e8f1455800327db54b53065b56b3"
       }
     },
     {
@@ -2022,22 +2124,22 @@
           "-VroomTourDemo",
           "-VroomMotionTrace"
         ],
-        "seconds": 165,
+        "seconds": 330,
         "capture": false,
         "resolution": [
           1440,
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-3-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-3-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-3.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-3.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -2049,8 +2151,8 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "8153d3b78a457819da38b2a8ab8c843c18a3798e396ba694e8f98ce322436426",
-        "log": "7ac80e618050e0b6a71551f5820075bc8d84953ee103f58109d266dba57d6991"
+        "stdout": "31ad459a0bcb40a645309b40ab86dfc25b0660bc78a7fc95fd5ea8d5e36efd79",
+        "log": "e396eca9ef74128ef00c1f5f31db142ff32d8c87d5b254160142001db90af293"
       }
     },
     {
@@ -2072,22 +2174,22 @@
           "-VroomTourDemo",
           "-VroomMotionTrace"
         ],
-        "seconds": 165,
+        "seconds": 330,
         "capture": false,
         "resolution": [
           1440,
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-4-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-4-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-4.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-4.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -2099,8 +2201,8 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "d7560023957328e3767e7cb04f6a90e7d2654d322bf74959d746a04fa815d923",
-        "log": "31dff86e0b5ed59eaf87720b12d648d250028a85555bdc3b71ace65a7c9d89ba"
+        "stdout": "9c14ce9124221a28bb8d7031d1596c28fb0293295c2892471b717fcd1bff5f6e",
+        "log": "8e0845580e38e4e7f3b2dee11b6f3ac5ac596cab482ade161230a63081761a6e"
       }
     },
     {
@@ -2122,22 +2224,22 @@
           "-VroomTourDemo",
           "-VroomMotionTrace"
         ],
-        "seconds": 165,
+        "seconds": 330,
         "capture": false,
         "resolution": [
           1440,
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-5-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-5-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-5.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-5.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -2149,8 +2251,8 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "9016627dbe782aba0ddbb4d96f878f7548d2045dd1cd60d6b0522dc696f076be",
-        "log": "56994d2910795d008492d4f9b36bb080eba16fe9f55545ba9f3625f3d80a3734"
+        "stdout": "4e6a3a9c1a3ab03b05821440c7c18763e2e5228f315ddb0c927ce2a3b95f5a70",
+        "log": "dbfe833e897e28ff5be01ad84ae14891db1d42c587c4dffa769848721275f8eb"
       }
     },
     {
@@ -2172,22 +2274,22 @@
           "-VroomTourDemo",
           "-VroomMotionTrace"
         ],
-        "seconds": 165,
+        "seconds": 330,
         "capture": false,
         "resolution": [
           1440,
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-6-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-6-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-6.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-6.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -2199,8 +2301,8 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "3cf3ddb691a3c3c132c3a1c4e0a592852e3439d75d31db324e7e55ff3304c8d2",
-        "log": "4373ec25b3bb888462074a3c03c2911ad4fbf29d81a7abd93c7422a77aaf3594"
+        "stdout": "3971fa9d84f00d8ac4df434bed6ffb590f018d584f75acdf759b8039a68251c7",
+        "log": "80cd2df817282b9a9d1f00f607c6328bc3372460ab7d889f99f089e589895e2d"
       }
     },
     {
@@ -2218,22 +2320,22 @@
           "-VroomStartSpeed=30",
           "-VroomMotionTrace"
         ],
-        "seconds": 25,
+        "seconds": 50,
         "capture": false,
         "resolution": [
           1440,
           900
         ],
         "capture_after": 3,
-        "graphics_preset": "performance",
+        "graphics_preset": "photorealism",
         "visible": true,
         "offscreen": false
       },
-      "stdout": "Saved/Validation/v0.33.0/20260919-174842-package/motion-stdout.log",
+      "stdout": "Saved/Validation/v0.34.0/20260919-231125-package/motion-stdout.log",
       "graphics_applied": [
-        "scale=70.0 AA=2 shadows=1 GI=0 reflections=0 foliage=1 wind=1 effects=1 blur=0 fps=60 vsync=1 DLSS=0 saved=0"
+        "scale=80.0 AA=4 shadows=3 GI=2 reflections=2 foliage=3 wind=1 effects=2 blur=0 fps=30 vsync=1 DLSS=0 saved=0 photo=1 tsrHistory=100"
       ],
-      "log": "Saved/Validation/v0.33.0/20260919-174842-package/motion.log",
+      "log": "Saved/Validation/v0.34.0/20260919-231125-package/motion.log",
       "foreground": {
         "exit": 0,
         "stdout": "foreground_before=0 foreground_after=1 locked=0\n",
@@ -2245,8 +2347,8 @@
       },
       "display_mode": "onscreen_active",
       "evidence_sha256": {
-        "stdout": "aa19c85ecb827dd22798f588d7729d90d4ea9cdc12e76ab3c022aa008dc90aaf",
-        "log": "3aa49fd884a040cab3927f34120de211b505d5d3874803112e5d25cfee096490"
+        "stdout": "b79e028d07d6514f291b3741787da4d06cb54bb7b009b18975b9cde6a712ebef",
+        "log": "07cf9f3215a0abf5a60886351bba3ee2d315a50a43c09e3d3e000acf277b07ed"
       }
     }
   ],
@@ -2262,9 +2364,9 @@
       "distance": 3295,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_175711).csv",
-          "size_bytes": 5890461,
-          "modified_utc": "2026-09-19T15:57:47.090000+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/Profile(20260919_232041).csv",
+          "size_bytes": 5934663,
+          "modified_utc": "2026-09-19T21:21:47.520514+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -2278,34 +2380,37 @@
         },
         "missing_columns": [],
         "analyzed_frames": 1680,
-        "analyzed_duration_seconds": 28.0056632,
-        "mean_fps": 59.987867025409344,
+        "analyzed_duration_seconds": 56.005449999999996,
+        "mean_fps": 29.997080641259025,
         "frame_time": {
           "samples": 1680,
-          "mean_ms": 16.67003761904762,
-          "p95_ms": 16.840915000000003,
-          "p99_ms": 16.926234,
-          "max_ms": 17.0308,
-          "over_20_ms_count": 0
+          "mean_ms": 33.33657738095238,
+          "p95_ms": 33.55412,
+          "p99_ms": 33.637883,
+          "max_ms": 33.8993,
+          "over_20_ms_count": 1680,
+          "over_40_ms_count": 0
         },
         "gpu_time": {
           "samples": 1680,
-          "mean_ms": 6.466161666666666,
-          "p95_ms": 9.502895,
-          "p99_ms": 10.484017,
-          "max_ms": 10.9875,
-          "over_20_ms_count": 0
+          "mean_ms": 17.54363244047619,
+          "p95_ms": 20.543345,
+          "p99_ms": 22.003430000000005,
+          "max_ms": 24.9012,
+          "over_20_ms_count": 142,
+          "over_40_ms_count": 0
         },
         "game_thread_time": {
           "samples": 1680,
-          "mean_ms": 1.0971857738095236,
-          "p95_ms": 1.22581,
-          "p99_ms": 1.291226,
-          "max_ms": 1.449,
-          "over_20_ms_count": 0
+          "mean_ms": 1.3506501785714284,
+          "p95_ms": 1.52717,
+          "p99_ms": 1.6397080000000002,
+          "max_ms": 1.8092,
+          "over_20_ms_count": 0,
+          "over_40_ms_count": 0
         }
       },
-      "csv_sha256": "955f2b8517e229dc4f1b7d93d85b1311f9c0f8868992dd71c27e50e3743f8774",
+      "csv_sha256": "4757e3d8366100cfeb0e92a2ad9bbe9413a44b7ff7f414e204b194027ce33d3d",
       "display_mode": "onscreen_active",
       "interaction_verified": false
     },
@@ -2320,9 +2425,9 @@
       "distance": 2190,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_175747).csv",
-          "size_bytes": 5871947,
-          "modified_utc": "2026-09-19T15:58:23.110612+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/Profile(20260919_232148).csv",
+          "size_bytes": 5938367,
+          "modified_utc": "2026-09-19T21:22:53.820076+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -2336,34 +2441,37 @@
         },
         "missing_columns": [],
         "analyzed_frames": 1680,
-        "analyzed_duration_seconds": 28.0042863,
-        "mean_fps": 59.990816477261916,
+        "analyzed_duration_seconds": 56.005873699999995,
+        "mean_fps": 29.996853705007016,
         "frame_time": {
           "samples": 1680,
-          "mean_ms": 16.669218035714284,
-          "p95_ms": 16.894215000000003,
-          "p99_ms": 16.962767,
-          "max_ms": 17.0496,
-          "over_20_ms_count": 0
+          "mean_ms": 33.33682958333333,
+          "p95_ms": 33.492705,
+          "p99_ms": 33.590773,
+          "max_ms": 35.382,
+          "over_20_ms_count": 1680,
+          "over_40_ms_count": 0
         },
         "gpu_time": {
           "samples": 1680,
-          "mean_ms": 13.996934821428571,
-          "p95_ms": 14.724264999999999,
-          "p99_ms": 14.851146,
-          "max_ms": 15.0763,
-          "over_20_ms_count": 0
+          "mean_ms": 24.056350952380953,
+          "p95_ms": 28.0128,
+          "p99_ms": 29.07455700000001,
+          "max_ms": 31.7511,
+          "over_20_ms_count": 1679,
+          "over_40_ms_count": 0
         },
         "game_thread_time": {
           "samples": 1680,
-          "mean_ms": 1.1089231547619047,
-          "p95_ms": 1.29003,
-          "p99_ms": 1.35781,
-          "max_ms": 1.4691,
-          "over_20_ms_count": 0
+          "mean_ms": 1.3460845833333335,
+          "p95_ms": 1.499385,
+          "p99_ms": 1.7302710000000003,
+          "max_ms": 3.4024,
+          "over_20_ms_count": 0,
+          "over_40_ms_count": 0
         }
       },
-      "csv_sha256": "d2374a90a884f91b709eac2b30867b3649394fdf26f58b24a938ca72f759778d",
+      "csv_sha256": "d84961a5641ef4e8acf93fb8fcb96f1dd655a56f7435811a34fa10fdbc25be8d",
       "display_mode": "onscreen_active",
       "interaction_verified": false
     },
@@ -2378,9 +2486,9 @@
       "distance": 0,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_175823).csv",
-          "size_bytes": 24912542,
-          "modified_utc": "2026-09-19T16:00:43.270119+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/Profile(20260919_232254).csv",
+          "size_bytes": 25133235,
+          "modified_utc": "2026-09-19T21:27:25.310199+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -2394,34 +2502,37 @@
         },
         "missing_columns": [],
         "analyzed_frames": 7680,
-        "analyzed_duration_seconds": 128.0214705,
-        "mean_fps": 59.98993739100974,
+        "analyzed_duration_seconds": 256.02772519999996,
+        "mean_fps": 29.996751304963748,
         "frame_time": {
           "samples": 7680,
-          "mean_ms": 16.6694623046875,
-          "p95_ms": 16.88361,
-          "p99_ms": 16.968705,
-          "max_ms": 18.1896,
-          "over_20_ms_count": 0
+          "mean_ms": 33.33694338541667,
+          "p95_ms": 33.49331,
+          "p99_ms": 33.5749,
+          "max_ms": 35.125,
+          "over_20_ms_count": 7680,
+          "over_40_ms_count": 0
         },
         "gpu_time": {
           "samples": 7680,
-          "mean_ms": 7.6022565755208324,
-          "p95_ms": 11.1543,
-          "p99_ms": 11.49831,
-          "max_ms": 12.3646,
-          "over_20_ms_count": 0
+          "mean_ms": 20.049365455729166,
+          "p95_ms": 26.482889999999998,
+          "p99_ms": 28.2582,
+          "max_ms": 30.2857,
+          "over_20_ms_count": 3508,
+          "over_40_ms_count": 0
         },
         "game_thread_time": {
           "samples": 7680,
-          "mean_ms": 1.1421079296875,
-          "p95_ms": 1.288705,
-          "p99_ms": 1.355931,
-          "max_ms": 2.5382,
-          "over_20_ms_count": 0
+          "mean_ms": 1.3919504296875,
+          "p95_ms": 1.555305,
+          "p99_ms": 1.643484,
+          "max_ms": 2.8696,
+          "over_20_ms_count": 0,
+          "over_40_ms_count": 0
         }
       },
-      "csv_sha256": "bcad2b0d0d3bf919e5d1f7ac31f71cc24b984f225f0b9bb409d9a693412c0442",
+      "csv_sha256": "624fe490bb6028d1f634ce4ed7018c68af10c504f6d160b54ea83867ed962f98",
       "display_mode": "onscreen_active",
       "interaction_verified": false
     },
@@ -2436,9 +2547,9 @@
       "distance": 0,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_180043).csv",
-          "size_bytes": 24897111,
-          "modified_utc": "2026-09-19T16:03:01.211429+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/Profile(20260919_232726).csv",
+          "size_bytes": 25033460,
+          "modified_utc": "2026-09-19T21:31:53.702423+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -2452,34 +2563,37 @@
         },
         "missing_columns": [],
         "analyzed_frames": 7680,
-        "analyzed_duration_seconds": 128.0219347,
-        "mean_fps": 59.98971987102769,
+        "analyzed_duration_seconds": 256.0292677,
+        "mean_fps": 29.996570583480988,
         "frame_time": {
           "samples": 7680,
-          "mean_ms": 16.669522747395835,
-          "p95_ms": 16.89971,
-          "p99_ms": 16.976789,
-          "max_ms": 18.4328,
-          "over_20_ms_count": 0
+          "mean_ms": 33.337144231770836,
+          "p95_ms": 33.503310000000006,
+          "p99_ms": 33.585647,
+          "max_ms": 34.8195,
+          "over_20_ms_count": 7680,
+          "over_40_ms_count": 0
         },
         "gpu_time": {
           "samples": 7680,
-          "mean_ms": 7.6291813020833334,
-          "p95_ms": 10.677,
-          "p99_ms": 11.072562000000001,
-          "max_ms": 11.8217,
-          "over_20_ms_count": 0
+          "mean_ms": 20.674356393229168,
+          "p95_ms": 26.685914999999998,
+          "p99_ms": 27.790639000000002,
+          "max_ms": 30.6816,
+          "over_20_ms_count": 4145,
+          "over_40_ms_count": 0
         },
         "game_thread_time": {
           "samples": 7680,
-          "mean_ms": 1.1483639453125,
-          "p95_ms": 1.310805,
-          "p99_ms": 1.3795,
-          "max_ms": 2.9025,
-          "over_20_ms_count": 0
+          "mean_ms": 1.4272994401041668,
+          "p95_ms": 1.5907,
+          "p99_ms": 1.680584,
+          "max_ms": 2.9209,
+          "over_20_ms_count": 0,
+          "over_40_ms_count": 0
         }
       },
-      "csv_sha256": "2fbad93d7d13d56e549e347e8a888855545ec51d46b89c20827d196477339979",
+      "csv_sha256": "6b1c15f710d7c95fd34df9990968abf21eba469e4723297c4b2af973643cd739",
       "display_mode": "onscreen_active",
       "interaction_verified": false
     },
@@ -2494,9 +2608,9 @@
       "distance": 0,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_180301).csv",
-          "size_bytes": 24884965,
-          "modified_utc": "2026-09-19T16:05:22.054214+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/Profile(20260919_233154).csv",
+          "size_bytes": 25068555,
+          "modified_utc": "2026-09-19T21:36:24.916896+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -2510,34 +2624,37 @@
         },
         "missing_columns": [],
         "analyzed_frames": 7680,
-        "analyzed_duration_seconds": 128.0274274,
-        "mean_fps": 59.987146160526535,
+        "analyzed_duration_seconds": 256.026906,
+        "mean_fps": 29.996847284480328,
         "frame_time": {
           "samples": 7680,
-          "mean_ms": 16.670237942708333,
-          "p95_ms": 16.881005000000002,
-          "p99_ms": 16.966084000000002,
-          "max_ms": 18.0308,
-          "over_20_ms_count": 0
+          "mean_ms": 33.33683671875,
+          "p95_ms": 33.498605000000005,
+          "p99_ms": 33.575468,
+          "max_ms": 35.0907,
+          "over_20_ms_count": 7680,
+          "over_40_ms_count": 0
         },
         "gpu_time": {
           "samples": 7680,
-          "mean_ms": 6.612718229166666,
-          "p95_ms": 9.782484999999996,
-          "p99_ms": 10.928665,
-          "max_ms": 11.37,
-          "over_20_ms_count": 0
+          "mean_ms": 19.022299309895836,
+          "p95_ms": 25.67246999999999,
+          "p99_ms": 27.624518000000002,
+          "max_ms": 30.6107,
+          "over_20_ms_count": 2592,
+          "over_40_ms_count": 0
         },
         "game_thread_time": {
           "samples": 7680,
-          "mean_ms": 1.1415444270833333,
-          "p95_ms": 1.2805,
-          "p99_ms": 1.3666,
-          "max_ms": 2.3598,
-          "over_20_ms_count": 0
+          "mean_ms": 1.4094644921875,
+          "p95_ms": 1.5652199999999996,
+          "p99_ms": 1.667942,
+          "max_ms": 3.051,
+          "over_20_ms_count": 0,
+          "over_40_ms_count": 0
         }
       },
-      "csv_sha256": "66200426483e92936318b9aef7359dee5c14c52fd335c2409f656b653ebd6209",
+      "csv_sha256": "bb0ec9e740a935350e7b440067523780867a7affda4fe3597b4ba37b7e655f5a",
       "display_mode": "onscreen_active",
       "interaction_verified": false
     },
@@ -2552,9 +2669,9 @@
       "distance": 0,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_180522).csv",
-          "size_bytes": 24893777,
-          "modified_utc": "2026-09-19T16:07:40.140303+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/Profile(20260919_233625).csv",
+          "size_bytes": 25048964,
+          "modified_utc": "2026-09-19T21:40:53.468981+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -2568,34 +2685,37 @@
         },
         "missing_columns": [],
         "analyzed_frames": 7680,
-        "analyzed_duration_seconds": 128.0247085,
-        "mean_fps": 59.9884201259478,
+        "analyzed_duration_seconds": 256.0326535,
+        "mean_fps": 29.9961739059975,
         "frame_time": {
           "samples": 7680,
-          "mean_ms": 16.669883919270834,
-          "p95_ms": 16.92032,
-          "p99_ms": 17.008121,
-          "max_ms": 19.9378,
-          "over_20_ms_count": 0
+          "mean_ms": 33.33758509114583,
+          "p95_ms": 33.497005,
+          "p99_ms": 33.573152,
+          "max_ms": 36.8886,
+          "over_20_ms_count": 7680,
+          "over_40_ms_count": 0
         },
         "gpu_time": {
           "samples": 7680,
-          "mean_ms": 7.4786330078125,
-          "p95_ms": 10.802279999999998,
-          "p99_ms": 11.121221,
-          "max_ms": 11.5168,
-          "over_20_ms_count": 0
+          "mean_ms": 20.553326822916667,
+          "p95_ms": 26.48142,
+          "p99_ms": 27.889809,
+          "max_ms": 29.5519,
+          "over_20_ms_count": 3980,
+          "over_40_ms_count": 0
         },
         "game_thread_time": {
           "samples": 7680,
-          "mean_ms": 1.1542952604166667,
-          "p95_ms": 1.324215,
-          "p99_ms": 1.421342,
-          "max_ms": 4.3419,
-          "over_20_ms_count": 0
+          "mean_ms": 1.4152451302083333,
+          "p95_ms": 1.578705,
+          "p99_ms": 1.658968,
+          "max_ms": 3.0092,
+          "over_20_ms_count": 0,
+          "over_40_ms_count": 0
         }
       },
-      "csv_sha256": "d1cc07a40cd90719abda2093d7fdd6252ff5750e07b2a09f9ca357a8d2d673be",
+      "csv_sha256": "21f084162c7b5c791e8c6999549ce6602cac6189df4269cb30b8ace3cb057488",
       "display_mode": "onscreen_active",
       "interaction_verified": false
     },
@@ -2610,9 +2730,9 @@
       "distance": 0,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_180740).csv",
-          "size_bytes": 24851443,
-          "modified_utc": "2026-09-19T16:09:58.704775+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/Profile(20260919_234054).csv",
+          "size_bytes": 24998337,
+          "modified_utc": "2026-09-19T21:45:22.376607+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -2626,34 +2746,37 @@
         },
         "missing_columns": [],
         "analyzed_frames": 7680,
-        "analyzed_duration_seconds": 128.0227365,
-        "mean_fps": 59.98934415841049,
+        "analyzed_duration_seconds": 256.0249635,
+        "mean_fps": 29.99707487508342,
         "frame_time": {
           "samples": 7680,
-          "mean_ms": 16.6696271484375,
-          "p95_ms": 16.8697,
-          "p99_ms": 16.9459,
-          "max_ms": 18.2544,
-          "over_20_ms_count": 0
+          "mean_ms": 33.3365837890625,
+          "p95_ms": 33.489705,
+          "p99_ms": 33.556262999999994,
+          "max_ms": 39.5731,
+          "over_20_ms_count": 7680,
+          "over_40_ms_count": 0
         },
         "gpu_time": {
           "samples": 7680,
-          "mean_ms": 7.7340417578125,
-          "p95_ms": 11.04784,
-          "p99_ms": 11.3331,
-          "max_ms": 12.1599,
-          "over_20_ms_count": 0
+          "mean_ms": 20.70217921875,
+          "p95_ms": 26.227904999999996,
+          "p99_ms": 27.745342,
+          "max_ms": 30.0936,
+          "over_20_ms_count": 4452,
+          "over_40_ms_count": 0
         },
         "game_thread_time": {
           "samples": 7680,
-          "mean_ms": 1.1359835286458333,
-          "p95_ms": 1.2943,
-          "p99_ms": 1.381021,
-          "max_ms": 2.6318,
-          "over_20_ms_count": 0
+          "mean_ms": 1.3644721614583333,
+          "p95_ms": 1.544115,
+          "p99_ms": 1.626684,
+          "max_ms": 7.6588,
+          "over_20_ms_count": 0,
+          "over_40_ms_count": 0
         }
       },
-      "csv_sha256": "d66c3b2506644e5dff3aec85f01a9e08d47377766a4b3447764515026ba0525c",
+      "csv_sha256": "17e1b6ca9ec112543bbb70847a4b42eb4435cf43e85683b1603117e8512f0e63",
       "display_mode": "onscreen_active",
       "interaction_verified": false
     },
@@ -2668,9 +2791,9 @@
       "distance": 0,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/Profile(20260919_180959).csv",
-          "size_bytes": 24868697,
-          "modified_utc": "2026-09-19T16:12:17.728274+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/Profile(20260919_234523).csv",
+          "size_bytes": 25019335,
+          "modified_utc": "2026-09-19T21:49:51.765771+00:00"
         },
         "warmup_requested_frames": 120,
         "warmup_discarded_frames": 120,
@@ -2684,34 +2807,37 @@
         },
         "missing_columns": [],
         "analyzed_frames": 7680,
-        "analyzed_duration_seconds": 128.0281292,
-        "mean_fps": 59.986817334514335,
+        "analyzed_duration_seconds": 256.0011629,
+        "mean_fps": 29.9998637232753,
         "frame_time": {
           "samples": 7680,
-          "mean_ms": 16.670329322916665,
-          "p95_ms": 16.842805000000002,
-          "p99_ms": 16.919447,
-          "max_ms": 18.1963,
-          "over_20_ms_count": 0
+          "mean_ms": 33.333484752604164,
+          "p95_ms": 33.4557,
+          "p99_ms": 33.518305,
+          "max_ms": 34.8565,
+          "over_20_ms_count": 7680,
+          "over_40_ms_count": 0
         },
         "gpu_time": {
           "samples": 7680,
-          "mean_ms": 7.0499846875,
-          "p95_ms": 11.034025,
-          "p99_ms": 11.30121,
-          "max_ms": 11.5066,
-          "over_20_ms_count": 0
+          "mean_ms": 16.4077465234375,
+          "p95_ms": 17.54545,
+          "p99_ms": 18.419276000000004,
+          "max_ms": 24.1244,
+          "over_20_ms_count": 14,
+          "over_40_ms_count": 0
         },
         "game_thread_time": {
           "samples": 7680,
-          "mean_ms": 1.1301761979166665,
-          "p95_ms": 1.293105,
-          "p99_ms": 1.385115,
-          "max_ms": 2.4707,
-          "over_20_ms_count": 0
+          "mean_ms": 1.35031359375,
+          "p95_ms": 1.4661099999999998,
+          "p99_ms": 1.542705,
+          "max_ms": 2.8455,
+          "over_20_ms_count": 0,
+          "over_40_ms_count": 0
         }
       },
-      "csv_sha256": "3428cd9c250d54b7ff50f7d98918d63a963ca55242230a79c6d7ca1f5460e8c0",
+      "csv_sha256": "bcdfbb9b9d0bda004aacda77971491ebfed8de2b0089bb7eab6ef314231e2ec4",
       "display_mode": "onscreen_active",
       "interaction_verified": false
     }
@@ -2721,23 +2847,23 @@
     "soak": true,
     "visible": true
   },
-  "graphics_preset": "performance",
+  "graphics_preset": "photorealism",
   "release_limits": {
     "performance": {
-      "min_mean_fps": 59.0,
-      "max_p99_ms": 18.0,
-      "max_frame_ms": 33.5,
-      "max_over_20_ms_fraction": 0.005
+      "min_mean_fps": 29.7,
+      "max_p99_ms": 35.0,
+      "max_frame_ms": 50.0,
+      "max_over_40_ms_fraction": 0.005
     },
     "motion": {
       "max_yaw_delta_degrees": 3.0,
       "max_yaw_acceleration": 300.0
     }
   },
-  "executable_sha256": "a3af96417a81859a643010c80aebcb52ebc4135a44b0d76680c0b69c9df9a35d",
+  "executable_sha256": "b760aeaec8a9a6fc3370051dbf6a9fc13dbfe8a9a661b3905524d09b896bb3ea",
   "package_data_sha256": {
     "Contents/UE/Vroom/Content/Data/amiga_sound.bin": "dceb608931b6368917db94a96660634fbb3fc8142e7f8996c0a50fda5a10ad03",
-    "Contents/UE/Vroom/Content/Data/gloves.json": "cc4beb60aba7e86bd629ed687d88da05fbf064b8d8c76ef2163a78495b3804bc",
+    "Contents/UE/Vroom/Content/Data/gloves.json": "f342faa13e3c64a1883f2b2683ccc6b3e43edf2a565dc2a1cde2c7b06ea68908",
     "Contents/UE/Vroom/Content/Data/hud/banner_autriche.png": "b6e5620d3994ac77a3a4fa48ad470dcdc926a2c7b2bed8f4155f2beb0e3bd082",
     "Contents/UE/Vroom/Content/Data/hud/banner_france.png": "36aacabfed258c505dbe7d8d86bcba138f4484a2119da53fe528a805daada824",
     "Contents/UE/Vroom/Content/Data/hud/banner_japon.png": "1d95a9dbec380b2e511292e422cf07068b1d9e21be1cb60027fbf6724e0cfa50",
@@ -2759,9 +2885,9 @@
     "Contents/UE/Vroom/Content/Data/hud/title_suede.png": "2a8873414ec2ec7d99f952c095b8a6772bc55f69a441636a6470ba33ed5d44f6",
     "Contents/UE/Vroom/Content/Data/hud/title_usa.png": "6241a511b0a6ee07f27328b029720a7f8e4846121e97c0e16e2043c53467b1be",
     "Contents/UE/Vroom/Content/Data/tracks.json": "4bb70d72a523399950ea21bb1649e76e071722a52e45da9f5004806d9e10d83b",
-    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.pak": "2dbba10b1c3636f41d90b1637db63d934105d93b4c9519d944b10007ae7e997b",
-    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.ucas": "a081103719e87ff1a8d8c1aae3d3d0e359b4dcd4e2c07dacbf3b7093b12ba4e8",
-    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.utoc": "b68c26c39e581806b1b274c0133fc9b369a912a2392bfd4a9f6b4d0a62ce9e7d",
+    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.pak": "6a7c064e7a02a70ae64524e17ab1c2a406986d0eb32bdde36b1a13b434ef691a",
+    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.ucas": "e97e5454e1d4758b9696aff1aecd9012e67be9680e17c6ddf1d44e36560166e8",
+    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.utoc": "12cb55eb1526d4827def3eb67733caf24a7d74df504411402ca85768d930df4c",
     "Contents/UE/Vroom/Content/Paks/global.ucas": "f0297aca8595383225c4b003ba2ba7b58104f7a381aad66d48fa8a974eb194b4",
     "Contents/UE/Vroom/Content/Paks/global.utoc": "fb7540d22928a02629ff8d4aa9e36655176f8f395ff55fcdcb96d38b95dff1a6"
   },
@@ -2771,9 +2897,9 @@
       "complete": true,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-1.log",
-          "size_bytes": 1666740,
-          "modified_utc": "2026-09-19T16:00:43.498363+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-1.log",
+          "size_bytes": 1708820,
+          "modified_utc": "2026-09-19T21:27:25.621659+00:00"
         },
         "warmup_requested_samples": 120,
         "warmup_discarded_samples": 120,
@@ -2789,36 +2915,36 @@
         "first_distance_backsteps": [],
         "yaw_delta_degrees": {
           "samples": 7674,
-          "min_signed": -0.467410000000001,
-          "max_signed": 1.2464860000000044,
-          "mean_absolute": 0.13859094540005226,
-          "p95_absolute": 0.4205447500000076,
-          "p99_absolute": 0.5117433599999851,
-          "max_absolute": 1.2464860000000044
+          "min_signed": -0.9299100000000067,
+          "max_signed": 1.12894399999999,
+          "mean_absolute": 0.2969049596038574,
+          "p95_absolute": 0.8484512499999893,
+          "p99_absolute": 1.0154826799999987,
+          "max_absolute": 1.12894399999999
         },
         "yaw_rate_degrees_per_second": {
           "samples": 7674,
-          "min_signed": -28.044039119217672,
-          "max_signed": 33.87406251874846,
-          "mean_absolute": 8.30699410367376,
-          "p95_absolute": 25.22218755624872,
-          "p99_absolute": 30.638951794693483,
-          "max_absolute": 33.87406251874846
+          "min_signed": -27.89757897578996,
+          "max_signed": 33.85545492712739,
+          "mean_absolute": 8.906135409053748,
+          "p95_absolute": 25.447909659784475,
+          "p99_absolute": 30.456115442318538,
+          "max_absolute": 33.85545492712739
         },
         "yaw_acceleration_degrees_per_second_squared": {
           "samples": 7673,
-          "min_signed": -57.09011637242857,
-          "max_signed": 35.31098754643996,
-          "mean_absolute": 3.8218429587769718,
-          "p95_absolute": 15.395498988922817,
-          "p99_absolute": 24.689351495761542,
-          "max_absolute": 57.09011637242857
+          "min_signed": -44.25485426390881,
+          "max_signed": 30.07126749592255,
+          "mean_absolute": 3.8936241282484496,
+          "p95_absolute": 13.11945125743503,
+          "p99_absolute": 18.164963557574286,
+          "max_absolute": 44.25485426390881
         },
         "peak_yaw_acceleration": {
-          "line": 4883,
-          "distance_m": 3409.134769,
-          "signed_deg_per_s2": -57.09011637242857,
-          "absolute_deg_per_s2": 57.09011637242857
+          "line": 6347,
+          "distance_m": 9325.506534,
+          "signed_deg_per_s2": -44.25485426390881,
+          "absolute_deg_per_s2": 44.25485426390881
         }
       }
     },
@@ -2827,9 +2953,9 @@
       "complete": true,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-2.log",
-          "size_bytes": 1644520,
-          "modified_utc": "2026-09-19T16:03:01.439335+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-2.log",
+          "size_bytes": 1683620,
+          "modified_utc": "2026-09-19T21:31:53.999495+00:00"
         },
         "warmup_requested_samples": 120,
         "warmup_discarded_samples": 120,
@@ -2845,36 +2971,36 @@
         "first_distance_backsteps": [],
         "yaw_delta_degrees": {
           "samples": 7674,
-          "min_signed": -0.6397519999999872,
-          "max_signed": 1.0180599999999913,
-          "mean_absolute": 0.18989230661975495,
-          "p95_absolute": 0.5433922999999949,
-          "p99_absolute": 0.603697810000009,
-          "max_absolute": 1.0180599999999913
+          "min_signed": -1.2777480000000025,
+          "max_signed": 1.2124410000000125,
+          "mean_absolute": 0.3806010789679438,
+          "p95_absolute": 1.0818838500000139,
+          "p99_absolute": 1.2092260899999985,
+          "max_absolute": 1.2777480000000025
         },
         "yaw_rate_degrees_per_second": {
           "samples": 7674,
-          "min_signed": -38.38435231295297,
-          "max_signed": 36.68416631667329,
-          "mean_absolute": 11.38690411765457,
-          "p95_absolute": 32.59710105042191,
-          "p99_absolute": 36.22092038159222,
-          "max_absolute": 38.38435231295297
+          "min_signed": -38.33167336653274,
+          "max_signed": 36.36486608080179,
+          "mean_absolute": 11.416809456564367,
+          "p95_absolute": 32.4568400684011,
+          "p99_absolute": 36.274794306633524,
+          "max_absolute": 38.33167336653274
         },
         "yaw_acceleration_degrees_per_second_squared": {
           "samples": 7673,
-          "min_signed": -106.55573772792718,
-          "max_signed": 101.76530249939687,
-          "mean_absolute": 8.343932017727031,
-          "p95_absolute": 33.30345322264876,
-          "p99_absolute": 59.658000290494904,
-          "max_absolute": 106.55573772792718
+          "min_signed": -74.96879936847925,
+          "max_signed": 73.27272285179644,
+          "mean_absolute": 8.07130838382366,
+          "p95_absolute": 28.89788169535302,
+          "p99_absolute": 46.535769524839814,
+          "max_absolute": 74.96879936847925
         },
         "peak_yaw_acceleration": {
-          "line": 2084,
-          "distance_m": 890.908346,
-          "signed_deg_per_s2": -106.55573772792718,
-          "absolute_deg_per_s2": 106.55573772792718
+          "line": 1605,
+          "distance_m": 901.917768,
+          "signed_deg_per_s2": -74.96879936847925,
+          "absolute_deg_per_s2": 74.96879936847925
         }
       }
     },
@@ -2883,9 +3009,9 @@
       "complete": true,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-3.log",
-          "size_bytes": 1648884,
-          "modified_utc": "2026-09-19T16:05:22.281956+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-3.log",
+          "size_bytes": 1688526,
+          "modified_utc": "2026-09-19T21:36:25.215909+00:00"
         },
         "warmup_requested_samples": 120,
         "warmup_discarded_samples": 120,
@@ -2901,36 +3027,36 @@
         "first_distance_backsteps": [],
         "yaw_delta_degrees": {
           "samples": 7674,
-          "min_signed": -0.5630339999999876,
-          "max_signed": 0.73171099999999,
-          "mean_absolute": 0.16797591047693505,
-          "p95_absolute": 0.4785835499999957,
-          "p99_absolute": 0.558085699999987,
-          "max_absolute": 0.73171099999999
+          "min_signed": -1.1226859999999874,
+          "max_signed": 1.1920410000000174,
+          "mean_absolute": 0.348498531013813,
+          "p95_absolute": 0.9570492999999884,
+          "p99_absolute": 1.108913470000022,
+          "max_absolute": 1.1920410000000174
         },
         "yaw_rate_degrees_per_second": {
           "samples": 7674,
-          "min_signed": -33.76110811296921,
-          "max_signed": 35.932797793898175,
-          "mean_absolute": 10.072002032613277,
-          "p95_absolute": 28.684129528674617,
-          "p99_absolute": 33.461262538214726,
-          "max_absolute": 35.932797793898175
+          "min_signed": -33.66677662158477,
+          "max_signed": 35.76158761587668,
+          "mean_absolute": 10.45335139251575,
+          "p95_absolute": 28.703379233225235,
+          "p99_absolute": 33.267736777368434,
+          "max_absolute": 35.76158761587668
         },
         "yaw_acceleration_degrees_per_second_squared": {
           "samples": 7673,
-          "min_signed": -74.41262346537343,
-          "max_signed": 43.75928156678113,
-          "mean_absolute": 6.100459873081968,
-          "p95_absolute": 22.722291099276646,
-          "p99_absolute": 35.21274002134954,
-          "max_absolute": 74.41262346537343
+          "min_signed": -54.72701387690933,
+          "max_signed": 31.404446563634952,
+          "mean_absolute": 5.97719225021415,
+          "p95_absolute": 18.18581961100167,
+          "p99_absolute": 25.752443006346137,
+          "max_absolute": 54.72701387690933
         },
         "peak_yaw_acceleration": {
-          "line": 2392,
-          "distance_m": 1180.916971,
-          "signed_deg_per_s2": -74.41262346537343,
-          "absolute_deg_per_s2": 74.41262346537343
+          "line": 9088,
+          "distance_m": 13996.791022,
+          "signed_deg_per_s2": -54.72701387690933,
+          "absolute_deg_per_s2": 54.72701387690933
         }
       }
     },
@@ -2939,9 +3065,9 @@
       "complete": true,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-4.log",
-          "size_bytes": 1637147,
-          "modified_utc": "2026-09-19T16:07:40.361316+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-4.log",
+          "size_bytes": 1676682,
+          "modified_utc": "2026-09-19T21:40:53.782895+00:00"
         },
         "warmup_requested_samples": 120,
         "warmup_discarded_samples": 120,
@@ -2957,36 +3083,36 @@
         "first_distance_backsteps": [],
         "yaw_delta_degrees": {
           "samples": 7674,
-          "min_signed": -0.6373229999999808,
-          "max_signed": 0.6480639999999767,
-          "mean_absolute": 0.23971352593171746,
-          "p95_absolute": 0.5993526999999929,
-          "p99_absolute": 0.6343950800000041,
-          "max_absolute": 0.6480639999999767
+          "min_signed": -1.2689340000000016,
+          "max_signed": 1.4780850000000214,
+          "mean_absolute": 0.44786330922595785,
+          "p95_absolute": 1.1845007999999935,
+          "p99_absolute": 1.256843070000006,
+          "max_absolute": 1.4780850000000214
         },
         "yaw_rate_degrees_per_second": {
           "samples": 7674,
-          "min_signed": -38.23861522769429,
-          "max_signed": 38.88306233875182,
-          "mean_absolute": 14.378101417760348,
-          "p95_absolute": 35.96044279114374,
-          "p99_absolute": 38.06294354112942,
-          "max_absolute": 38.88306233875182
+          "min_signed": -38.06840068400688,
+          "max_signed": 38.585875858758406,
+          "mean_absolute": 13.432449222167923,
+          "p95_absolute": 35.532107821077794,
+          "p99_absolute": 37.672519429450396,
+          "max_absolute": 38.585875858758406
         },
         "yaw_acceleration_degrees_per_second_squared": {
           "samples": 7673,
-          "min_signed": -80.14359422410523,
-          "max_signed": 85.99696008718671,
-          "mean_absolute": 10.18328545157857,
-          "p95_absolute": 36.390159620267724,
-          "p99_absolute": 58.38056464538407,
-          "max_absolute": 85.99696008718671
+          "min_signed": -64.63389267138024,
+          "max_signed": 60.68557823779769,
+          "mean_absolute": 8.337013248264947,
+          "p95_absolute": 28.100799737541408,
+          "p99_absolute": 41.864301281833605,
+          "max_absolute": 64.63389267138024
         },
         "peak_yaw_acceleration": {
-          "line": 3215,
-          "distance_m": 1603.238482,
-          "signed_deg_per_s2": 85.99696008718671,
-          "absolute_deg_per_s2": 85.99696008718671
+          "line": 1474,
+          "distance_m": 558.781221,
+          "signed_deg_per_s2": -64.63389267138024,
+          "absolute_deg_per_s2": 64.63389267138024
         }
       }
     },
@@ -2995,9 +3121,9 @@
       "complete": true,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-5.log",
-          "size_bytes": 1633494,
-          "modified_utc": "2026-09-19T16:09:58.931369+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-5.log",
+          "size_bytes": 1672576,
+          "modified_utc": "2026-09-19T21:45:22.693766+00:00"
         },
         "warmup_requested_samples": 120,
         "warmup_discarded_samples": 120,
@@ -3013,36 +3139,36 @@
         "first_distance_backsteps": [],
         "yaw_delta_degrees": {
           "samples": 7674,
-          "min_signed": -0.747337999999985,
-          "max_signed": 1.2089190000000087,
-          "mean_absolute": 0.16436307896794372,
-          "p95_absolute": 0.5622595500000037,
-          "p99_absolute": 0.6902847500000047,
-          "max_absolute": 1.2089190000000087
+          "min_signed": -1.4943169999999952,
+          "max_signed": 1.3462539999999876,
+          "mean_absolute": 0.3065351089392755,
+          "p95_absolute": 1.0672805500000009,
+          "p99_absolute": 1.3470327100000123,
+          "max_absolute": 1.4943169999999952
         },
         "yaw_rate_degrees_per_second": {
           "samples": 7674,
-          "min_signed": -44.839383212334845,
-          "max_signed": 40.23297534049412,
-          "mean_absolute": 9.852646948784724,
-          "p95_absolute": 33.693886122277256,
-          "p99_absolute": 41.402677579446234,
-          "max_absolute": 44.839383212334845
+          "min_signed": -44.82995829958285,
+          "max_signed": 40.38802388023843,
+          "mean_absolute": 9.194992169246373,
+          "p95_absolute": 32.01661116611151,
+          "p99_absolute": 40.402900719856405,
+          "max_absolute": 44.82995829958285
         },
         "yaw_acceleration_degrees_per_second_squared": {
           "samples": 7673,
-          "min_signed": -82.83628651539318,
-          "max_signed": 74.927402873817,
-          "mean_absolute": 6.53047171373316,
-          "p95_absolute": 27.69801206842868,
-          "p99_absolute": 48.84932600735928,
-          "max_absolute": 82.83628651539318
+          "min_signed": -62.560378173606,
+          "max_signed": 59.65888624504562,
+          "mean_absolute": 5.090010581054493,
+          "p95_absolute": 20.774232176886553,
+          "p99_absolute": 36.311174576274695,
+          "max_absolute": 62.560378173606
         },
         "peak_yaw_acceleration": {
-          "line": 3444,
-          "distance_m": 2043.677546,
-          "signed_deg_per_s2": -82.83628651539318,
-          "absolute_deg_per_s2": 82.83628651539318
+          "line": 2243,
+          "distance_m": 1955.246871,
+          "signed_deg_per_s2": -62.560378173606,
+          "absolute_deg_per_s2": 62.560378173606
         }
       }
     },
@@ -3051,9 +3177,9 @@
       "complete": true,
       "report": {
         "source": {
-          "path": "Saved/Validation/v0.33.0/20260919-174842-package/soak-track-6.log",
-          "size_bytes": 1647197,
-          "modified_utc": "2026-09-19T16:12:17.932308+00:00"
+          "path": "Saved/Validation/v0.34.0/20260919-231125-package/soak-track-6.log",
+          "size_bytes": 1688023,
+          "modified_utc": "2026-09-19T21:49:52.071631+00:00"
         },
         "warmup_requested_samples": 120,
         "warmup_discarded_samples": 120,
@@ -3069,50 +3195,50 @@
         "first_distance_backsteps": [],
         "yaw_delta_degrees": {
           "samples": 7674,
-          "min_signed": -0.26716399999997975,
-          "max_signed": 0.5240080000000091,
-          "mean_absolute": 0.1286368208235601,
-          "p95_absolute": 0.40309035000001214,
-          "p99_absolute": 0.4907598599999863,
-          "max_absolute": 0.5240080000000091
+          "min_signed": -1.102062999999987,
+          "max_signed": 1.0474869999999896,
+          "mean_absolute": 0.26064359369298923,
+          "p95_absolute": 0.789674950000011,
+          "p99_absolute": 0.9775223799999969,
+          "max_absolute": 1.102062999999987
         },
         "yaw_rate_degrees_per_second": {
           "samples": 7674,
-          "min_signed": -16.029519409610593,
-          "max_signed": 31.439851202976485,
-          "mean_absolute": 7.714967140691192,
-          "p95_absolute": 24.184937301254703,
-          "p99_absolute": 29.443094824912112,
-          "max_absolute": 31.439851202976485
+          "min_signed": -16.049770497705005,
+          "max_signed": 31.424924249242178,
+          "mean_absolute": 7.817017976738875,
+          "p95_absolute": 23.684359343593805,
+          "p99_absolute": 29.30862815926128,
+          "max_absolute": 31.424924249242178
         },
         "yaw_acceleration_degrees_per_second_squared": {
           "samples": 7673,
-          "min_signed": -53.689563760067486,
-          "max_signed": 123.47866080407135,
-          "mean_absolute": 5.443840933985406,
-          "p95_absolute": 19.50468101568816,
-          "p99_absolute": 35.1640993775265,
-          "max_absolute": 123.47866080407135
+          "min_signed": -34.49768995035098,
+          "max_signed": 105.59821195366467,
+          "mean_absolute": 5.337924805056032,
+          "p95_absolute": 15.961999238387225,
+          "p99_absolute": 28.7798035931812,
+          "max_absolute": 105.59821195366467
         },
         "peak_yaw_acceleration": {
-          "line": 5401,
-          "distance_m": 4053.139342,
-          "signed_deg_per_s2": 123.47866080407135,
-          "absolute_deg_per_s2": 123.47866080407135
+          "line": 5901,
+          "distance_m": 8807.285917,
+          "signed_deg_per_s2": 105.59821195366467,
+          "absolute_deg_per_s2": 105.59821195366467
         }
       }
     }
   ],
   "motion": {
     "source": {
-      "path": "Saved/Validation/v0.33.0/20260919-174842-package/motion.log",
-      "size_bytes": 396139,
-      "modified_utc": "2026-09-19T16:12:48.923292+00:00"
+      "path": "Saved/Validation/v0.34.0/20260919-231125-package/motion.log",
+      "size_bytes": 399262,
+      "modified_utc": "2026-09-19T21:50:48.213463+00:00"
     },
     "warmup_requested_samples": 120,
     "warmup_discarded_samples": 120,
-    "trace_samples": 1491,
-    "analyzed_samples": 1371,
+    "trace_samples": 1493,
+    "analyzed_samples": 1373,
     "malformed_samples_after_warmup": 0,
     "nonfinite_samples_after_warmup": 0,
     "nonpositive_dt_samples_after_warmup": 0,
@@ -3122,37 +3248,37 @@
     "largest_distance_backstep_m": 0.0,
     "first_distance_backsteps": [],
     "yaw_delta_degrees": {
-      "samples": 1370,
-      "min_signed": -0.06414000000000897,
-      "max_signed": 0.567813000000001,
-      "mean_absolute": 0.14572977445255456,
-      "p95_absolute": 0.5360466000000116,
-      "p99_absolute": 0.5628000000000074,
-      "max_absolute": 0.567813000000001
+      "samples": 1372,
+      "min_signed": -0.24014599999998154,
+      "max_signed": 1.1342450000000213,
+      "mean_absolute": 0.2528421421282802,
+      "p95_absolute": 0.8044289499999906,
+      "p99_absolute": 1.1109410499999994,
+      "max_absolute": 1.1342450000000213
     },
     "yaw_rate_degrees_per_second": {
-      "samples": 1370,
-      "min_signed": -3.8460154704088843,
-      "max_signed": 34.04253914921681,
-      "mean_absolute": 8.741764035300204,
-      "p95_absolute": 32.1491434906952,
-      "p99_absolute": 33.7578442431148,
-      "max_absolute": 34.04253914921681
+      "samples": 1372,
+      "min_signed": -7.204452044519891,
+      "max_signed": 34.01238455079828,
+      "mean_absolute": 7.58436925312473,
+      "p95_absolute": 24.13310983109803,
+      "p99_absolute": 33.328564785647835,
+      "max_absolute": 34.01238455079828
     },
     "yaw_acceleration_degrees_per_second_squared": {
-      "samples": 1369,
-      "min_signed": -51.093763018236004,
-      "max_signed": 33.07210145910776,
-      "mean_absolute": 6.401362701557397,
-      "p95_absolute": 23.09100191999878,
-      "p99_absolute": 35.723462094124095,
-      "max_absolute": 51.093763018236004
+      "samples": 1371,
+      "min_signed": -39.20478409174799,
+      "max_signed": 26.54063080997322,
+      "mean_absolute": 4.676738201692711,
+      "p95_absolute": 16.342723897255837,
+      "p99_absolute": 23.670113399897204,
+      "max_absolute": 39.20478409174799
     },
     "peak_yaw_acceleration": {
-      "line": 1362,
-      "distance_m": 3399.47974,
-      "signed_deg_per_s2": -51.093763018236004,
-      "absolute_deg_per_s2": 51.093763018236004
+      "line": 1200,
+      "distance_m": 3405.064479,
+      "signed_deg_per_s2": -39.20478409174799,
+      "absolute_deg_per_s2": 39.20478409174799
     }
   }
 }

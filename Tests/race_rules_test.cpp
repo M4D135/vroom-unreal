@@ -27,6 +27,10 @@ int main()
     Check(StartSignalFromClock(1.0) == StartSignal::Racing, "green does not linger");
     Check(BeepFor(StartSignal::Green).Frequency > BeepFor(StartSignal::Red).Frequency,
           "green beep is distinct from the preparation tones");
+    Check(BeepFor(StartSignal::Red).Frequency == BeepFor(StartSignal::Orange).Frequency,
+          "preparation lights repeat the same call instead of a rising melody");
+    Check(BeepFor(StartSignal::Red).Frequency < 500 && BeepFor(StartSignal::Green).Frequency < 700,
+          "start signal keeps a low clear fundamental rather than a piercing beep");
     Check(GantryColumnsLit(StartSignal::Red) == 2 && GantryColumnsLit(StartSignal::Racing) == 0,
           "gantry columns follow the three-colour sequence then go out");
 
@@ -68,17 +72,37 @@ int main()
         StartToneVoice Voice;
         Voice.Trigger(Signal);
         const int Count = Voice.SampleCount;
-        double Energy = 0, Maximum = 0;
+        double Energy = 0, Maximum = 0, PreviousSample = 0, LargestStep = 0, Mean = 0;
+        double FundamentalReal = 0, FundamentalImaginary = 0, SecondReal = 0, SecondImaginary = 0;
         for (int I = 0; I < Count + 100; ++I)
         {
             const double Sample = Voice.NextSample();
             Energy += Sample * Sample;
             Maximum = std::max(Maximum, std::abs(Sample));
+            LargestStep = std::max(LargestStep, std::abs(Sample - PreviousSample));
+            PreviousSample = Sample;
+            Mean += Sample;
+            if (I > 480 && I < Count - 3360)
+            {
+                const double Angle = 6.28318530717958647692 * I * BeepFor(Signal).Frequency / StartToneVoice::SampleRate;
+                FundamentalReal += Sample * std::cos(Angle); FundamentalImaginary += Sample * std::sin(Angle);
+                SecondReal += Sample * std::cos(2 * Angle); SecondImaginary += Sample * std::sin(2 * Angle);
+            }
             if (I == 0 || I >= Count - 1) Check(Sample == 0, "start tone has silent endpoints and finite duration");
         }
         Check(Energy > Count * .02 && Maximum <= BeepFor(Signal).Volume, "start tone is audible and amplitude-bounded");
+        Check(LargestStep < .18 && std::abs(Mean / Count) < .005 && Maximum <= 1.0,
+              "start signal has no hard edge or audible DC offset");
+        Check(std::hypot(SecondReal, SecondImaginary) > .40 * std::hypot(FundamentalReal, FundamentalImaginary),
+              "the rendered signal contains a substantial second harmonic, not a plain sine beep");
         Voice.Trigger(Signal);
         Check(Voice.Sample == 0 && Voice.SampleCount == Count, "a restart resets the audio cue");
+        StartToneVoice Fresh;
+        Fresh.Trigger(Signal);
+        for (int I = 0; I < 800; ++I)
+            Check(Voice.NextSample() == Fresh.NextSample(), "restarted audio reproduces the same attack");
+        Voice.Trigger(StartSignal::Idle);
+        Check(Voice.NextSample() == 0 && Voice.SampleCount == 0, "inactive start voice is silent");
     }
 
     LapValidator Lap;
@@ -146,9 +170,43 @@ int main()
 
     int WishboneCount = 0;
     const Wishbone* Bars = CarWishbones(WishboneCount);
-    Check(WishboneCount == 8, "each car has double wishbones at four corners");
-    Check(Bars[0].Steers && !Bars[4].Steers, "only the front bars follow steering");
-    Check(std::abs(Bars[0].HubY) > std::abs(Bars[0].ChassisY), "bars run from chassis out to the hubs");
+    Check(WishboneCount == 20, "one suspension has six links per front corner and four per rear corner");
+    int CornerLinks[4] = {}, Upper[4] = {}, Lower[4] = {}, Pushrods[4] = {};
+    for (int I = 0; I < WishboneCount; ++I)
+    {
+        const auto& Bar = Bars[I];
+        const int Slot = CarWishboneWheelSlot(Bar);
+        Check(Slot >= 0 && Slot < 4, "each suspension link maps to a real wheel");
+        if (Slot < 0 || Slot > 3) continue;
+        ++CornerLinks[Slot];
+        Check(Bar.Steers == (Slot == 0 || Slot == 2), "only front corner links follow steering");
+        Check(std::abs(Bar.HubY) > std::abs(Bar.ChassisY), "link ends point out to their wheel upright");
+        Check(Bar.ChassisY * Bar.HubY > 0, "suspension links never cross to the opposite wheel");
+        if (Bar.Steers)
+        {
+            Check(std::abs(Bar.ChassisY) <= 20 && Bar.ChassisZ <= 55,
+                "front inner pickups stay under and inside the low nose");
+            Check(std::abs(Bar.HubY) == 74 && Bar.HubX >= 126 && Bar.HubX <= 128,
+                "front upright attaches inside the real wheel instead of a displaced visual tyre");
+            if (Bar.HubZ == 43) ++Upper[Slot];
+            if (Bar.HubZ == 28 && Bar.ChassisZ <= 40) ++Lower[Slot];
+            if (Bar.HubZ == 28 && Bar.ChassisZ > 40) ++Pushrods[Slot];
+        }
+        else
+        {
+            Check(std::abs(Bar.HubY) == 79 && Bar.HubX == -115,
+                "rear links join their actual inner wheel upright");
+            if (Bar.HubZ == 46) ++Upper[Slot];
+            if (Bar.HubZ == 28) ++Lower[Slot];
+        }
+    }
+    for (int Slot = 0; Slot < 4; ++Slot)
+    {
+        const bool Front = Slot == 0 || Slot == 2;
+        Check(CornerLinks[Slot] == (Front ? 6 : 4), "all links remain mapped after enlarging the authored table");
+        Check(Upper[Slot] == 2 && Lower[Slot] == 2, "paired upper and lower links form connected A-arms");
+        Check(Pushrods[Slot] == (Front ? 1 : 0), "one front pushrod joins the lower upright");
+    }
 
     DriveModel Free, Draft;
     Free.State.SpeedMps = Draft.State.SpeedMps = 50;

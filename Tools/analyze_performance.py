@@ -48,6 +48,7 @@ def timing_stats(values: list[float]) -> dict | None:
         "p99_ms": percentile(values, 0.99),
         "max_ms": max(values),
         "over_20_ms_count": sum(value > 20 for value in values),
+        "over_40_ms_count": sum(value > 40 for value in values),
     }
 
 

@@ -334,9 +334,10 @@ def create_cockpit_materials():
     create_material("M_GlovePatch", (0.032, 0.036, 0.040), 0.88,
                     local_noise=64, variation=0.10, roughness_variation=0.04)
     create_material("M_Carbon", (0.019, 0.023, 0.028), 0.42,
-                    uv_weave=38, local_noise=120, variation=0.18, roughness_variation=0.07)
+                    uv_weave=38, local_noise=120, variation=0.12, roughness_variation=0.05,
+                    filter_detail=True)
     create_material("M_Dashboard", (0.024, 0.028, 0.032), 0.91,
-                    local_noise=76, variation=0.10, roughness_variation=0.045)
+                    local_noise=76, variation=0.07, roughness_variation=0.035, filter_detail=True)
     create_material("M_BrushedMetal", (0.45, 0.48, 0.51), 0.46, metallic=0.90,
                     local_noise=(110, 4), variation=0.06, roughness_variation=0.07)
     create_material("M_GaugeFace", (0.005, 0.007, 0.009), 0.90)
@@ -348,15 +349,19 @@ def create_cockpit_materials():
                     emissive=(0.03, 0.20, 0.012))
     create_material("M_GaugeAmber", (0.90, 0.48, 0.025), 0.70,
                     emissive=(0.25, 0.12, 0.005))
-    create_material("M_WheelNavy", (0.015, 0.027, 0.085), 0.80,
-                    local_noise=76, variation=0.05)
+    create_material("M_WheelNavy", (0.014, 0.013, 0.012), 0.93,
+                    local_noise=96, variation=0.07, roughness_variation=0.025,
+                    micro_normal=(64, 0.10), filter_detail=True)
+    create_material("M_WheelMetal", (0.022, 0.024, 0.025), 0.43, metallic=0.75,
+                    local_noise=(90, 5), variation=0.055, roughness_variation=0.025,
+                    filter_detail=True)
     create_material("M_CockpitSlate", (0.075, 0.12, 0.22), 0.72)
     create_material("M_GloveBlue", (0.12, 0.39, 0.52), 0.87,
                     local_noise=64, variation=0.06)
     create_material("M_CuffOchre", (0.27, 0.17, 0.048), 0.90)
     create_material("M_MirrorSurface", (0.0, 0.0, 0.0), 1.0,
                     mirror_texture_parameter="MirrorImage")
-    unreal.log("VROOM ASSETS: cockpit material bootstrap complete (17 materials)")
+    unreal.log("VROOM ASSETS: cockpit material bootstrap complete (18 materials)")
 
 
 def create_scenery_materials():

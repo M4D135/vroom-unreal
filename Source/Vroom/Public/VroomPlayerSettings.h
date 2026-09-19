@@ -9,7 +9,7 @@ enum class Action : uint8 { Throttle, Brake, SteerLeft, SteerRight, Drift, Shift
     NextStage, TrackNext, TrackPrevious, ModeNext, DifficultyNext, Count };
 struct FPlayerSettings
 {
-    float SteeringSensitivity = 1.f, SteeringDeadzone = .06f, MouseSensitivity = .004f, Fov = 80.f;
+    float SteeringSensitivity = 1.f, SteeringDeadzone = .06f, MouseSensitivity = .004f, Fov = 68.f;
     bool ChaseCamera = false, Automatic = true, GhostEnabled = true;
     float MasterVolume = 1.f, EngineVolume = 1.f, EffectsVolume = 1.f;
     TArray<FKey> Keys;

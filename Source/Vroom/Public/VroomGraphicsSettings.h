@@ -22,6 +22,9 @@ void Apply();
 void Cancel();
 // Scenery reads the applied values, never the unsaved menu preview.
 bool AnimatedGrass();
+// Enables the applied photo lighting/scenery budget, including when its
+// individual quality values have subsequently been customised in the menu.
+bool PhotorealismEnabled();
 // 0: none, 1: sparse, 2: medium, 3: dense.
 int FoliageQuality();
 }

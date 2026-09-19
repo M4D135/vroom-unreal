@@ -52,6 +52,7 @@ class PerformanceCsvTests(unittest.TestCase):
         self.assertEqual(result["frame_time"]["max_ms"], 16.5)
         self.assertEqual(result["frame_time"]["mean_ms"], 16.25)
         self.assertEqual(result["frame_time"]["over_20_ms_count"], 0)
+        self.assertEqual(result["frame_time"]["over_40_ms_count"], 0)
         self.assertTrue(all(count == 0 for count in result["invalid_metric_samples_after_warmup"].values()))
         self.assertEqual(result["gpu_time"]["samples"], 2)
         self.assertEqual(result["game_thread_time"]["samples"], 2)
@@ -65,6 +66,7 @@ class PerformanceCsvTests(unittest.TestCase):
         self.assertEqual(result["analyzed_frames"], 2)
         self.assertEqual(result["frame_time"]["max_ms"], 600)
         self.assertEqual(result["frame_time"]["over_20_ms_count"], 1)
+        self.assertEqual(result["frame_time"]["over_40_ms_count"], 1)
         self.assertEqual(result["invalid_metric_samples_after_warmup"],
                          {"FrameTime": 0, "GPUTime": 1, "GameThreadTime": 1})
 
@@ -78,6 +80,13 @@ class PerformanceCsvTests(unittest.TestCase):
         self.assertEqual(result["analyzed_frames"], 1)
         self.assertEqual(result["frame_time"]["max_ms"], 17)
         self.assertEqual(result["missing_columns"], [])
+
+    def test_30hz_frames_have_an_independent_hitch_counter(self):
+        result = self.analyze([self.header, self.frame(600), self.frame(20), self.frame(33.333),
+                               self.frame(40), self.frame(40.001)], warmup=1)
+        self.assertEqual(result['frame_time']['samples'], 4)
+        self.assertEqual(result['frame_time']['over_20_ms_count'], 3)
+        self.assertEqual(result['frame_time']['over_40_ms_count'], 1)
 
 
 if __name__ == "__main__":

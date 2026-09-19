@@ -28,12 +28,14 @@
 
 namespace
 {
-// The original view crops the lower wheel beneath a narrow instrument band.
-const FVector WheelCenter(106, 0, 46);
-constexpr double WheelRadius = 18.8;
-constexpr double WheelTube = 1.20;
-const FVector InstrumentCenter(121, 0, 51);
-const FQuat InstrumentTilt(FVector::RightVector, FMath::DegreesToRadians(12.0));
+// Driver-eye composition: compact wheel in the opening, real nose and wheels ahead.
+const FVector WheelCenter(40, 0, 50);
+constexpr double WheelScale = .85;
+const FQuat WheelRestTilt(FVector::RightVector, FMath::DegreesToRadians(-25.0));
+constexpr double WheelRadius = 14.0 * WheelScale; // classic round rim, shared with both grip anchors
+// Period instruments are fixed to the chassis, behind the three-spoke wheel.
+const FVector InstrumentCenter(47, 0, 55.5);
+const FQuat InstrumentTilt = WheelRestTilt;
 enum ECockpitPart { Wheel, LeftGlove, RightGlove, Dashboard, LeftForearm, RightForearm, GearIndicator, Readout, Surround, RpmStrip, Windshield, CockpitPartCount };
 
 const FVector GloveCuff(-5.2, 29.2, -5.0);
@@ -57,18 +59,17 @@ struct FDrivingHandPose { FVector Wrist; FQuat Rotation; double Scale; };
 
 FDrivingHandPose DrivingHandPose(float Side, float Steering)
 {
-    // The rim passes through the closed grip. Both the grip position and its
-    // orientation share the wheel's exact rotation, so a hand cannot slide
-    // over the rim while steering. The opposite hand naturally leaves the
-    // original low camera crop; camera height is not changed to reveal it.
+    // Grip centres and hand orientations share the wheel's exact rotation.
+    // The natural lower crop is preserved when a wrist turns below the view.
     const double Turn = -FMath::Clamp(double(Steering / CockpitSteeringInputMax), -1.0, 1.0)
         * CockpitSteeringVisualAngleDeg();
-    static double NeutralAngle = 30.0, GripDepth = -2.8, GripReach = 19.1, Scale = 1.05, WristTilt = 80.0;
+    static double NeutralAngle = 0.0, GripDepth = -2.8, GripReach = 19.1, Scale = .92, WristTilt = 80.0;
+    static double HandDepthOffset = -.4;
     static bool Init = false;
     if (!Init)
     {
-        // The baked grip and rendered pose use the same fit parameters. The
-        // Amiga neutral reference puts the glove backs on the wheel's flanks.
+        // Retain the authored white glove anatomy and local grip anchor;
+        // neutral angle and scale belong to this compact wheel's layout.
         FString Data;
         TSharedPtr<FJsonObject> Document;
         if (FFileHelper::LoadFileToString(Data, *(FPaths::ProjectContentDir() / TEXT("Data/gloves.json")))
@@ -77,11 +78,12 @@ FDrivingHandPose DrivingHandPose(float Side, float Steering)
             const TSharedPtr<FJsonObject>* Pose;
             if (Document->TryGetObjectField(TEXT("driving_grip"), Pose))
             {
-                (*Pose)->TryGetNumberField(TEXT("neutral_angle_deg"), NeutralAngle);
+                // Preserve the established 9-and-3 grip and authored wrist anatomy.
                 (*Pose)->TryGetNumberField(TEXT("wrist_tilt_deg"), WristTilt);
-                (*Pose)->TryGetNumberField(TEXT("scale"), Scale);
+                // The runtime rim and hand scale remain independent of the legacy bake.
                 (*Pose)->TryGetNumberField(TEXT("grip_depth_cm"), GripDepth);
                 (*Pose)->TryGetNumberField(TEXT("grip_reach_cm"), GripReach);
+                (*Pose)->TryGetNumberField(TEXT("hand_depth_offset_cm"), HandDepthOffset);
             }
         }
         FParse::Value(FCommandLine::Get(), TEXT("VroomGripAngle="), NeutralAngle);
@@ -89,17 +91,22 @@ FDrivingHandPose DrivingHandPose(float Side, float Steering)
         FParse::Value(FCommandLine::Get(), TEXT("VroomGripReach="), GripReach);
         FParse::Value(FCommandLine::Get(), TEXT("VroomGripScale="), Scale);
         FParse::Value(FCommandLine::Get(), TEXT("VroomWristTilt="), WristTilt);
+        FParse::Value(FCommandLine::Get(), TEXT("VroomHandDepthOffset="), HandDepthOffset);
+        HandDepthOffset = FMath::Clamp(HandDepthOffset, -1.0, 1.0);
         Init = true;
     }
     const double Angle = FMath::DegreesToRadians((Side < 0 ? 180.0 - NeutralAngle : NeutralAngle) + Turn);
-    const FVector Contact = WheelCenter + FVector(0, FMath::Cos(Angle), FMath::Sin(Angle)) * WheelRadius;
+    const FVector Contact = WheelCenter + WheelRestTilt.RotateVector(FVector(0, FMath::Cos(Angle), FMath::Sin(Angle)) * WheelRadius);
     // Canonical -X is the back of the glove, -Y points toward the knuckles,
     // and Z spans the four fingers. Align that span with the rim tangent.
-    const FQuat Rotation = FQuat(FVector::ForwardVector, Angle - UE_PI)
+    const FQuat Rotation = WheelRestTilt * FQuat(FVector::ForwardVector, Angle - UE_PI)
         * FQuat(FVector::UpVector, FMath::DegreesToRadians(WristTilt));
     const FVector Grip = FVector(GripDepth, GripReach, -5.4) - GloveCuff;
     const FVector MirroredGrip(Grip.X, Grip.Y, -Side * Grip.Z);
-    return {Contact - Rotation.RotateVector(MirroredGrip) * Scale, Rotation, Scale};
+    // Screen depth is the wheel's X axis in Unreal (Z is vertical). Retreat
+    // the whole glove toward the driver, without changing wrist/finger pose.
+    // This axis is invariant under wheel rotation, including for the right hand.
+    return {Contact - Rotation.RotateVector(MirroredGrip) * Scale + WheelRestTilt.RotateVector(FVector(HandDepthOffset, 0, 0)), Rotation, Scale};
 }
 
 struct FCockpitGeometry
@@ -151,25 +158,43 @@ struct FCockpitGeometry
         }
         Grid(Start, Rings, Sides);
     }
-    void Torus(double Radius, double Tube, FVector Center = FVector::ZeroVector,
-        double StartAngle = 0, double Sweep = UE_TWO_PI, int32 Segments = 72)
+    void ClassicRim()
     {
-        constexpr int32 TubeSegments = 12;
-        const int32 Start = Vertices.Num();
-        for (int32 I = 0; I <= Segments; ++I)
+        constexpr int32 Segments=160, TubeSegments=16;
+        TArray<FVector> Centers, U, V;
+        TArray<double> Radii;
+        for (int32 I=0; I<Segments; ++I)
         {
-            const double Angle = StartAngle + Sweep * I / Segments;
-            const FVector Radial(0, FMath::Cos(Angle), FMath::Sin(Angle));
-            for (int32 J = 0; J <= TubeSegments; ++J)
+            const double A=UE_TWO_PI*I/Segments;
+            // A true circular rim. Hand clearance belongs to the glove pose,
+            // never to dents or local changes in the steering-wheel radius.
+            Centers.Add(FVector(-.4,14.0*FMath::Cos(A),14.0*FMath::Sin(A)));
+            Radii.Add(.90);
+        }
+        for (int32 I=0; I<Segments; ++I)
+        {
+            const FVector Along=(Centers[(I+1)%Segments]-Centers[(I+Segments-1)%Segments]).GetSafeNormal();
+            U.Add((FVector::ForwardVector-Along*Along.X).GetSafeNormal());
+            V.Add(FVector::CrossProduct(Along,U.Last()).GetSafeNormal());
+        }
+        auto Point=[&](int32 I,double A)
+        {
+            return Centers[I]+(U[I]*FMath::Sin(A)+V[I]*FMath::Cos(A))*Radii[I];
+        };
+        const int32 Start=Vertices.Num();
+        for (int32 Row=0; Row<=Segments; ++Row)
+        {
+            const int32 I=Row%Segments;
+            for (int32 J=0; J<=TubeSegments; ++J)
             {
-                const double Round = UE_TWO_PI * J / TubeSegments;
-                const FVector N(FMath::Sin(Round), Radial.Y * FMath::Cos(Round), Radial.Z * FMath::Cos(Round));
-                Vertex(Center + Radial * Radius + N * Tube, N,
-                    FVector2D(double(I) / Segments, double(J) / TubeSegments),
-                    FVector(0, -FMath::Sin(Angle), FMath::Cos(Angle)));
+                const double A=UE_TWO_PI*J/TubeSegments;
+                const FVector Along=Point((I+1)%Segments,A)-Point((I+Segments-1)%Segments,A);
+                const FVector Around=U[I]*FMath::Cos(A)-V[I]*FMath::Sin(A);
+                Vertex(Point(I,A),FVector::CrossProduct(Along,Around),
+                    FVector2D(double(Row)/Segments,double(J)/TubeSegments),Along);
             }
         }
-        Grid(Start, Segments, TubeSegments);
+        Grid(Start,Segments,TubeSegments);
     }
     // A swept tube keeps the finger shafts cylindrical between curved joints.
     void Tube(const TArray<FVector>& Points, const TArray<double>& Radii,
@@ -216,7 +241,12 @@ struct FCockpitGeometry
     void Face(const TArray<FVector>& Points, FVector Normal)
     {
         const int32 S = Vertices.Num();
-        for (const FVector& P : Points) Vertex(P, Normal, FVector2D(P.Y, P.Z) * .1, FVector::RightVector);
+        const FVector N = Normal.GetSafeNormal();
+        const FVector Seed = FMath::Abs(N.Y) < .9 ? FVector::RightVector : FVector::ForwardVector;
+        const FVector T = (Seed - N * FVector::DotProduct(Seed,N)).GetSafeNormal();
+        const FVector B = FVector::CrossProduct(N,T);
+        for (const FVector& P : Points)
+            Vertex(P,N,FVector2D(FVector::DotProduct(P,T),FVector::DotProduct(P,B))*.1,T);
         for (int32 I = 1; I + 1 < Points.Num(); ++I) Triangle(S, S + I, S + I + 1);
     }
     void Prism(const TArray<FVector2D>& Outline, double Depth, FVector Center = FVector::ZeroVector,
@@ -237,6 +267,57 @@ struct FCockpitGeometry
             Face({Front[I], Back[I], Back[J], Front[J]}, Rotation.RotateVector(FVector(0, Delta.Y, -Delta.X)));
         }
     }
+    // A machined lip catches light around the instrument case and wheel spokes.
+    // Separate faces retain the hard metal edge without a paper-thin silhouette.
+    void BeveledPrism(const TArray<FVector2D>& Outline, double Depth, double Bevel,
+        FVector Center = FVector::ZeroVector)
+    {
+        double Radius = 0;
+        for (const FVector2D& P : Outline) Radius = FMath::Max(Radius, P.Size());
+        const double Inset = 1.0 - Bevel / FMath::Max(1.0, Radius);
+        TArray<FVector> Rings[4];
+        const double X[] = {-Depth*.5, -Depth*.5+Bevel, Depth*.5-Bevel, Depth*.5};
+        for (int32 R=0; R<4; ++R)
+            for (const FVector2D& P : Outline)
+                Rings[R].Add(Center + FVector(X[R], P.X*((R==0 || R==3)?Inset:1),
+                    P.Y*((R==0 || R==3)?Inset:1)));
+        Face(Rings[0], -FVector::ForwardVector);
+        Face(Rings[3], FVector::ForwardVector);
+        for (int32 R=0; R<3; ++R)
+            for (int32 I=0; I<Outline.Num(); ++I)
+            {
+                const int32 J=(I+1)%Outline.Num();
+                const FVector N=FVector::CrossProduct(Rings[R][J]-Rings[R][I],
+                    Rings[R+1][I]-Rings[R][I]).GetSafeNormal();
+                Face({Rings[R][I],Rings[R+1][I],Rings[R+1][J],Rings[R][J]},N);
+            }
+    }
+    // Curved outer shoulder of the monocoque, replacing the large flat diagonal
+    // polygon. Its upper seam follows the unchanged rolled cockpit opening.
+    void CockpitShoulder(double Side)
+    {
+        constexpr int32 Rows=36, Columns=8;
+        const int32 Start=Vertices.Num();
+        auto P=[&](double T,double V)
+        {
+            const double X=-55+117*T;
+            const double YTop=34-10*T, ZTop=43+12*T;
+            const double YBottom=46-13*T, ZBottom=27+13*T;
+            const double Curve=V*V;
+            return FVector(X,Side*FMath::Lerp(YTop,YBottom,V),
+                FMath::Lerp(ZTop,ZBottom,Curve));
+        };
+        for (int32 I=0; I<=Rows; ++I)
+            for (int32 J=0; J<=Columns; ++J)
+            {
+                const double T=double(I)/Rows, V=double(J)/Columns;
+                const FVector Along=P(T+.001,V)-P(T-.001,V);
+                const FVector Across=P(T,V+.001)-P(T,V-.001);
+                Vertex(P(T,V),FVector::CrossProduct(Along,Across)*Side,
+                    FVector2D(T*2,V),Along);
+            }
+        Grid(Start,Rows,Columns);
+    }
     void Disc(FVector Center, double Radius, double Depth, int32 Sides = 32)
     {
         TArray<FVector2D> Outline;
@@ -255,6 +336,7 @@ struct FCockpitGeometry
             {-HalfWidth, HalfHeight - Corner}, {-HalfWidth, -HalfHeight + Corner}}, Depth, Center);
     }
     void Sleeve(FVector Elbow, FVector Wrist, FVector WristTangent, FVector WristAcross,
+        FVector2D WristHalfSize,
         double From = 0, double To = 1, double ExtraRadius = 0,
         double StartAngle = 0, double Sweep = UE_TWO_PI)
     {
@@ -271,8 +353,8 @@ struct FCockpitGeometry
             const FVector Across = (WristAcross - Along * FVector::DotProduct(WristAcross, Along)).GetSafeNormal();
             const FVector Depth = FVector::CrossProduct(Along, Across).GetSafeNormal();
             const double Fold = .12 * FMath::Exp(-FMath::Square((T - .78) / .035)) - .08 * FMath::Exp(-FMath::Square((T - .85) / .025));
-            const double Width = FMath::Lerp(4.25, 3.1, T) + Fold + ExtraRadius;
-            const double Thickness = FMath::Lerp(2.75, 2.0, T) + Fold + ExtraRadius;
+            const double Width = FMath::Lerp(5.0, WristHalfSize.X, T) + Fold + ExtraRadius;
+            const double Thickness = FMath::Lerp(3.5, WristHalfSize.Y, T) + Fold + ExtraRadius;
             for (int32 J = 0; J <= Sides; ++J)
             {
                 const double A = StartAngle + Sweep * J / Sides;
@@ -292,9 +374,9 @@ struct FCockpitGeometry
             {
                 const double U = -1.0 + 2.0 * J / Columns, V = double(I) / Rows;
                 const double Arch = FMath::Sqrt(FMath::Max(0.0, 1 - U * U));
-                const FVector Along(-16 * U, 37, -33 * U / FMath::Max(.05, Arch) * V);
-                const FVector Up(2, 0, 33 * Arch);
-                Vertex(FVector(135 - 8 * U * U + 2 * V, 37 * U, 23 + 33 * Arch * V),
+                const FVector Along(-8 * U, 23, -5 * U / FMath::Max(.05, Arch) * V);
+                const FVector Up(1, 0, 5 * Arch);
+                Vertex(FVector(66 - 4 * U * U + V, 23 * U, 56 + 5 * Arch * V),
                     FVector::CrossProduct(Up, Along), FVector2D((U + 1) * .5, V), Along);
             }
         Grid(Start, Rows, Columns);
@@ -342,10 +424,20 @@ struct FCockpitGeometry
 
 FCockpitGeometry SleeveGeometry(float Side, const FDrivingHandPose& Hand)
 {
-    const FVector Tangent = Hand.Rotation.RotateVector(FVector(0,-1,0));
+    // Match the authored glove's cuff, rather than its convenient mesh pivot.
+    // The section at canonical Y=28.5 sits inside the closed cuff end, hiding
+    // the seam without moving the hand or changing its grip on the wheel.
+    const auto Mirror = [Side](FVector P) { return FVector(P.X, P.Y, -Side * P.Z); };
+    const FVector Cuff = Hand.Wrist + Hand.Rotation.RotateVector(
+        Mirror(FVector(-4.655988, 28.5, -5.452675) - GloveCuff)) * Hand.Scale;
+    const FVector Tangent = Hand.Rotation.RotateVector(
+        Mirror(FVector(-.066228, -.995841, .062564))).GetSafeNormal();
     const FVector Across = Hand.Rotation.RotateVector(FVector(0,0,-Side));
     FCockpitGeometry G;
-    G.Sleeve(FVector(68, Side * 18, 26), Hand.Wrist, Tangent, Across);
+    // Slightly inset the terminal ellipse under the irregular glove rim;
+    // retain the substantial forearm volume toward the elbow.
+    G.Sleeve(FVector(-15, Side * 20, 20), Cuff, Tangent, Across,
+        FVector2D(3.705883, 2.7314) * (Hand.Scale * .94));
     return G;
 }
 
@@ -355,7 +447,7 @@ FCockpitGeometry InstrumentDigits(int32 Speed)
     for (int32 I = 0; I < 3; ++I)
     {
         const int32 Divisor = I == 0 ? 100 : I == 1 ? 10 : 1;
-        G.Digit((Speed / Divisor) % 10, FVector(-1.95, 7.0 + I * 5.0, .75), 5.1);
+        G.Digit((Speed / Divisor) % 10, FVector(-1.95, -.2 + I * 1.55, .25), 1.8);
     }
     return G;
 }
@@ -365,8 +457,8 @@ FCockpitGeometry RpmSegments(int32 Lit, int32 First, int32 Last)
     FCockpitGeometry G;
     for (int32 I = First; I < Last; ++I)
     {
-        const FVector A(-2.0, -24.0 + I * 2.0, -5.15);
-        G.Line(A, I < Lit ? A + FVector(0, 1.52, 0) : A, I < Lit ? .62 : 0);
+        const FVector A(-2.0, -6.0 + I * .50, 4.2);
+        G.Line(A, I < Lit ? A + FVector(0, .34, 0) : A, I < Lit ? .28 : 0);
     }
     return G;
 }
@@ -506,7 +598,7 @@ void AVroomCar::BuildCockpit()
     if (CockpitRoot) return;
     CockpitRoot = NewObject<USceneComponent>(this, TEXT("CockpitRoot"));
     CockpitRoot->SetupAttachment(RootComponent);
-    CockpitRoot->SetRelativeLocation(FVector(0, 0, 62));
+    CockpitRoot->SetRelativeLocation(FVector::ZeroVector);
     AddInstanceComponent(CockpitRoot); CockpitRoot->RegisterComponent();
     SteeringPivot = NewObject<USceneComponent>(this, TEXT("SteeringPivot"));
     SteeringPivot->SetupAttachment(CockpitRoot);
@@ -524,29 +616,38 @@ void AVroomCar::BuildCockpit()
     };
 
     auto* WheelMesh = Mesh(TEXT("SteeringWheel"), SteeringPivot);
-    FCockpitGeometry Rim; Rim.Torus(WheelRadius, WheelTube); Rim.Commit(WheelMesh, 0, TEXT("M_WheelNavy"));
-    FCockpitGeometry Metal, Hub, Rivets;
-    for (double Angle : {0.0, double(UE_PI), UE_PI * 1.5})
+    WheelMesh->SetRelativeScale3D(FVector(WheelScale));
+    FCockpitGeometry Rim, Plate, Hub, Rivets, RedButtons, AmberButtons;
+    // A 1990-style suede rim and three simple spokes. The same contact radius
+    // drives the gloves; changing visual style never disconnects their grip.
+    Rim.ClassicRim();
+    Rim.Commit(WheelMesh, 0, TEXT("M_WheelNavy"));
+    // Each spoke is convex, so the panel fan never fills the open apertures.
+    Plate.BeveledPrism({{-12.7,-1.6},{-2.4,-2.1},{-2.4,2.1},{-12.7,1.6}},.45,.08);
+    Plate.BeveledPrism({{2.4,-2.1},{12.7,-1.6},{12.7,1.6},{2.4,2.1}},.45,.08);
+    Plate.BeveledPrism({{-3.0,-1.5},{-2.1,-13.0},{2.1,-13.0},{3.0,-1.5}},.45,.08);
+    // Small rear paddles fit the period semi-automatic gearbox.
+    for (double Side : {-1.0,1.0})
+        Plate.Panel(FVector(2.1,Side*8.8,-.7),1.0,3.3,.35,.55);
+    Plate.Commit(WheelMesh, 1, TEXT("M_WheelMetal"));
+    Hub.Disc(FVector(1.4,0,0),2.45,2.2,48);
+    Hub.Disc(FVector(-.5,0,0),2.75,.6,48);
+    for (int32 I=0; I<6; ++I)
     {
-        const FQuat Q(FVector::ForwardVector, Angle);
-        Metal.Prism({{2.5, -1.0}, {17.75, -.72}, {17.75, .72}, {2.5, 1.0}}, .75, FVector(.2, 0, 0), Q);
-        for (double Y : {8.2, 12.0})
-            Hub.Ellipsoid(Q.RotateVector(FVector(-.22, Y, 0)), FVector(.045, 1.35, .32), Q, 6, 12);
+        const double A=UE_TWO_PI*I/6;
+        Rivets.Disc(FVector(-.86,FMath::Cos(A)*2.05,FMath::Sin(A)*2.05),.17,.13,12);
     }
-    Metal.Disc(FVector(-.15, 0, 0), 3.55, 1.0);
-    Metal.Commit(WheelMesh, 1, TEXT("M_F1Carbon"));
-    Hub.Disc(FVector(-.87, 0, 0), 2.56, .55);
-    Hub.Torus(WheelRadius - .30, .035, FVector(-WheelTube + .06, 0, 0));
-    Hub.Commit(WheelMesh, 2, TEXT("M_Dashboard"));
-    for (int32 I = 0; I < 6; ++I)
+    for (double Side : {-1.0,1.0})
     {
-        const double A = UE_TWO_PI * I / 6;
-        Rivets.Disc(FVector(-.83, FMath::Cos(A) * 2.95, FMath::Sin(A) * 2.95), .22, .18, 8);
+        Hub.Panel(FVector(-.7,Side*5.3,2.5),.9,1.05,.65,.18);
+        RedButtons.Panel(FVector(-1.10,Side*5.3,2.5),.6,.75,.18,.12);
     }
-    Rivets.Disc(FVector(-1.22, 0, 0), .48, .2, 6); Rivets.Commit(WheelMesh, 3, TEXT("M_BrushedMetal"));
-    FCockpitGeometry Marker;
-    Marker.Torus(WheelRadius, WheelTube + .035, FVector::ZeroVector, UE_PI * .484, UE_PI * .032, 5);
-    Marker.Commit(WheelMesh, 4, TEXT("M_Red"));
+    Hub.Commit(WheelMesh,2,TEXT("M_Dashboard"));
+    Rivets.Commit(WheelMesh,3,TEXT("M_BrushedMetal"));
+    RedButtons.Commit(WheelMesh,4,TEXT("M_GaugeNeedle"));
+    // A plain period centre marker, without a borrowed manufacturer badge.
+    AmberButtons.Disc(FVector(-.87,0,0),1.13,.08,32);
+    AmberButtons.Commit(WheelMesh,5,TEXT("M_GaugeAmber"));
 
     auto* LeftHandMesh = Mesh(TEXT("LeftDrivingGlove"), CockpitRoot);
     auto* RightHandMesh = Mesh(TEXT("RightDrivingGlove"), CockpitRoot);
@@ -604,34 +705,35 @@ void AVroomCar::BuildCockpit()
     else UE_LOG(LogTemp, Error, TEXT("Unable to load Data/gloves.json"));
 
     auto* DashMesh = Mesh(TEXT("InstrumentBar"), CockpitRoot);
-    DashMesh->SetRelativeTransform(FTransform(InstrumentTilt, InstrumentCenter, FVector(.52)));
-    FCockpitGeometry Bezel, Faces, Markings, InstrumentTrim;
-    InstrumentTrim.Panel(FVector(.25, 0, 0), 31.05, 7.55, 2.7, 2.2);
-    for (double Side : {-1.0, 1.0})
-        for (double Height : {-4.8, 4.8})
-            InstrumentTrim.Disc(FVector(-1.55, Side * 27.5, Height), .36, .10, 10);
-    InstrumentTrim.Commit(DashMesh, 3, TEXT("M_BrushedMetal"));
-    Bezel.Panel(FVector(0, 0, 0), 30.5, 7.0, 2.8, 2.0);
-    Bezel.Commit(DashMesh, 0, TEXT("M_CockpitSlate"));
-    Faces.Panel(FVector(-1.49, 0, 0), 29.3, 5.85, .15, 1.4);
-    Faces.Panel(FVector(-1.68, 12, .7), 9.0, 3.7, .16, .3);
-    Faces.Commit(DashMesh, 1, TEXT("M_GaugeFace"));
-    // The original groups the H gate, speed and horizontal RPM strip around the rim.
-    Markings.Line(FVector(-1.86, -22, 0), FVector(-1.86, -10, 0), .18);
-    for (int32 I = 0; I < 3; ++I)
+    DashMesh->SetRelativeTransform(FTransform(InstrumentTilt, InstrumentCenter, FVector::OneVector));
+    FCockpitGeometry Bezel, Faces, Markings, InstrumentMetal, InstrumentTrim;
+    Bezel.BeveledPrism({{-17,-4.4},{17,-4.4},{18,-2.5},{17,3.9},{13,5.2},
+        {-13,5.2},{-17,3.9},{-18,-2.5}},1.4,.22);
+    // Recessed LCD gasket and a small rain lip, like a separate period instrument.
+    InstrumentTrim.Panel(FVector(-.76,0,0),7.55,3.18,.22,.40);
+    InstrumentTrim.Panel(FVector(-.85,0,4.65),12.2,.32,.7,.22);
+    InstrumentTrim.Commit(DashMesh,3,TEXT("M_WheelMetal"));
+    Bezel.Commit(DashMesh,0,TEXT("M_Dashboard"));
+    Faces.Panel(FVector(-.92,0,0),7.2,2.85,.12,.35);
+    for (double Side : {-1.0,1.0})
     {
-        const double Y = -22.0 + I * 6.0;
-        Markings.Line(FVector(-1.86, Y, -2.75), FVector(-1.86, Y, 2.75), .18);
-        Markings.Digit(I * 2 + 1, FVector(-1.86, Y, 3.8), 1.15);
-        Markings.Digit(I * 2 + 2, FVector(-1.86, Y, -3.8), 1.15);
+        for (double Z : {-2.8,2.9})
+        {
+            InstrumentMetal.Disc(FVector(-.78,Side*15,Z),.23,.10,16);
+            Faces.Line(FVector(-.85,Side*15-.13,Z),FVector(-.85,Side*15+.13,Z),.045);
+        }
+        // Toggle collars and levers sit in the panel instead of floating lines.
+        InstrumentMetal.Disc(FVector(-.82,Side*11.8,-.5),.48,.17,20);
+        Faces.Disc(FVector(-.94,Side*11.8,-.5),.33,.10,20);
+        InstrumentMetal.Tube({{-1.0,Side*11.8,-.5},{-1.8,Side*11.8,.25}},
+            {.12,.16},FVector::RightVector,10,1);
+        Markings.Line(FVector(-.95,Side*11.8-1.0,1.1),FVector(-.95,Side*11.8+1.0,1.1),.10);
     }
-    // Small engraved KM/H strokes; unit labels stay fixed, all values are live.
-    auto UnitLine = [&](double Y1, double Z1, double Y2, double Z2)
-    { Markings.Line(FVector(-1.85, Y1, Z1), FVector(-1.85, Y2, Z2), .075); };
-    UnitLine(9.7, -3.9, 9.7, -2.75); UnitLine(9.7, -3.33, 10.4, -2.75); UnitLine(9.7, -3.33, 10.4, -3.9);
-    UnitLine(11.0, -3.9, 11.0, -2.75); UnitLine(11.0, -2.75, 11.45, -3.3); UnitLine(11.45, -3.3, 11.9, -2.75); UnitLine(11.9, -2.75, 11.9, -3.9);
-    UnitLine(12.45, -3.9, 12.85, -2.75); UnitLine(13.4, -3.9, 13.4, -2.75); UnitLine(14.2, -3.9, 14.2, -2.75); UnitLine(13.4, -3.33, 14.2, -3.33);
-    Markings.Commit(DashMesh, 2, TEXT("M_GaugeMark"));
+    DrawText3D(Markings,TEXT("KMH"),FVector(-1.95,.1,-1.35),.60);
+    Markings.Line(FVector(-1.95,-2.9,-1.9),FVector(-1.95,-2.9,1.9),.07);
+    Faces.Commit(DashMesh,1,TEXT("M_GaugeFace"));
+    Markings.Commit(DashMesh,2,TEXT("M_GaugeMark"));
+    InstrumentMetal.Commit(DashMesh,4,TEXT("M_BrushedMetal"));
 
     for (int32 I = 0; I < 2; ++I)
     {
@@ -641,31 +743,27 @@ void AVroomCar::BuildCockpit()
     }
     auto* GateMesh = Mesh(TEXT("SelectedGear"), DashMesh);
     FCockpitGeometry Gate;
-    Gate.Panel(FVector::ZeroVector, .56, .48, .08, .15);
-    Gate.Commit(GateMesh, 0, TEXT("M_GaugeNeedle"));
+    Gate.Digit(1, FVector(-1.95,-4.7,0), 3.6);
+    Gate.Commit(GateMesh, 0, TEXT("M_GaugeMark"));
     auto* DigitsMesh = Mesh(TEXT("LiveInstrumentDigits"), DashMesh);
     InstrumentDigits(0).Commit(DigitsMesh, 0, TEXT("M_GaugeMark"));
 
     auto* SurroundMesh = Mesh(TEXT("CockpitMonocoque"), CockpitRoot);
     FCockpitGeometry Carbon, Trim, Coaming, Fasteners;
-    // Low side rails and a shallow coaming, never a tall modern dashboard.
-    Carbon.Panel(FVector(123, 0, 43), 37, 3.5, 6, 2.5);
-    // A low carbon top and rounded padding give the original red surround
-    // a finished edge without raising it into the road view.
-    Coaming.Panel(FVector(119.7, 0, 43.8), 35.8, 2.55, .5, 1.8);
-    Trim.Tube({FVector(118.7, -35, 46.4), FVector(118.7, 0, 46.4), FVector(118.7, 35, 46.4)}, {.45, .45, .45});
-    for (float Side : {-1.f, 1.f})
+    // Thin rolled bodywork and an inset padded lip, rather than separate
+    // oversized tubes. The front pad joins both sides below the windscreen.
+    Carbon.Panel(FVector(63,0,51.5),24,4.5,3,2.5);
+    Coaming.Panel(FVector(60.9,0,52),22,2.5,.6,1.5);
+    Trim.Tube({{-55,-31,44},{-15,-29,47},{25,-26,51},{59,-22.5,54},
+        {62,0,55.2},{59,22.5,54},{25,26,51},{-15,29,47},{-55,31,44}},
+        {1.0,1.0,.9,.7,.65,.7,.9,1.0,1.0},FVector::UpVector,16,8);
+    for (double Side : {-1.0,1.0})
     {
-        const FVector N(0, Side, .35);
-        Carbon.Face({FVector(25, Side * 36, 20), FVector(130, Side * 36, 44),
-            FVector(143, Side * 43, 35), FVector(20, Side * 43, 12)}, N);
-        Carbon.Face({FVector(25, Side * 36, 20), FVector(130, Side * 36, 44),
-            FVector(128, Side * 33, 38), FVector(25, Side * 33, 15)}, -N);
-        Coaming.Face({FVector(25, Side * 36, 20.2), FVector(130, Side * 36, 44.2),
-            FVector(130, Side * 39, 43.2), FVector(25, Side * 39, 18.2)}, FVector::UpVector);
-        Trim.Tube({FVector(25, Side * 35.7, 21), FVector(80, Side * 35.7, 34), FVector(129, Side * 35.7, 44.4)}, {.7, .7, .6});
-        for (double Y : {28.5, 33.5})
-            Fasteners.Disc(FVector(119.32, Side * Y, 43.9), .28, .11, 10);
+        TArray<FVector> Rail{{-55,Side*34,43},{-15,Side*32,46},{25,Side*29,50},{62,Side*24,55}};
+        Carbon.Tube(Rail,{1.2,1.2,1.1,.9},FVector::UpVector,24,10);
+        Carbon.CockpitShoulder(Side);
+        Coaming.Face({{-55,Side*31,42},{59,Side*22.5,53},{55,Side*22,35},{-55,Side*31,26}}, FVector(0,-Side,0));
+        Fasteners.Disc(FVector(60.5,Side*19.7,52.8),.19,.1,12);
     }
     Carbon.Commit(SurroundMesh, 0, TEXT("M_F1Paint")); Trim.Commit(SurroundMesh, 1, TEXT("M_Dashboard"));
     Coaming.Commit(SurroundMesh, 2, TEXT("M_F1Carbon")); Fasteners.Commit(SurroundMesh, 3, TEXT("M_BrushedMetal"));
@@ -680,10 +778,10 @@ void AVroomCar::BuildCockpit()
     for (int32 I = 0; I <= 32; ++I)
     {
         const double U = -1.0 + 2.0 * I / 32;
-        Lip.Add(FVector(137 - 8 * U * U, 37 * U, 23 + 33 * FMath::Sqrt(FMath::Max(0.0, 1 - U * U))));
-        LipRadii.Add(.16);
+        Lip.Add(FVector(67 - 4 * U * U, 23 * U, 56 + 5 * FMath::Sqrt(FMath::Max(0.0, 1 - U * U))));
+        LipRadii.Add(.07);
     }
-    Edge.Tube(Lip, LipRadii, FVector::ForwardVector, 8, 2); Edge.Commit(VisorMesh, 1, TEXT("M_GloveBlue"));
+    Edge.Tube(Lip, LipRadii, FVector::ForwardVector, 8, 2); Edge.Commit(VisorMesh, 1, TEXT("M_BrushedMetal"));
     (void)UpdateCockpit(static_cast<float>(Drive.State.Steering));
 }
 
@@ -691,7 +789,9 @@ bool AVroomCar::IsCockpitVisible() const
 {
     const bool Blink = Contacts.State.InvulnerabilityRemaining > 0
         && FMath::Fmod(Contacts.State.InvulnerabilityRemaining, .2) < .08;
-    return !ChaseCamera && !Blink;
+    // The cockpit is part of the car in every view: the exterior camera sees
+    // the same steering wheel, white gloves, instruments and mirror housings.
+    return !Blink;
 }
 
 float AVroomCar::UpdateCockpit(float Steering)
@@ -709,7 +809,7 @@ float AVroomCar::UpdateCockpit(float Steering)
     if (!Visible) return FMath::Clamp(CockpitSteering, -1.f, 1.f);
     const float DisplaySteering = FMath::Clamp(CockpitSteering / CockpitSteeringInputMax, -1.f, 1.f);
     const FQuat Turn(FVector::ForwardVector, FMath::DegreesToRadians(-DisplaySteering * CockpitSteeringVisualAngleDeg()));
-    SteeringPivot->SetRelativeRotation(Turn);
+    SteeringPivot->SetRelativeRotation(WheelRestTilt * Turn);
     const float HandSteering = DisplaySteering * CockpitSteeringInputMax;
     for (int32 I = 0; I < 2; ++I)
     {
@@ -733,8 +833,15 @@ float AVroomCar::UpdateCockpit(float Steering)
     }
     const bool Disabled = Contacts.State.Phase == Vroom::ContactPhase::Crashed || Contacts.State.Phase == Vroom::ContactPhase::Recovering;
     const int32 Gear = FMath::Clamp(Drive.State.Gear, 1, 6);
-    CockpitMeshes[GearIndicator]->SetRelativeLocation(FVector(-2.02,
-        Disabled ? -16.0 : -22.0 + ((Gear - 1) / 2) * 6.0, Disabled ? 0.0 : (Gear % 2 ? 2.6 : -2.6)));
+    auto* GearMesh = CockpitMeshes[GearIndicator].Get();
+    const int32 DisplayGear = Disabled ? 0 : Gear;
+    const auto& GearData = GearMesh->GetCustomPrimitiveData().Data;
+    if (GearData.Num() == 0 || GearData[0] != DisplayGear)
+    {
+        FCockpitGeometry G; G.Digit(DisplayGear,FVector(-1.95,-4.7,0),3.6);
+        GearMesh->UpdateMeshSection_LinearColor(0,G.Vertices,G.Normals,G.UVs,G.Colors,G.Tangents);
+        GearMesh->SetCustomPrimitiveDataFloat(0,DisplayGear);
+    }
     const int32 Speed = FMath::Clamp(FMath::RoundToInt(Drive.State.SpeedMps * 3.6), 0, 999);
     auto* DigitsMesh = CockpitMeshes[Readout].Get();
     // Component-local caches avoid rebuilding small display buffers when unchanged.

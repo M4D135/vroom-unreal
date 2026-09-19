@@ -3,6 +3,162 @@
 #include <cmath>
 #include <iostream>
 using namespace Vroom;
+
+static void TestBrakingAndRacingLine(int Hz)
+{
+    const double Dt = 1.0 / Hz;
+    for (double Tyres : {2048.0, 600.0})
+    {
+        std::vector<TrafficCar> Cars(1);
+        Cars[0].Speed = 70;
+        Cars[0].TyreHealth = Tyres;
+        bool Entered = false, Anticipated = false;
+        const double CornerLimit = std::sqrt(16.0 / .025) * .96 * (.65 + .35 * Tyres / 2048.0);
+        for (int Frame = 0; Frame < Hz * 15; ++Frame)
+        {
+            const auto Old = Cars[0];
+            StepTraffic(Cars, Dt, 5000, 4.75, RaceDifficulty::Normal, nullptr,
+                [](double S) { return S >= 220 && S < 330 ? .025 : 0.0; });
+            Anticipated |= Cars[0].Distance < 120 && Cars[0].Speed < 58;
+            if (Old.Distance < 220 && Cars[0].Distance >= 220)
+            {
+                Entered = true;
+                assert(Cars[0].Speed <= CornerLimit + .8);
+            }
+            assert(Cars[0].Speed - Old.Speed <= 5.0 * Dt + 1e-9);
+        }
+        assert(Entered && Anticipated);
+    }
+
+    std::vector<TrafficCar> Right(1), Left(1);
+    Right[0].Speed = Left[0].Speed = 40;
+    bool Outside = false, Apex = false, Exit = false;
+    for (int Frame = 0; Frame < Hz * 10; ++Frame)
+    {
+        const auto Old = Right[0];
+        const auto Curve = [](double S) { return S >= 140 && S < 250 ? .014 : 0.0; };
+        StepTraffic(Right, Dt, 5000, 4.75, RaceDifficulty::Normal, nullptr, Curve);
+        StepTraffic(Left, Dt, 5000, 4.75, RaceDifficulty::Normal, nullptr,
+            [&](double S) { return -Curve(S); });
+        assert(std::abs(Right[0].Distance - Left[0].Distance) < 1e-8);
+        assert(std::abs(Right[0].Lateral + Left[0].Lateral) < 1e-8);
+        assert(std::abs(Right[0].LaneVelocity - Old.LaneVelocity) <= 3.6 * Dt + 1e-8);
+        Outside |= Right[0].Distance < 140 && Right[0].Lateral < -1.0;
+        Apex |= Right[0].Distance > 190 && Right[0].Distance < 250 && Right[0].Lateral > 1.0;
+        Exit |= Right[0].Distance > 310 && std::abs(Right[0].Lateral) < .3;
+    }
+    assert(Outside && Apex && Exit);
+}
+
+static void TestCommittedPassAndSpace(int Hz)
+{
+    const double Dt = 1.0 / Hz;
+    const auto Straight = [](double) { return 0.0; };
+    TrafficCar Player;
+    Player.Distance = 55; Player.Speed = 28;
+    std::vector<TrafficCar> Cars(1);
+    Cars[0].Speed = 50;
+    bool Committed = false, Cleared = false, Returned = false;
+    double Side = 0;
+    for (int Frame = 0; Frame < Hz * 12; ++Frame)
+    {
+        StepTraffic(Cars, Dt, 5000, 4.75, RaceDifficulty::Normal, &Player, Straight);
+        Player.Distance += Player.Speed * Dt;
+        if (Cars[0].OvertakeTarget == -1)
+        {
+            if (!Committed) { Committed = true; Side = std::copysign(1.0, Cars[0].TargetLane); }
+            assert(Side * Cars[0].TargetLane > 2.5);
+        }
+        if (Committed && Cars[0].OvertakeTarget == -2)
+        {
+            assert(Cars[0].Distance - Player.Distance > 8);
+            Cleared = true;
+        }
+        assert(!(std::abs(Cars[0].Distance - Player.Distance) < 4.9 && std::abs(Cars[0].Lateral) < 2.4));
+        Returned |= Cleared && std::abs(Cars[0].Lateral) < .3;
+    }
+    assert(Committed && Cleared && Returned);
+
+    // An already approaching driver owns the overtaking lane. The follower
+    // must not cut across its nose simply because that lane is empty now.
+    Cars.assign(2, {});
+    Cars[0].Speed = 40;
+    Cars[1].Distance = -12; Cars[1].Speed = 65;
+    Cars[1].Lateral = Cars[1].TargetLane = -2.65;
+    Player.Distance = 40; Player.Speed = 25;
+    StepTraffic(Cars, Dt, 5000, 4.75, RaceDifficulty::Normal, &Player, Straight);
+    assert(Cars[0].TargetLane >= 0);
+
+    // Even stale opposite lane intentions cannot squeeze two cars together.
+    Cars.assign(2, {});
+    for (int I = 0; I < 2; ++I)
+    {
+        Cars[I].Speed = 38;
+        Cars[I].Lateral = I ? 2.65 : -2.65;
+        Cars[I].TargetLane = -Cars[I].Lateral;
+        Cars[I].DecisionDelay = 100;
+    }
+    for (int Frame = 0; Frame < Hz * 4; ++Frame)
+    {
+        StepTraffic(Cars, Dt, 5000, 4.75, RaceDifficulty::Normal, nullptr, Straight);
+        if (std::abs(Cars[0].Distance - Cars[1].Distance) < 5.2)
+            assert(std::abs(Cars[0].Lateral - Cars[1].Lateral) >= 2.5);
+    }
+
+    // A player's sideways motion is an observable threat, not an input read.
+    // The same stationary car outside our lane must not trigger braking.
+    std::vector<TrafficCar> Crossing(1), Clear(1);
+    Crossing[0].Speed = Clear[0].Speed = 50;
+    Player.Distance = 30; Player.Speed = 20; Player.Lateral = -3.4; Player.LaneVelocity = 6;
+    StepTraffic(Crossing, Dt, 5000, 4.75, RaceDifficulty::Normal, &Player, Straight);
+    Player.LaneVelocity = 0;
+    StepTraffic(Clear, Dt, 5000, 4.75, RaceDifficulty::Normal, &Player, Straight);
+    assert(Crossing[0].Speed < 50 && Clear[0].Speed > 50);
+}
+
+static void TestBusyPack(int Hz)
+{
+    const double Dt = 1.0 / Hz;
+    constexpr double Length = 1500;
+    std::vector<TrafficCar> Pack(12);
+    for (int I = 0; I < 12; ++I)
+    {
+        auto& Car = Pack[I];
+        Car.Distance = 1250 + (I / 2) * 20;
+        Car.Speed = 45 + I % 3;
+        Car.Lateral = Car.TargetLane = I % 2 ? 2.65 : -2.65;
+        Car.Personality = PersonalityByLivery(I / 2);
+    }
+    TrafficCar Player;
+    Player.Distance = 1440; Player.Speed = 18;
+    bool PassedPlayer = false;
+    for (int Frame = 0; Frame < Hz * 35; ++Frame)
+    {
+        const auto Before = Pack;
+        StepTraffic(Pack, Dt, Length, 4.75, RaceDifficulty::Hard, &Player,
+            [](double S)
+            {
+                const double Along = PitAlong(S, Length);
+                return Along < 160 ? .018 : Along > 450 && Along < 640 ? -.021 : 0.0;
+            });
+        Player.Distance += Player.Speed * Dt;
+        for (std::size_t I = 0; I < Pack.size(); ++I)
+        {
+            assert(std::isfinite(Pack[I].Distance) && Pack[I].Distance >= Before[I].Distance);
+            assert(std::abs(Pack[I].Lateral) < 3.55);
+            assert(std::abs(Pack[I].Lateral - Before[I].Lateral) <= 1.8 * Dt + 1e-8);
+            assert(!(std::abs(TrafficGap(Player.Distance, Pack[I].Distance, Length)) < 4.9
+                && std::abs(Pack[I].Lateral - Player.Lateral) < 2.4));
+            for (std::size_t J = I + 1; J < Pack.size(); ++J)
+                assert(!(std::abs(TrafficGap(Pack[I].Distance, Pack[J].Distance, Length)) < 4.9
+                    && std::abs(Pack[I].Lateral - Pack[J].Lateral) < 2.4));
+            PassedPlayer |= Pack[I].Distance > Player.Distance + 10;
+        }
+    }
+    assert(PassedPlayer);
+    for (const auto& Car : Pack) assert(Car.Distance > 1700);
+}
+
 int main()
 {
     const auto Straight=[](double){return 0.0;};
@@ -47,6 +203,9 @@ int main()
     }
     for (int Hz : {30,60,120})
     {
+        TestBrakingAndRacingLine(Hz);
+        TestCommittedPassAndSpace(Hz);
+        TestBusyPack(Hz);
         std::vector<TrafficCar> Pitter(1);
         auto& P = Pitter[0]; P.Distance=20; P.Speed=18; P.Fuel=.10; P.TyreHealth=300;
         P.FuelBurn=.004; P.TyreWearPerMetre=.2;
@@ -111,5 +270,5 @@ int main()
         }
         assert(Complete); // Includes a busy single-box queue and pit exit merges.
     }
-    std::cout<<"PASS: overtaking, difficulty, damage, 30/60/120 Hz pit service, fuel depletion, three complete twelve-car races\n";
+    std::cout<<"PASS: anticipatory braking, mirrored outside/apex/exit lines, committed passes, closing-lane and cut-in awareness, side-by-side space, difficulty, damage, 30/60/120 Hz pit service, fuel depletion, three complete twelve-car races\n";
 }

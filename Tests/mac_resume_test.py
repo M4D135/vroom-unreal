@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 from pathlib import Path
+import shlex
 import struct
 import sys
 import tempfile
@@ -14,7 +15,7 @@ import zlib
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'Tools'))
 import verify_mac
 from install_mac import sha256
-from regression_gates import MOTION_LIMITS, PERFORMANCE_LIMITS
+from regression_gates import MOTION_LIMITS, PERFORMANCE_LIMITS, release_limits_for_preset
 
 
 def identity():
@@ -142,6 +143,27 @@ class ResumeIdentityTests(unittest.TestCase):
         self.previous.pop('release_limits')
         self.assert_rejected()
 
+    def test_identical_but_mislabeled_or_relaxed_limits_cannot_resume(self):
+        for preset, budget in (('performance', 'photorealism'), ('photorealism', 'high')):
+            with self.subTest(preset=preset):
+                self.previous = identity()
+                self.previous.update(version='0.34.0', graphics_preset=preset,
+                                     release_limits=release_limits_for_preset(budget))
+                self.current = copy.deepcopy(self.previous)
+                self.assert_rejected()
+        self.previous.update(graphics_preset='photorealism',
+                             release_limits=release_limits_for_preset('photorealism'))
+        self.previous['release_limits']['performance']['max_frame_ms'] = 100
+        self.current = copy.deepcopy(self.previous)
+        self.assert_rejected()
+
+    def test_matching_photorealism_identity_resumes_without_changing_60hz(self):
+        self.previous.update(version='0.34.0', graphics_preset='photorealism',
+                             release_limits=release_limits_for_preset('photorealism'))
+        self.current = copy.deepcopy(self.previous)
+        verify_mac.validate_resume_identity(self.previous, self.current)
+        self.assertEqual(identity()['release_limits']['performance']['min_mean_fps'], 59.0)
+
 
 class ResumeCaseTests(unittest.TestCase):
     def setUp(self):
@@ -202,6 +224,21 @@ class ResumeCaseTests(unittest.TestCase):
                 row, request, _ = self.make_case(legacy=legacy)
                 self.assertEqual(self.reusable(row, request), row)
 
+    def test_preset_evidence_must_match_the_command_actually_run(self):
+        row, request, log = self.make_case()
+        self.previous['graphics_preset'] = 'photorealism'
+        request['graphics_preset'] = 'photorealism'
+        row['request'] = copy.deepcopy(request)
+        original = log.read_text()
+        self.assertIsNone(self.reusable(row, request))
+        log.write_text(original.replace('-VroomVerify', '-VroomGraphicsPreset=4 -VroomVerify'))
+        self.assertEqual(self.reusable(row, request), row)
+        for flags in ('-VroomGraphicsPreset=0', '-VroomGraphicsPreset=4 -VroomGraphicsPreset=0',
+                      '-VroomGraphicsPreset=4 -VroomGraphicsPreset=4'):
+            with self.subTest(flags=flags):
+                log.write_text(original.replace('-VroomVerify', flags + ' -VroomVerify'))
+                self.assertIsNone(self.reusable(row, request))
+
     def test_visible_capture_with_active_foreground_is_reusable(self):
         row, request, log = self.make_case(capture=True, visible=True)
         self.assertFalse(row['offscreen'])
@@ -241,7 +278,7 @@ class ResumeCaseTests(unittest.TestCase):
         self.assertIsNone(self.reusable(row, request))
 
     def test_explicit_failure_and_incomplete_status_are_not_reusable(self):
-        for status in ('FAIL', 'RUNNING', 'PENDING'):
+        for status in ('FAIL', 'RUNNING', 'PENDING', 'EXECUTED', 'PENDING_METRICS'):
             with self.subTest(status=status):
                 self.previous['cases'].clear()
                 row, request, _ = self.make_case()
@@ -530,6 +567,15 @@ class ResumeProfileTests(unittest.TestCase):
         self.performance_failures.return_value = ['Frame p99 exceeds release limit']
         self.assertIsNone(self.reusable())
 
+    def test_profile_reanalysis_uses_its_canonical_budget(self):
+        self.previous.update(version='0.34.0', graphics_preset='photorealism',
+                             release_limits=release_limits_for_preset('photorealism'))
+        self.assertEqual(self.reusable(), self.csv.resolve())
+        self.performance_failures.assert_called_with({'fixture': 'performance'}, 1800,
+            release_limits_for_preset('photorealism')['performance'])
+        self.previous['graphics_preset'] = 'performance'
+        self.assertIsNone(self.reusable())
+
     def test_soak_requires_preserved_motion_and_explicit_lap_completion(self):
         self.row.update(name='soak-track-1', expected_frames=7800, distance=0, track=0)
         log = self.csv.with_suffix('.log')
@@ -553,8 +599,146 @@ class ResumeProfileTests(unittest.TestCase):
                 self.assertIsNone(self.reusable())
 
 
+class VerdictLifecycleTests(unittest.TestCase):
+    """Real CSV/motion gates, with only OS/game processes replaced by fixtures."""
+    def run_fixture(self, failure, soak=False, reused=False):
+        with tempfile.TemporaryDirectory(prefix='vroom-verdict-test-') as temporary:
+            root, container = Path(temporary) / 'project', Path(temporary) / 'container'
+            ini = root / 'Config/DefaultGame.ini'
+            ini.parent.mkdir(parents=True)
+            ini.write_text('ProjectVersion=0.34.0\n')
+            bundle = root / 'Saved/Packages/Mac/Vroom.app'
+            executable = bundle / 'Contents/MacOS/Vroom'
+            executable.parent.mkdir(parents=True)
+            executable.write_bytes(b'fixture executable')
+            data = bundle / 'Contents/UE/Vroom/Content/Paks/Vroom.ucas'
+            data.parent.mkdir(parents=True)
+            data.write_bytes(b'fixture cooked data')
+            csv_dir = container / 'Library/Application Support/Epic/Vroom/Saved/Profiling/CSV'
+            csv_dir.mkdir(parents=True)
+            snapshots, children = [], []
+
+            def csv_fixture(path, count, hitch=False):
+                rows = ['33.3333,1.2,22\n'] * count
+                if hitch:
+                    rows[-1] = '157,1.2,22\n'
+                path.write_text('FrameTime,GameThreadTime,GPUTime\n' + ''.join(rows))
+
+            def child(command, **kwargs):
+                values = dict(arg.split('=', 1) for arg in command if '=' in arg)
+                log = Path(values['-abslog'])
+                name = log.stem
+                children.append(name)
+                body = ('LogInit: Command Line: ' + shlex.join(command[1:]) + '\n'
+                        'VROOM: Version 0.34.0\nVROOM: Verification '
+                        + ('FAIL' if name == 'right' else 'PASS') + ' scenario=fixture\n')
+                if '-csvCaptureFrames' in values:
+                    csv_fixture(csv_dir / (name + '.csv'), int(values['-csvCaptureFrames']), failure == name)
+                if '-VroomMotionTrace' in command:
+                    count = 7800 if '-VroomTourDemo' in command else 1400
+                    body += ''.join(f'VROOM-MOTION dt=0.033333 s={i * .5} yaw='
+                                    f'{10 if failure in (name, name + "-camera") and i == 150 else 0}\n'
+                                    for i in range(count))
+                if '-VroomTourDemo' in command:
+                    body += f'VROOM-TOUR track={values["-VroomTrack"]} complete={int(failure != name + "-coverage")}\n'
+                log.write_text(body)
+                kwargs['stdout'].write('fixture process output\n')
+                if '-VroomCapture' in values:
+                    Path(values['-VroomCapture']).write_bytes(png_bytes(int(values['-ResX']), int(values['-ResY'])))
+                process = mock.Mock(pid=4242)
+                process.wait.return_value = 0
+                process.poll.return_value = 0
+                return process
+
+            def os_run(command, **kwargs):
+                return verify_mac.subprocess.CompletedProcess(command, 0, 'foreground_after=1\n', '')
+
+            argv = ['verify_mac.py', '--visible', '--graphics-preset', 'photorealism', '--profile-first',
+                    '--soak' if soak else '--profile']
+            output = io.StringIO()
+            with contextlib.ExitStack() as stack:
+                for target, value in [('ROOT', root), ('CONTAINER', container)]:
+                    stack.enter_context(mock.patch.object(verify_mac, target, value))
+                stack.enter_context(mock.patch.object(verify_mac.subprocess, 'Popen', side_effect=child))
+                stack.enter_context(mock.patch.object(verify_mac.subprocess, 'run', side_effect=os_run))
+                for name in ('analyze_csv', 'analyze_motion'):
+                    actual = getattr(verify_mac, name)
+                    def inspect_pending(path, warmup, actual=actual):
+                        reports = [p for p in (root / 'Saved/Validation').rglob('results.json') if p.parent.name != 'old']
+                        state = json.loads(reports[0].read_text())
+                        snapshots.append(copy.deepcopy(state))
+                        self.assertEqual(state['cases'][-1]['status'], 'PENDING_METRICS')
+                        return actual(path, warmup)
+                    stack.enter_context(mock.patch.object(verify_mac, name, side_effect=inspect_pending))
+                if reused:
+                    # Inject an accepted resume candidate, then make the real
+                    # final CSV gate reject it. Runtime reuse must not publish
+                    # PASS while that final re-evaluation is still pending.
+                    old = root / 'Saved/Validation/old'
+                    old.mkdir(parents=True)
+                    log, csv_path = old / 'perf-1440.log', old / 'perf-1440.csv'
+                    log.write_text('VROOM: Version 0.34.0\n')
+                    csv_fixture(csv_path, 1800, hitch=True)
+                    previous = dict(version='0.34.0', editor=False, graphics_preset='photorealism',
+                        release_limits=release_limits_for_preset('photorealism'),
+                        executable_sha256=sha256(executable),
+                        package_data_sha256={p: sha256(bundle / p) for p in verify_mac.package_data_paths(bundle)})
+                    resume = old / 'results.json'
+                    resume.write_text(json.dumps(previous))
+                    argv += ['--resume', str(resume)]
+                    cached = dict(name='perf-1440', status='PASS', exit=0, checks=[], offscreen=False,
+                                  log=str(log.relative_to(root)), display_mode='onscreen_active')
+                    stack.enter_context(mock.patch.object(verify_mac, 'profile_reusable', return_value=csv_path))
+                    stack.enter_context(mock.patch.object(verify_mac, 'case_reusable', side_effect=lambda *a: copy.deepcopy(cached)))
+                stack.enter_context(mock.patch.object(sys, 'argv', argv))
+                stack.enter_context(contextlib.redirect_stdout(output))
+                with self.assertRaisesRegex(RuntimeError, failure):
+                    verify_mac.main()
+            reports = [p for p in (root / 'Saved/Validation').rglob('results.json') if p.parent.name != 'old']
+            summary = json.loads(reports[0].read_text())
+            self.assertFalse(summary['completed'])
+            self.assertEqual(summary['release_limits'], release_limits_for_preset('photorealism'))
+            self.assertEqual(summary['cases'][-1]['status'], 'FAIL')
+            self.assertIn(failure, [item['name'] for item in summary['failures']])
+            self.assertNotIn(summary['cases'][-1]['name'] + ': PASS', output.getvalue())
+            for case in summary['cases'][:-1]:
+                self.assertEqual(case['status'], 'PASS')
+                self.assertEqual(output.getvalue().count(case['name'] + ': PASS'), 1)
+            if reused:
+                self.assertEqual(children, [])
+                self.assertIn('reused_from', summary['cases'][-1])
+            return summary, snapshots
+
+    def test_failed_profile_has_no_premature_pass(self):
+        summary, snapshots = self.run_fixture('perf-1440')
+        self.assertTrue(snapshots)
+        self.assertEqual(summary['performance'][0]['report']['frame_time']['max_ms'], 157)
+
+    def test_failed_motion_keeps_previous_profile_passes(self):
+        self.run_fixture('motion')
+
+    def test_soak_pass_waits_for_camera_and_lap_coverage(self):
+        for failure in ('soak-track-1-camera', 'soak-track-1-coverage'):
+            with self.subTest(failure=failure):
+                self.run_fixture(failure, soak=True)
+
+    def test_successful_metrics_and_functional_case_publish_one_pass_each(self):
+        summary, _ = self.run_fixture('right')
+        self.assertEqual([case['name'] for case in summary['cases']],
+                         ['perf-1440', 'perf-2560', 'motion', 'neutral', 'right'])
+
+    def test_reused_profile_waits_for_final_metrics_gate(self):
+        self.run_fixture('perf-1440', reused=True)
+
+
 class ResumeMainEvidenceTests(unittest.TestCase):
     def test_activation_failure_is_preserved_before_main_raises(self):
+        self.check_activation_failure()
+
+    def test_photorealism_cli_uses_preset_four_and_a_30hz_capture_budget(self):
+        self.check_activation_failure('photorealism')
+
+    def check_activation_failure(self, preset=None):
         with tempfile.TemporaryDirectory(prefix='vroom-resume-main-test-') as temporary:
             root = Path(temporary) / 'project'
             container = Path(temporary) / 'container'
@@ -591,7 +775,7 @@ class ResumeMainEvidenceTests(unittest.TestCase):
                                'LogTemp: Display: VROOM: Version 0.30.0\n'
                                'LogTemp: Display: VROOM: Verification PASS scenario=fixture\n'
                                'Progress self-test PASS\nMenu self-test PASS\n'
-                               'Settings self-test PASS\nDrift feedback PASS\nDrift skill denied PASS\n'
+                               'Settings self-test PASS\nDrift feedback PASS\nDrift skill denied PASS\nExpert drift PASS\nTraffic overtake PASS\n'
                                'Controlled landing quality=1.0\n'
                                'Graphics preview PASS\nOffroad restart PASS\n'
                                'Start integration PASS\nTrack geometry PASS\n' + start_events)
@@ -616,7 +800,8 @@ class ResumeMainEvidenceTests(unittest.TestCase):
 
             with mock.patch.object(verify_mac, 'ROOT', root), \
                     mock.patch.object(verify_mac, 'CONTAINER', container), \
-                    mock.patch.object(sys, 'argv', ['verify_mac.py', '--profile']), \
+                    mock.patch.object(sys, 'argv', ['verify_mac.py', '--profile'] +
+                                      (['--graphics-preset', preset] if preset else [])), \
                     mock.patch.object(verify_mac.subprocess, 'Popen', side_effect=fake_child), \
                     mock.patch.object(verify_mac.subprocess, 'run', side_effect=fake_run), \
                     contextlib.redirect_stdout(io.StringIO()):
@@ -630,6 +815,11 @@ class ResumeMainEvidenceTests(unittest.TestCase):
             rows = [row for row in summary['cases'] if row['name'] == 'perf-1440']
             self.assertEqual(len(rows), 1)
             row = rows[0]
+            self.assertEqual(summary['release_limits'], release_limits_for_preset(preset))
+            self.assertEqual(row['request']['seconds'], 120 if preset == 'photorealism' else 60)
+            if preset:
+                self.assertEqual(row['request']['graphics_preset'], preset)
+                self.assertIn('-VroomGraphicsPreset=4', (root / row['log']).read_text())
             self.assertEqual(row['status'], 'FAIL')
             self.assertEqual(row['exit'], 0)
             self.assertIs(row['offscreen'], False)

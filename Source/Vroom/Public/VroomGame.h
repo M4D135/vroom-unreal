@@ -5,7 +5,7 @@
 // Version affichee dans le HUD et le journal : le seul temoin de build fiable.
 namespace Vroom
 {
-inline constexpr const TCHAR* AppVersion = TEXT("0.33");
+inline constexpr const TCHAR* AppVersion = TEXT("0.34");
 }
 #include "GameFramework/Pawn.h"
 #include "GameFramework/HUD.h"
@@ -17,6 +17,7 @@ inline constexpr const TCHAR* AppVersion = TEXT("0.33");
 #include "VroomRaceRules.h"
 #include "VroomSession.h"
 #include "VroomTrafficModel.h"
+#include "VroomWheelVisuals.h"
 #include "VroomGame.generated.h"
 
 namespace Vroom { enum class Action : uint8; }
@@ -109,10 +110,15 @@ private:
     TMap<FIntPoint, TArray<int32>> HazardCells;
     int32 VegetationQuality = -1;
     bool VegetationWind = false;
+    bool VegetationTreeShadows = false;
     TArray<double> RenderedOpponentS;
     TArray<double> RenderedOpponentLanes;
     TArray<double> OpponentVisualYaw;
-    TArray<FTransform> RenderedOpponentTransforms[4];
+    TArray<double> OpponentWheelSteering;
+    TArray<Vroom::WheelVisualState> OpponentWheelVisuals;
+    TArray<bool> OpponentVisualDiscontinuity;
+    static constexpr int32 OpponentMeshGroupCount = 5;
+    TArray<FTransform> RenderedOpponentTransforms[OpponentMeshGroupCount];
     // Longueur du spline mise en cache : LengthM() est appelee des dizaines de
     // fois par image (courbure, positions, adversaires, HUD). Evite de
     // retraverser le spline a chaque appel, surtout sensible en virage ou les
@@ -122,7 +128,7 @@ private:
     float CurvatureSampleSpacing = 2.f;
     void RefreshLengthCache();
     void RebuildCurvatureCache();
-    TArray<FTransform> NextOpponentTransforms[4];
+    TArray<FTransform> NextOpponentTransforms[OpponentMeshGroupCount];
     bool OpponentMotionNeedsReset = false;
     bool LoadTracks();
     void BuildSurface();
@@ -219,6 +225,7 @@ public:
     TArray<FTransform> BodyBaseTransforms;
     TArray<int8> OvertakeSides;
     TArray<int32> TyrePartIndices;
+    Vroom::WheelVisualState PlayerWheelVisual;
     TArray<TObjectPtr<UStaticMeshComponent>> SuspensionBars;
     TArray<FVector> SuspensionChassis;
     TArray<FVector> SuspensionHubs;
@@ -273,6 +280,8 @@ public:
     double StartTestDistance = 0;
     TArray<double> StartTestOpponents;
     bool PitTest = false, PitTestStationary = true, PitTestCompleted = false;
+    bool TrafficTest = false, TrafficTestCommitted = false, TrafficTestBraked = false;
+    bool TrafficTestAlongside = false, TrafficTestClear = true, TrafficTestCompleted = false;
     double PitTestOpponentStart = 0;
     int32 TestContacts = 0;
     int32 TestRespawns = 0;

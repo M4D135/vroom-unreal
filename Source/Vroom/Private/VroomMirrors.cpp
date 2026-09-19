@@ -16,9 +16,11 @@ float MirrorInterval()
     static const IConsoleVariable* Effects = IConsoleManager::Get().FindConsoleVariable(TEXT("sg.EffectsQuality"));
     return 1.f / (Effects && Effects->GetInt() >= 2 ? 60.f : 30.f);
 }
-constexpr double MirrorX = 200;
-constexpr double MirrorY = 70;
-constexpr double MirrorZ = 12;
+// Car-local coordinates, shared with the real body and front wheels. Their
+// axle is at X=128 with a 35 cm tyre radius: the housings remain behind X=93.
+constexpr double MirrorX = 80;
+constexpr double MirrorY = 73;
+constexpr double MirrorZ = 50;
 
 struct FMirrorGeometry
 {
@@ -50,9 +52,55 @@ struct FMirrorGeometry
     }
     static TArray<FVector2D> Outline(double W, double H, double Corner)
     {
-        return {{-W + Corner, -H}, {W - Corner, -H}, {W, -H + Corner}, {W, H - Corner},
-            {W - Corner, H}, {-W + Corner, H}, {-W, H - Corner}, {-W, -H + Corner}};
+        TArray<FVector2D> Result;
+        // Real corner arcs keep the silhouette round at cockpit distance.
+        for (int32 CornerIndex=0; CornerIndex<4; ++CornerIndex)
+        {
+            const double A0=CornerIndex*UE_PI*.5;
+            const FVector2D C((CornerIndex==0 || CornerIndex==3) ? W-Corner : -W+Corner,
+                CornerIndex<2 ? H-Corner : -H+Corner);
+            for (int32 I=0; I<=6; ++I)
+            {
+                const double A=A0+UE_PI*.5*I/6;
+                Result.Add(C+FVector2D(FMath::Cos(A),FMath::Sin(A))*Corner);
+            }
+        }
+        return Result;
     }
+    void Housing(FVector Center)
+    {
+        // A rolled front edge, broad shoulder and tapered rear cap form one
+        // smooth shell. The dimensions still clear the physical front tyres.
+        constexpr double X[] = {-1.7,-1.40,-.9,.9,1.55,1.7};
+        constexpr double Inset[] = {.32,.08,0,.12,.55,.85};
+        constexpr int32 Rings=6;
+        const int32 Start=Vertices.Num();
+        int32 Count=0;
+        for (int32 R=0; R<Rings; ++R)
+        {
+            const auto Points=Outline(11.5-Inset[R],4.0-Inset[R],1.25);
+            Count=Points.Num();
+            const int32 Prev=FMath::Max(0,R-1), Next=FMath::Min(Rings-1,R+1);
+            const double Axial=(Inset[Next]-Inset[Prev])/(X[Next]-X[Prev]);
+            for (int32 I=0; I<Count; ++I)
+            {
+                const FVector2D D=Points[(I+1)%Count]-Points[(I+Count-1)%Count];
+                const FVector2D Out=FVector2D(D.Y,-D.X).GetSafeNormal();
+                Vertex(Center+FVector(X[R],Points[I].X,Points[I].Y),
+                    FVector(Axial,Out.X,Out.Y),FVector2D(double(I)/Count,double(R)/(Rings-1)));
+            }
+        }
+        for (int32 R=0; R<Rings-1; ++R) for (int32 I=0; I<Count; ++I)
+        {
+            const int32 A=Start+R*Count+I, B=Start+R*Count+(I+1)%Count;
+            Triangle(A,B,A+Count); Triangle(B,B+Count,A+Count);
+        }
+        TArray<FVector> Front,Back;
+        for (const FVector2D& P:Outline(11.18,3.68,1.25)) Front.Add(Center+FVector(-1.7,P.X,P.Y));
+        for (const FVector2D& P:Outline(10.65,3.15,1.25)) Back.Add(Center+FVector(1.7,P.X,P.Y));
+        Face(Front,-FVector::ForwardVector); Face(Back,FVector::ForwardVector);
+    }
+
     void Panel(FVector Center, double W, double H, double Depth, double Corner)
     {
         const auto Points = Outline(W, H, Corner);
@@ -93,8 +141,11 @@ struct FMirrorGeometry
     }
     void Glass(FVector Center, float Side)
     {
-        constexpr double W = 6.65, H = 3.15;
-        const auto Points = Outline(W, H, .65);
+        constexpr double W = 10.0, H = 3.0;
+        // Each mirror uses 54% of the 4:1 shared image. Crop vertically to
+        // preserve the rear cars' proportions in the new wider glass opening.
+        constexpr double CaptureCropHeight = .54 * 4.0 / (W / H);
+        const auto Points = Outline(W, H, .75);
         const int32 S = Vertices.Num();
         for (const FVector2D& P : Points)
         {
@@ -104,7 +155,7 @@ struct FMirrorGeometry
             const double U = Side < 0 ? FMath::Lerp(1.0, .46, Across)
                 : FMath::Lerp(.54, 0.0, Across);
             Vertex(Center + FVector(0, P.X, P.Y), -FVector::ForwardVector,
-                FVector2D(U, (1.0 - P.Y / H) * .5));
+                FVector2D(U, .5 - P.Y / H * CaptureCropHeight * .5));
         }
         for (int32 I = 1; I + 1 < Points.Num(); ++I) Triangle(S, S + I, S + I + 1);
     }
@@ -127,7 +178,7 @@ void AVroomCar::BuildMirrors()
     if (MirrorRoot) return;
     MirrorRoot = NewObject<USceneComponent>(this, TEXT("MirrorRoot"));
     MirrorRoot->SetupAttachment(RootComponent);
-    MirrorRoot->SetRelativeLocation(FVector(0, 0, 62));
+    MirrorRoot->SetRelativeLocation(FVector::ZeroVector);
     MirrorRoot->RegisterComponent();
 
     MirrorTarget = NewObject<UTextureRenderTarget2D>(this, TEXT("RearMirrorImage"));
@@ -193,22 +244,27 @@ void AVroomCar::BuildMirrors()
 
         const FVector Center(MirrorX, Side * MirrorY, MirrorZ);
         FMirrorGeometry Red;
-        Red.Panel(Center, 8, 4.5, 3, 1.5);
-        // Mount to the coaming's outer edge without reaching the wheel.
-        Red.Rod(FVector(140, Side * 43, 34.4), Center + FVector(1, -Side * 6, -2), 1.7);
-        Red.Commit(Mesh, 0, MirrorMaterial(TEXT("M_Red")));
+        Red.Housing(Center);
+        // Low red elbow, like the reference cockpit: a short coaming mount
+        // leads into a horizontal arm joining the inner bottom of the casing.
+        // Every part stays behind the front tyres; no diagonal white brace.
+        const FVector Anchor(40, Side * 35, 45);
+        const FVector Elbow(72, Side * 38, 45);
+        const FVector Mount = Center + FVector(0, -Side * 10, -3);
+        Red.Rod(Anchor, Elbow, 1.4);
+        Red.Rod(Elbow, Mount, 1.4);
+        Red.Commit(Mesh, 0, MirrorMaterial(TEXT("M_F1Paint")));
         FMirrorGeometry Gasket;
-        Gasket.Panel(Center + FVector(-1.65, 0, 0), 7.15, 3.65, .35, 1);
+        Gasket.Panel(Center + FVector(-1.85, 0, 0), 10.45, 3.4, .35, 1);
         Gasket.Commit(Mesh, 1, MirrorMaterial(TEXT("M_GlovePatch")));
-        FMirrorGeometry Strut;
-        Strut.Rod(FVector(134, Side * 38.2, 41.2), FVector(187, Side * 59.2, 15.6), .65);
-        Strut.Commit(Mesh, 2, MirrorMaterial(TEXT("M_White")));
         FMirrorGeometry Glass;
-        Glass.Glass(Center + FVector(-1.9, 0, 0), Side);
-        Glass.Commit(Mesh, 3, Surface);
+        Glass.Glass(Center + FVector(-2.09, 0, 0), Side);
+        Glass.Commit(Mesh, 2, Surface);
     }
-    MirrorClock = MirrorInterval();
-    UE_LOG(LogTemp, Display, TEXT("VROOM: Rear mirrors ready: shared 512x128 HDR capture, 30/60 Hz by applied effects quality"));
+    // Seed the longest interval so either initial camera mode captures once
+    // immediately rather than showing the render target's clear colour.
+    MirrorClock = .1f;
+    UE_LOG(LogTemp, Display, TEXT("VROOM: Rear mirrors ready: shared 512x128 HDR capture, cockpit 30/60 Hz by applied effects quality, chase 10 Hz"));
 }
 
 void AVroomCar::UpdateMirrors(float Dt)
@@ -216,14 +272,11 @@ void AVroomCar::UpdateMirrors(float Dt)
     if (!MirrorRoot || !MirrorCapture) return;
     const bool Visible = IsCockpitVisible();
     if (MirrorRoot->IsVisible() != Visible) MirrorRoot->SetVisibility(Visible, true);
-    if (ChaseCamera)
-    {
-        MirrorClock = MirrorInterval();
-        return;
-    }
     if (!FMath::IsFinite(Dt) || Dt < 0) return;
     MirrorClock += FMath::Min(Dt, .1f);
-    const float Interval = MirrorInterval();
+    // The same glass is visible outside the car; refresh it at reduced cost
+    // in chase view instead of leaving a stale cockpit reflection on screen.
+    const float Interval = ChaseCamera ? .1f : MirrorInterval();
     if (MirrorClock + 1.e-6f >= Interval)
     {
         MirrorClock = FMath::Fmod(FMath::Max(MirrorClock, Interval), Interval);

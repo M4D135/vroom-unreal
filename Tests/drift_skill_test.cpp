@@ -63,7 +63,7 @@ int main() {
             keyboard.Run(.10, 0, true, 0, 20, cadence);
         }
         keyboard.Run(1.0 / cadence, 0, false, 0, 20, cadence);
-        Check(keyboard.Model.BoostTier == 2, "modulated keyboard countersteer can reach the second tier at every cadence");
+        Check(keyboard.Model.BoostTier == 3, "modulated keyboard countersteer can reach the expert tier at every cadence");
         Check(keyboard.MaxLateral < 4.5, "modulated keyboard drift stays on the physical road");
 
         Driver uncontrolled;
@@ -160,6 +160,111 @@ int main() {
               "curved-road slides stay finite and retain the playable road corridor");
         Check(d.Model.TyreHealth < 2048 - .08 * d.Model.State.DistanceM,
               "cornering and drift consume extra tyre wear beyond straight-line distance");
+    }
+    // A full expert slide must fit the actual road, not just a wide test plane.
+    // Exercise digital/analog filtering, both turn directions, real owner rates
+    // and entry speeds without resetting position, speed or tyre force mid-slide.
+    double expertMaxLateral = 0;
+    for (double cadence : {30.0, 60.0, 120.0}) for (double filter : {20.0, 45.0})
+        for (double speed : {30.0, 40.0, 50.0})
+            for (double curvature : {-.018, -.010, -.003, 0.0, .003, .010, .018}) {
+        const double sign = curvature < 0 ? -1 : 1;
+        Driver d(speed);
+        d.Run(.3, .8 * sign, true, curvature, filter, cadence);
+        for (int frame = 0; frame < cadence * 3 && d.Model.DriftChargeTier() < 3; ++frame)
+            d.Run(1.0 / cadence, -.45 * sign, true, curvature, filter, cadence);
+        Check(d.Model.DriftChargeTier() == 3 && d.Model.DriftPerfectWindowRemaining > 0,
+              "a sustained controlled slide reaches the expert tier with a visible timing window");
+        d.Run(1.0 / cadence, 0, false, curvature, filter, cadence);
+        Check(d.Model.BoostTier == 3 && d.Model.BoostPerfect && d.Model.BoostRemaining > 1.8,
+              "releasing during the expert timing window awards the longer third turbo");
+        d.Run(.10, 0, false, curvature, filter, cadence);
+        Check(d.MaxLateral < 4.5 && d.Model.BoostTier == 3,
+              "expert countersteering and its release stay within the original 9.5-metre road");
+        Check(d.MaxYawAcceleration <= Vroom::DriveModel::MaxChassisSlipAcceleration + 1e-8,
+              "expert slides preserve bounded cockpit yaw acceleration at every owner cadence");
+        expertMaxLateral = std::max(expertMaxLateral, d.MaxLateral);
+    }
+    std::cout << "Expert drift across 126 curve/speed/filter/cadence combinations: max lateral="
+              << expertMaxLateral << " m\n";
+
+    // Reproducible runtime input sequence: .3 s right +2.05 s countersteer,
+    // then release. It leaves time to display the III cue before the release.
+    Driver scripted;
+    scripted.Run(.3, .8, true, 0, 45);
+    scripted.Run(2.05, -.45, true, 0, 45);
+    Check(scripted.Model.DriftChargeTier() == 3 && scripted.Model.DriftPerfectWindowRemaining > .08,
+          "visible expert scenario reaches tier three before releasing");
+    auto delayed = scripted;
+    scripted.Run(1.0 / 120, 0, false, 0, 45);
+    delayed.Run(.3, -.45, true, 0, 45);
+    delayed.Run(1.0 / 120, 0, false, 0, 45);
+    Check(scripted.Model.BoostPerfect && delayed.Model.BoostTier == 3 && !delayed.Model.BoostPerfect,
+          "a late release keeps the earned third turbo but misses its timing bonus");
+    Check(std::abs(scripted.Model.BoostRemaining - delayed.Model.BoostRemaining -
+          Vroom::DriveModel::DriftPerfectBonusSeconds) < 1e-10,
+          "perfect timing extends duration by exactly the documented bonus");
+    Check(scripted.Model.BoostDurationSeconds() == Vroom::DriveModel::BoostDurationSeconds(3, true) &&
+          delayed.Model.BoostDurationSeconds() == Vroom::DriveModel::BoostDurationSeconds(3, false),
+          "feedback obtains the actual awarded duration for both expert-release outcomes");
+    auto expertReset = scripted.Model;
+    expertReset.Reset();
+    Check(expertReset.DriftChargeTier() == 0 && expertReset.DriftPerfectWindowRemaining == 0 &&
+          expertReset.BoostTier == 0 && !expertReset.BoostPerfect && expertReset.BoostDurationSeconds() == 0,
+          "restarting clears the earned expert bonus and its feedback duration");
+    auto smoothBoost = scripted.Model;
+    double previousAssist = 0, peakAssist = 0, largestAssistStep = 0;
+    for (int frame = 0; frame < 260; ++frame) {
+        // Match all current speed / gear / drift-blend forces, removing only
+        // the turbo from the comparison. This measures acceleration continuity
+        // independently of normal shifts and the changing aerodynamic drag.
+        auto ordinary = smoothBoost;
+        ordinary.BoostRemaining = 0; ordinary.BoostTier = 0; ordinary.BoostPerfect = false;
+        smoothBoost.Step({.6, 0, 0}, 1.0 / 120, 0, 4.75);
+        ordinary.Step({.6, 0, 0}, 1.0 / 120, 0, 4.75);
+        const double assist = (smoothBoost.State.SpeedMps - ordinary.State.SpeedMps) * 120;
+        if (frame == 0) Check(assist > 0 && assist < 3,
+                             "third-tier acceleration arrives gradually after release");
+        largestAssistStep = std::max(largestAssistStep, std::abs(assist - previousAssist));
+        peakAssist = std::max(peakAssist, assist);
+        previousAssist = assist;
+    }
+    Check(peakAssist > 25.9 && peakAssist < 26.1 && largestAssistStep < 3.3 && previousAssist == 0,
+          "expert turbo reaches full power and fades out without a sudden acceleration cut");
+    scripted.Run(3, 0, false, 0, 45);
+    Check(scripted.Model.BoostTier == 0 && !scripted.Model.BoostPerfect && scripted.Model.BoostRemaining == 0,
+          "all expert feedback clears naturally when the turbo expires");
+
+    Driver threshold;
+    threshold.Run(.3, .8, true);
+    while (threshold.Model.DriftChargeTier() == 0 && threshold.Model.State.Elapsed < 2)
+        threshold.Run(1.0 / 120, -.45, true);
+    Check(threshold.Model.DriftPerfectWindowRemaining > 0, "the first tier also offers a precise release window");
+    threshold.Run(.3, 0, true);
+    Check(threshold.Model.Drifting && threshold.Model.DriftChargeTier() == 0 &&
+          threshold.Model.DriftPerfectWindowRemaining == 0,
+          "neutral correction can lose a charge threshold without resetting the entire slide");
+    while (threshold.Model.DriftChargeTier() == 0 && threshold.Model.Drifting && threshold.Model.State.Elapsed < 3)
+        threshold.Run(1.0 / 120, -.45, true);
+    Check(threshold.Model.Drifting && threshold.Model.DriftChargeTier() == 1 &&
+          threshold.Model.DriftPerfectWindowRemaining == 0,
+          "crossing the same tier again cannot farm repeated perfect-release windows");
+
+    for (bool activeBoost : {false, true}) for (int cause = 0; cause < 5; ++cause) {
+        Driver d;
+        d.Run(.3, .8, true); d.Run(2.05, -.45, true);
+        if (activeBoost) d.Run(1.0 / 120, 0, false);
+        Check(activeBoost ? d.Model.BoostTier == 3 && d.Model.BoostPerfect
+                          : d.Model.DriftChargeTier() == 3 && d.Model.DriftPerfectWindowRemaining > 0,
+              "expert cancellation starts from an actually earned expert charge or perfect turbo");
+        if (cause == 0) d.Model.State.LateralM = 4.8;
+        if (cause == 1) d.Model.Fuel = 0;
+        if (cause == 2) d.Model.CancelArcadeEffects();
+        d.Model.Step({.6, cause == 3 ? .3 : 0, -.45, false, false, !activeBoost},
+                     1.0 / 120, 0, 4.75, 0, cause == 4);
+        Check(!d.Model.Drifting && d.Model.DriftChargeTier() == 0 && d.Model.DriftPerfectWindowRemaining == 0 &&
+              d.Model.BoostTier == 0 && !d.Model.BoostPerfect && d.Model.BoostRemaining == 0,
+              "expert bonuses respect grass, fuel, contact, braking and airborne cancellation");
     }
     if (Failures) return EXIT_FAILURE;
     std::cout << "Skill drift inputs, keyboard modulation, failures, curves and wear PASS.\n";

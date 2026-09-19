@@ -13,6 +13,10 @@ struct TrafficCar
 {
     double Distance = 0, Lateral = 0, Speed = 0;
     double TargetLane = 0, LaneVelocity = 0, DecisionDelay = 0, DamageDelay = 0;
+    // -2: no pass, -1: player, otherwise the stable traffic slot. A chosen
+    // side remains reserved until our rear clears the car we are passing.
+    int OvertakeTarget = -2;
+    double OvertakeHold = 0;
     double Fuel = 1.0;
     double TyreHealth = 2048.0;
     double FuelBurn = 0.0;
@@ -49,7 +53,8 @@ template<class CurvatureAt>
 void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double HalfWidth,
     RaceDifficulty Difficulty, const TrafficCar* Player, CurvatureAt Curvature)
 {
-    if (Dt <= 0 || !std::isfinite(Dt) || Length < 100 || !std::isfinite(Length)) return;
+    if (Dt <= 0 || !std::isfinite(Dt) || Length < 100 || !std::isfinite(Length)
+        || !std::isfinite(HalfWidth) || HalfWidth < 1.3) return;
     if (Cars.size() > 32) return;
     std::array<TrafficCar, 32> Before{};
     std::copy(Cars.begin(), Cars.end(), Before.begin());
@@ -65,13 +70,37 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
         const double Consistency = std::clamp(Pers.Consistency, 0.5, 1.4);
         Car.DecisionDelay = std::max(0.0, Car.DecisionDelay - Dt * Reaction);
         Car.DamageDelay = std::max(0.0, Car.DamageDelay - Dt);
+        Car.OvertakeHold = std::max(0.0, Car.OvertakeHold - Dt);
 
         const double Along = PitAlong(Old.Distance, Length);
-        const double K25 = std::abs(Curvature(Old.Distance + 25));
-        const double K90 = std::abs(Curvature(Old.Distance + 90));
-        const double K140 = std::abs(Curvature(Old.Distance + 140 * Reaction));
-        const double K = std::max(K25, K90);
         const double Grip = 0.65 + 0.35 * std::clamp(Old.TyreHealth / 2048.0, 0.0, 1.0);
+        const double Pace = TrafficPace(Difficulty) * std::clamp(Pers.Pace, 0.85, 1.12);
+        const double TopSpeed = (69.0 + (I % 5) * 1.5) * Pace * Grip;
+        const double Brake = 18.0 * Grip;
+        const double PlanningBrake = 11.5 * Grip / std::sqrt(Caution);
+        // A distance-based braking envelope anticipates hairpins before they
+        // enter a fixed 90-m window, without slowing for distant gentle bends.
+        // Nine samples bound the cost even for the complete twelve-car field.
+        constexpr std::array<double, 9> Lookahead = {0, 20, 40, 65, 95, 130, 170, 210, 250};
+        std::array<double, 9> Curves{};
+        double Desired = TopSpeed, Peak = 0, PeakSigned = 0;
+        for (std::size_t Sample = 0; Sample < Lookahead.size(); ++Sample)
+        {
+            const double RawCurve = Curvature(Old.Distance + Lookahead[Sample]);
+            Curves[Sample] = std::isfinite(RawCurve) ? RawCurve : 0.0;
+            const double AbsCurve = std::abs(Curves[Sample]);
+            const double CornerSpeed = std::min(TopSpeed,
+                std::clamp(std::sqrt(16.0 / std::max(AbsCurve, .001)), 14.0, 100.0) * Pace * Grip);
+            const double BrakeDistance = std::max(0.0, Lookahead[Sample] - 18.0 - Old.Speed * .18 / Reaction);
+            Desired = std::min(Desired, std::sqrt(CornerSpeed * CornerSpeed + 2.0 * PlanningBrake * BrakeDistance));
+            if (Sample <= 4 && AbsCurve > Peak) { Peak = AbsCurve; PeakSigned = Curves[Sample]; }
+        }
+        const double K = std::max(std::abs(Curves[0]), std::abs(Curves[1]));
+        // Set up outside the corner, then approach its inside as the apex
+        // reaches the car. Continuous targets avoid snapping between rails.
+        const double Apex = Peak > .0025 ? std::clamp((K / Peak - .25) / .65, 0.0, 1.0) : .5;
+        const double RacingLane = Peak > .0025
+            ? std::copysign(1.0, PeakSigned) * Lane * (-.72 + 1.32 * Apex) : 0.0;
 
         // Decide before passing the entry, using the resources for another
         // complete lap plus a margin. Waiting until 18% can strand a car before
@@ -92,6 +121,7 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
 
         if (Car.Pitting)
         {
+            Car.OvertakeTarget = -2; Car.OvertakeHold = 0;
             Car.PitTimer += Dt;
             Car.Speed = 0.0;
             Car.Lateral = Old.Lateral;
@@ -130,10 +160,6 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
             continue;
         }
 
-        double Desired = std::clamp(std::sqrt(16.0 / std::max(K, .001)), 14.0, 69.0 + (I % 5) * 1.5)
-            * TrafficPace(Difficulty) * std::clamp(Pers.Pace, 0.85, 1.12) * Grip;
-        if (K140 > std::max(K90, 0.006))
-            Desired = std::min(Desired, std::sqrt(16.0 / std::max(K140, .001)) + 10.0 * Reaction);
         if (Car.DamageDelay > 0) Desired *= .50;
         // Management is expressed as driving effort, never free resources.
         Desired *= 1.0 - std::clamp(1.0 - Pers.FuelManagement, 0.0, .3) * .12;
@@ -143,9 +169,9 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
         if (Car.Fuel <= 0) Desired = 0;
         if (Consistency < 0.95)
         {
-            const int Phase = static_cast<int>(Old.Distance * 0.31 + static_cast<int>(I) * 47);
-            if (Phase % 173 == 0)
-                Desired *= 0.82 + 0.10 * Consistency;
+            // Small repeatable pace variations, not a one-frame brake pulse.
+            Desired *= 1.0 - (0.95 - Consistency) * .09
+                * (1.0 + std::sin(Old.Distance / 95.0 + static_cast<double>(I) * 2.1));
         }
 
         auto VisitOthers = [&](auto Function)
@@ -155,15 +181,33 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
             if (Player) Function(*Player, Player->Lateral);
         };
         double Ahead = 1000, AheadSpeed = Desired;
+        int AheadIndex = -2;
         VisitOthers([&](const TrafficCar& Other, double)
         {
             const double Gap = TrafficGap(Other.Distance, Old.Distance, Length);
-            const double Width = 2.5 * Caution;
-            if (Gap > 0 && Gap < Ahead && std::abs(Other.Lateral - Old.Lateral) < Width)
-            { Ahead = Gap; AheadSpeed = Other.Speed; }
+            const double MaxLateralSpeed = &Other == Player ? 12.0 : 2.4;
+            const double FutureLateral = Other.Lateral + std::clamp(Other.LaneVelocity, -MaxLateralSpeed, MaxLateralSpeed) * .6;
+            const double Width = 2.55;
+            const bool CrossesLane = Old.Lateral > std::min(Other.Lateral, FutureLateral) - Width
+                && Old.Lateral < std::max(Other.Lateral, FutureLateral) + Width;
+            if (Gap > 0 && Gap < Ahead && CrossesLane)
+            {
+                Ahead = Gap; AheadSpeed = Other.Speed;
+                AheadIndex = &Other == Player ? -1 : static_cast<int>(&Other - Before.data());
+            }
         });
+        if (Car.OvertakeTarget != -2)
+        {
+            const auto* PassedCar = Car.OvertakeTarget == -1 ? Player
+                : Car.OvertakeTarget >= 0 && Car.OvertakeTarget < static_cast<int>(Cars.size())
+                    ? &Before[Car.OvertakeTarget] : nullptr;
+            const double Gap = PassedCar ? TrafficGap(PassedCar->Distance, Old.Distance, Length) : -1000;
+            if ((Gap < -9.0 && Car.OvertakeHold <= 0) || Gap > 110 || Gap < -70 || !PassedCar)
+            { Car.OvertakeTarget = -2; Car.OvertakeHold = 0; Car.DecisionDelay = 0; }
+        }
         if (Car.PitCommitted)
         {
+            Car.OvertakeTarget = -2; Car.OvertakeHold = 0;
             Car.TargetLane = PitApproach < TrackLayout::PitLaneStart
                 ? TrackLayout::PitCenterAt(PitApproach + 2.0, HalfWidth) : TrackLayout::PitCenter;
             // Brake for the box before reaching it. Once stopped, finish the
@@ -182,6 +226,7 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
         }
         else if (Car.PitExiting)
         {
+            Car.OvertakeTarget = -2; Car.OvertakeHold = 0;
             bool MergeBlocked = false;
             VisitOthers([&](const TrafficCar& Other, double)
             {
@@ -206,49 +251,93 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
             Car.TargetLane = Lane;
             Desired = std::min(Desired, 12.0);
         }
-        else if (Car.DecisionDelay <= 0)
+        else if (Car.DecisionDelay <= 0 && Car.OvertakeTarget == -2)
         {
-            const double RacingLane = std::abs(K) < .003 ? 0 : (Curvature(Old.Distance + 40) > 0 ? -1.4 : 1.4);
             double Best = 1e9, Target = Old.TargetLane;
-            for (double Candidate : {-Lane, 0.0, Lane})
+            const bool WantsPass = Ahead < 85.0 && Desired > AheadSpeed + 1.5 / Aggression;
+            for (double Candidate : {-Lane, 0.0, Lane, RacingLane, Old.TargetLane})
             {
                 bool Safe = true;
-                double Cost = std::abs(Candidate - RacingLane) * .35 * (2.0 - Precision)
-                    + std::abs(Candidate - Old.Lateral) * .45;
+                const double CrossingTime = std::min(2.6, std::abs(Candidate - Old.Lateral) / 1.8 + .35);
+                double Cost = std::abs(Candidate - RacingLane) * .8 * Precision
+                    + std::abs(Candidate - Old.Lateral) * .18
+                    + (std::abs(Candidate - Old.TargetLane) > .3 ? .24 : 0.0);
                 VisitOthers([&](const TrafficCar& Other, double Reserved)
                 {
                     const double Gap = TrafficGap(Other.Distance, Old.Distance, Length);
-                    const double Predicted = Gap + (Other.Speed - Old.Speed) * Reaction;
                     const bool SweptAcross = Other.Lateral >= std::min(Old.Lateral, Candidate) - 2.5
                         && Other.Lateral <= std::max(Old.Lateral, Candidate) + 2.5;
-                    const double ContactGap = 5.2 * Caution;
+                    const double ContactGap = 5.8;
                     if (std::abs(Gap) < ContactGap && SweptAcross) Safe = false;
-                    if (std::abs(Predicted) < 7 * Caution && std::abs(Other.Lateral - Candidate) < 2.65) Safe = false;
+                    for (double T : {.35, .8, CrossingTime})
+                    {
+                        const double Predicted = Gap + (Other.Speed - Old.Speed) * T;
+                        const double OurLateral = Old.Lateral + std::clamp(Candidate - Old.Lateral, -1.8 * T, 1.8 * T);
+                        const double TheirLateral = &Other == Player
+                            ? std::clamp(Other.Lateral + std::clamp(Other.LaneVelocity, -12.0, 12.0) * T,
+                                std::min(-HalfWidth + 1.2, Other.Lateral), std::max(HalfWidth - 1.2, Other.Lateral))
+                            : Other.Lateral + std::clamp(Reserved - Other.Lateral, -1.8 * T, 1.8 * T);
+                        if (std::abs(Predicted) < 5.8 && std::abs(TheirLateral - OurLateral) < 2.55)
+                            Safe = false;
+                    }
                     if (std::abs(Gap) < 15 * Caution && std::abs(Reserved - Candidate) < 2.5) Safe = false;
-                    if (Gap > 0 && Gap < 70 && std::abs(Other.Lateral - Candidate) < 2.65)
-                        Cost += (70 - Gap) * .16 / Aggression + std::max(0.0, Desired - Other.Speed) * .6;
+                    if (Gap > 0 && Gap < 85 && std::abs(Other.Lateral - Candidate) < 2.65)
+                        Cost += (85 - Gap) * .12 * Aggression + std::max(0.0, Desired - Other.Speed) * .8;
                 });
                 if (Safe && Cost < Best) { Best = Cost; Target = Candidate; }
             }
             Car.TargetLane = Target;
-            Car.DecisionDelay = (1.0 + (I % 3) * .12) / Reaction;
+            if (WantsPass && AheadIndex != -2 && std::abs(Target - Old.Lateral) > .65)
+            {
+                Car.OvertakeTarget = AheadIndex;
+                Car.OvertakeHold = 2.0 + .35 * Caution;
+            }
+            Car.DecisionDelay = (.42 + (I % 3) * .07) / Reaction;
         }
-        const double BrakeLook = 45.0 * Caution;
+        // Follow the actual occupied lane until enough room exists beside the
+        // slower car. Relative-speed braking starts early at motorway speeds.
+        const double BrakeLook = std::max(45.0, (Old.Speed * Old.Speed - AheadSpeed * AheadSpeed)
+            / (2.0 * PlanningBrake) + Old.Speed * .7 * Caution + 9.0);
         if (Ahead < BrakeLook)
-            Desired = std::min(Desired, std::max(0.0, AheadSpeed + (Ahead - 8.0 * Caution) * .65));
-        const double MaxDelta = (Desired < Old.Speed ? 18.0 : 5.0) * Dt;
+        {
+            const double Headway = 6.0 + Old.Speed * .38 * Caution;
+            const double Comfortable = std::sqrt(std::max(0.0, AheadSpeed * AheadSpeed
+                + 2.0 * PlanningBrake * (Ahead - Headway)));
+            Desired = std::min(Desired, Comfortable);
+            if (Ahead < Headway)
+                Desired = std::min(Desired, std::max(0.0, AheadSpeed + (Ahead - Headway) * .9));
+        }
+        const double MaxDelta = (Desired < Old.Speed ? Brake : 5.0) * Dt;
         Car.Speed = std::max(0.0, Old.Speed + std::clamp(Desired - Old.Speed, -MaxDelta, MaxDelta));
         if (Car.PitCommitted)
             Car.Speed = std::min(Car.Speed, std::max(0.0, 102.0 - PitApproach) / Dt);
         if (Car.PitExiting && Old.Lateral >= HalfWidth - 1.2)
             Car.Speed = std::min(Car.Speed, std::max(0.0, 220.0 - Along) / Dt);
         const double LaneRate = Car.PitCommitted || Car.PitExiting || InPitLane ? 2.4 : 1.8;
-        const double LaneStep = std::clamp((Car.TargetLane - Old.Lateral) * 2.0, -LaneRate, LaneRate) * Dt;
+        // Acceleration-limited lateral motion also smooths the rendered yaw.
+        // Safety checks below can stop a lateral move immediately if a driver
+        // enters the reserved space; the pass itself keeps its chosen side.
+        const double WantedLaneVelocity = std::clamp((Car.TargetLane - Old.Lateral) * 2.0, -LaneRate, LaneRate);
+        const double LaneAcceleration = Car.PitCommitted || Car.PitExiting || InPitLane ? 8.0 : 3.6;
+        const double LaneStep = std::clamp(Old.LaneVelocity
+            + std::clamp(WantedLaneVelocity - Old.LaneVelocity, -LaneAcceleration * Dt, LaneAcceleration * Dt),
+            -LaneRate, LaneRate) * Dt;
         double LatMin = -HalfWidth + 1.2;
         double LatMax = HalfWidth - 1.2;
         if (InPitWindow && (Car.PitCommitted || Car.PitExiting || Old.Lateral > 6.0 || Car.TargetLane > 6.0))
             LatMax = 14.5;
         Car.Lateral = std::clamp(Old.Lateral + LaneStep, LatMin, LatMax);
+        VisitOthers([&](const TrafficCar& Other, double)
+        {
+            const double Gap = TrafficGap(Other.Distance, Old.Distance, Length);
+            const double EndGap = Gap + (Other.Speed - Car.Speed) * Dt;
+            const double ClosestGap = Gap * EndGap <= 0 ? 0 : std::min(std::abs(Gap), std::abs(EndGap));
+            const double MaxLateralSpeed = &Other == Player ? 12.0 : 2.4;
+            const double TheirEnd = Other.Lateral + std::clamp(Other.LaneVelocity, -MaxLateralSpeed, MaxLateralSpeed) * Dt;
+            if (ClosestGap < 5.8 && std::abs(Car.Lateral - TheirEnd) < 2.55
+                && std::abs(Car.Lateral - TheirEnd) < std::abs(Old.Lateral - TheirEnd))
+                Car.Lateral = Old.Lateral;
+        });
         Car.LaneVelocity = (Car.Lateral - Old.Lateral) / Dt;
         Car.Distance = Old.Distance + Car.Speed * Dt;
         VisitOthers([&](const TrafficCar& Other, double)

@@ -37,7 +37,9 @@ void UVroomFeedbackComponent::BeginPlay()
     };
     Marks = Mesh(TEXT("TyreTraces"), TEXT("/Game/Materials/M_TyreTrace"));
     Smoke = Mesh(TEXT("DriftSmoke"), TEXT("/Game/Materials/M_DriftSmoke"));
+    Sparks = Mesh(TEXT("DriftSparks"), TEXT("/Game/Materials/M_DriftSpark"));
     Strips.Reserve(512); Puffs.Reserve(48);
+    SparkPool.Reserve(48);
     Phases.Reserve(12);
     AudioSamples.SetNumZeroed(1600);
     Wave = NewObject<USoundWaveProcedural>(Car);
@@ -50,12 +52,31 @@ void UVroomFeedbackComponent::BeginPlay()
     Audio->Play();
 }
 
+void UVroomFeedbackComponent::ResetForRace()
+{
+    Strips.Reset(); Puffs.Reset(); SparkPool.Reset();
+    StripCursor = PuffCursor = SparkCursor = 0;
+    Clock = VisualClock = LastMarkClock = 0;
+    ShiftEnvelope = CueEnvelope = 0;
+    LastChargeTier = MaxSeenTier = 0;
+    WasMarking = SeenMarks = SeenSmoke = SeenBoost = SeenSparks = SeenPerfect = ReportedTest = false;
+    StartTone = {};
+    if (Marks) Marks->ClearAllMeshSections();
+    if (Smoke) Smoke->ClearAllMeshSections();
+    if (Sparks) Sparks->ClearAllMeshSections();
+}
+
 void UVroomFeedbackComponent::TickComponent(float Dt, ELevelTick Type, FActorComponentTickFunction* Function)
 {
     Super::TickComponent(Dt, Type, Function);
     if (!Car || !Car->Circuit) return;
     const bool RaceEnabled = Car->Circuit->Running && !Car->Circuit->Paused && !Car->PreparingCircuit;
     const bool Active = RaceEnabled && Car->Circuit->RaceClock >= 0;
+    if (LastTrack != Car->Circuit->TrackIndex)
+    {
+        LastTrack = Car->Circuit->TrackIndex;
+        ResetForRace();
+    }
     if (RaceEnabled)
     {
         const Vroom::StartSignal Signal = Vroom::StartSignalFromClock(Car->Circuit->RaceClock);
@@ -71,28 +92,33 @@ void UVroomFeedbackComponent::TickComponent(float Dt, ELevelTick Type, FActorCom
             }
         }
     }
-    if (LastTrack != Car->Circuit->TrackIndex)
-    {
-        LastTrack = Car->Circuit->TrackIndex;
-        Strips.Reset(); Puffs.Reset(); StripCursor = PuffCursor = 0; WasMarking = false;
-        Marks->ClearAllMeshSections(); Smoke->ClearAllMeshSections();
-    }
     if (Active) UpdateEffects(FMath::Clamp(Dt, 0.f, .1f));
     else WasMarking = false;
     SeenMarks |= Strips.Num() > 0;
     SeenSmoke |= Puffs.Num() > 0;
     SeenBoost |= Car->Drive.BoostRemaining > 0;
-    if (!ReportedTest && Clock >= 3.2 && FParse::Param(FCommandLine::Get(), TEXT("VroomDriftTest")))
+    SeenSparks |= !SparkPool.IsEmpty();
+    SeenPerfect |= Car->Drive.BoostPerfect;
+    MaxSeenTier = FMath::Max(MaxSeenTier, Car->Drive.BoostTier);
+    FString DriftScenario;
+    FParse::Value(FCommandLine::Get(), TEXT("VroomDriftScenario="), DriftScenario);
+    const double ReportAfter = DriftScenario == TEXT("expert") ? 4.6 : 3.2;
+    if (!ReportedTest && Clock >= ReportAfter && FParse::Param(FCommandLine::Get(), TEXT("VroomDriftTest")))
     {
         ReportedTest = true;
-        FString DriftScenario;
-        FParse::Value(FCommandLine::Get(), TEXT("VroomDriftScenario="), DriftScenario);
         const bool Unskilled = DriftScenario == TEXT("unskilled");
         const bool Passed = SeenMarks && SeenSmoke && (SeenBoost != Unskilled) && Marks->GetMaterial(0) && Smoke->GetMaterial(0);
         UE_LOG(LogTemp, Display, TEXT("VROOM: Drift feedback %s marks=%d smoke=%d boost=%d"),
             Passed ? TEXT("PASS") : TEXT("FAIL"), SeenMarks, SeenSmoke, SeenBoost);
         if (Unskilled)
             UE_LOG(LogTemp, Display, TEXT("VROOM: Drift skill denied %s"), !SeenBoost ? TEXT("PASS") : TEXT("FAIL"));
+        if (DriftScenario == TEXT("expert"))
+        {
+            const bool SparkMaterialReady = Sparks && Sparks->GetMaterial(0)
+                && Sparks->GetMaterial(0)->GetName() == TEXT("M_DriftSpark");
+            UE_LOG(LogTemp, Display, TEXT("VROOM: Expert drift %s tier=%d perfect=%d sparks=%d"),
+                MaxSeenTier == 3 && SeenPerfect && SeenSparks && SparkMaterialReady ? TEXT("PASS") : TEXT("FAIL"), MaxSeenTier, SeenPerfect, SeenSparks);
+        }
     }
     const auto& Settings = Vroom::Settings::Get();
     Audio->SetVolumeMultiplier(RaceEnabled ? .55f * Settings.MasterVolume * Settings.EffectsVolume : 0.f);
@@ -112,8 +138,10 @@ void UVroomFeedbackComponent::UpdateEffects(float Dt)
     const auto& D = Car->Drive;
     const bool OnRoad = FMath::Abs(D.State.LateralM) < Car->Circuit->HalfWidthM;
     const bool Marking = D.Skidding && D.State.SpeedMps > 5 && OnRoad && D.HopHeightM < .03;
+    const int32 ChargeTier = D.DriftChargeTier();
+    const bool Energized = OnRoad && Quality > 0 && (ChargeTier > 0 || D.BoostRemaining > 0);
     if (Marking) LastMarkClock = Clock;
-    if (!Marking && (Strips.IsEmpty() || Clock - LastMarkClock > 25) && (Puffs.IsEmpty() || Clock - LastMarkClock > 1))
+    if (!Marking && !Energized && SparkPool.IsEmpty() && (Strips.IsEmpty() || Clock - LastMarkClock > 25) && (Puffs.IsEmpty() || Clock - LastMarkClock > 1))
     {
         if (!Strips.IsEmpty()) { Strips.Reset(); StripCursor = 0; Marks->ClearAllMeshSections(); }
         if (!Puffs.IsEmpty()) { Puffs.Reset(); PuffCursor = 0; Smoke->ClearAllMeshSections(); }
@@ -135,6 +163,16 @@ void UVroomFeedbackComponent::UpdateEffects(float Dt)
             else { Strips[StripCursor] = Strip; StripCursor = (StripCursor + 1) % 512; }
         }
         LastWheels[Side] = P;
+        if (Energized)
+        {
+            const int32 Tier = D.BoostRemaining > 0 ? D.BoostTier : ChargeTier;
+            const float Phase = float(Clock * 71 + Side * 2);
+            const FSpark Spark{P + FVector(0, 0, 12),
+                -Forward * (D.BoostRemaining > 0 ? 230.f : 95.f) + Right * (Side ? 1.f : -1.f) * (45.f + 35.f * FMath::Sin(Phase))
+                    + FVector(0, 0, 90 + 25 * FMath::Cos(Phase)), Clock, D.BoostRemaining > 0 ? 12.f : 7.f, Tier};
+            if (SparkPool.Num() < 48) SparkPool.Add(Spark);
+            else { SparkPool[SparkCursor] = Spark; SparkCursor = (SparkCursor + 1) % 48; }
+        }
         if (Marking && D.SkidAmount > .16 && Quality > 0)
         {
             const FPuff Puff{P + FVector(0, 0, 18), Clock, float(FMath::Clamp(D.SkidAmount, .0, 1.0))};
@@ -182,6 +220,24 @@ void UVroomFeedbackComponent::UpdateEffects(float Dt)
             P.Strength * float((1 - Age / .95) * .26));
     }
     Upload(Smoke);
+    Vertices.Reset(); Indices.Reset(); Normals.Reset(); UV.Reset(); Colors.Reset();
+    int32 LiveSparks = 0;
+    for (const auto& Spark : SparkPool)
+    {
+        const double Age = Clock - Spark.Birth;
+        if (Age > .36) continue;
+        ++LiveSparks;
+        const FVector Center = Spark.Position + Spark.Velocity * Age - FVector(0, 0, 190 * Age * Age);
+        const FVector R = CameraRight * Spark.Size, U = CameraUp * Spark.Size;
+        const int32 Start = Colors.Num();
+        const float Fade = 1.f - float(Age / .36);
+        Quad(Center - R - U, Center + R - U, Center + R + U, Center - R + U, Fade * .8f);
+        const FLinearColor Tint = Spark.Tier >= 3 ? FLinearColor(1.5f,.18f,2.f)
+            : Spark.Tier >= 2 ? FLinearColor(2.f,.65f,.06f) : FLinearColor(.10f,.85f,2.f);
+        for (int32 I = Start; I < Colors.Num(); ++I) Colors[I] = FLinearColor(Tint.R, Tint.G, Tint.B, Fade * .8f);
+    }
+    if (!LiveSparks && !Energized) { SparkPool.Reset(); SparkCursor = 0; }
+    Upload(Sparks);
 }
 
 void UVroomFeedbackComponent::UpdateRaceSound()
@@ -214,7 +270,7 @@ void UVroomFeedbackComponent::UpdateRaceSound()
         Voices.Add({Hz * UE_TWO_PI / 48000, Gain * std::sqrt((1 - Pan) * .5), Gain * std::sqrt((1 + Pan) * .5)});
     }
     if (LastGear != Car->Drive.State.Gear) { ShiftEnvelope = 1; LastGear = Car->Drive.State.Gear; }
-    const int Tier = Car->Drive.DriftCharge >= 1 ? 2 : Car->Drive.DriftCharge >= .42 ? 1 : 0;
+    const int Tier = Car->Drive.DriftChargeTier();
     if (Tier > LastChargeTier) CueEnvelope = 1;
     LastChargeTier = Tier;
     const double Surface = FMath::Abs(Car->Drive.State.LateralM) > Track->HalfWidthM
@@ -232,7 +288,7 @@ void UVroomFeedbackComponent::UpdateRaceSound()
         NoiseSeed = NoiseSeed * 1664525u + 1013904223u;
         const double Noise = double(NoiseSeed >> 8) / 8388607.5 - 1;
         NoisePhase += (Noise - NoisePhase) * .12;
-        CuePhase = FMath::Fmod(CuePhase + (Tier == 2 ? 1320 : 880) * UE_TWO_PI / 48000, UE_TWO_PI);
+        CuePhase = FMath::Fmod(CuePhase + (Tier >= 3 ? 1760 : Tier == 2 ? 1320 : 880) * UE_TWO_PI / 48000, UE_TWO_PI);
         const double Effects = NoisePhase * Surface + Noise * ShiftEnvelope * .13
             + std::sin(CuePhase) * CueEnvelope * .07 + StartTone.NextSample() * .45;
         ShiftEnvelope *= .9975; CueEnvelope *= .9994;

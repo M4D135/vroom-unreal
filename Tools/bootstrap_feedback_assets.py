@@ -12,12 +12,17 @@ def main():
         ('M_F1Ghost', (.06, .8, 1.0), .24, False),
         ('M_TyreTrace', (.012, .014, .016), 1, False),
         ('M_DriftSmoke', (.62, .66, .69), 1, True),
+        ('M_DriftSpark', (1, 1, 1), 1, True),
     ):
         h['create_material'](name, rgb, 1, glass_opacity=(alpha, alpha))
         material = assets.load_asset('/Game/Materials/' + name)
         library.delete_all_material_expressions(material)
         material.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT)
         h['output'](h['color'](material, rgb), unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        if name == 'M_DriftSpark':
+            material.set_editor_property('blend_mode', unreal.BlendMode.BLEND_ADDITIVE)
+            vertex_color = h['expression'](material, unreal.MaterialExpressionVertexColor)
+            h['output'](vertex_color, unreal.MaterialProperty.MP_EMISSIVE_COLOR)
         if name == 'M_F1Ghost':
             opacity = h['scalar'](material, alpha)
         else:

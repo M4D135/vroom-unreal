@@ -13,6 +13,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'Tools'))
 import install_mac
 from install_mac import check_validation, copy_validation_report, package_data_paths, sha256
+from regression_gates import release_limits_for_preset
 
 
 class InstallationFixture:
@@ -37,6 +38,7 @@ class InstallationFixture:
                  'collision-tyre', 'collision-scenery', 'progress-data', 'menu-flow',
                  'pit-service', 'drift-feedback')
         self.report = dict(completed=True, editor=False, version='0.30.0',
+                           release_limits=release_limits_for_preset(None),
                            cases=[dict(name=name, exit=0, status='PASS') for name in names], motion=motion,
                            soak_motion=[dict(track=track, complete=True, report=motion) for track in range(6)],
                            performance=[performance(7800, track) for track in range(6)] +
@@ -101,6 +103,75 @@ class MacInstallation(InstallationFixture, unittest.TestCase):
                 check_validation(self.report, self.bundle)
             self.report['cases'].append(dict(name=name, exit=0, status='PASS'))
         check_validation(self.report, self.bundle)
+
+    def test_034_requires_expert_drift_evidence(self):
+        self.test_new_release_requires_offroad_and_start_checks_without_breaking_old_rollback()
+        self.report['version'] = '0.34.0'
+        with self.assertRaisesRegex(ValueError, 'Missing required'):
+            check_validation(self.report, self.bundle)
+        for name in ('drift-expert', 'traffic-overtake'):
+            with self.assertRaisesRegex(ValueError, 'Missing required'):
+                check_validation(self.report, self.bundle)
+            self.report['cases'].append(dict(name=name, exit=0, status='PASS'))
+        check_validation(self.report, self.bundle)
+
+    def make_photorealism_report(self):
+        self.test_034_requires_expert_drift_evidence()
+        self.report.update(graphics_preset='photorealism',
+                           release_limits=release_limits_for_preset('photorealism'))
+        for row in self.report['performance']:
+            row['report']['mean_fps'] = 30.0
+            frames = row['report']['frame_time']
+            frames.update(p99_ms=34.0, max_ms=40.0, over_20_ms_count=frames['samples'], over_40_ms_count=0)
+
+    def test_photorealism_30hz_with_exact_declared_budget_is_accepted(self):
+        self.make_photorealism_report()
+        check_validation(self.report, self.bundle)
+
+    def test_30hz_metrics_cannot_install_as_a_60hz_profile(self):
+        self.make_photorealism_report()
+        self.report.update(graphics_preset='high', release_limits=release_limits_for_preset('high'))
+        with self.assertRaisesRegex(ValueError, 'Performance release gate failed'):
+            check_validation(self.report, self.bundle)
+
+    def test_report_limits_must_match_profile_even_when_measurements_pass(self):
+        self.make_photorealism_report()
+        for preset in (None, 'performance', 'balanced', 'high', 'ultra'):
+            with self.subTest(preset=preset):
+                self.report['graphics_preset'] = preset
+                with self.assertRaisesRegex(ValueError, 'inconsistent'):
+                    check_validation(self.report, self.bundle)
+        self.report['graphics_preset'] = 'photorealism'
+        self.report['release_limits']['performance']['max_frame_ms'] = 100
+        with self.assertRaisesRegex(ValueError, 'inconsistent'):
+            check_validation(self.report, self.bundle)
+
+    def test_photorealism_missing_counter_or_excessive_hitches_cannot_install(self):
+        self.make_photorealism_report()
+        frames = self.report['performance'][-1]['report']['frame_time']
+        frames.pop('over_40_ms_count')
+        with self.assertRaisesRegex(ValueError, 'Performance release gate failed'):
+            check_validation(self.report, self.bundle)
+        frames['over_40_ms_count'] = 9
+        with self.assertRaisesRegex(ValueError, 'Performance release gate failed'):
+            check_validation(self.report, self.bundle)
+
+    def test_missing_limits_only_allowed_for_old_60hz_rollback(self):
+        self.report.pop('release_limits')
+        check_validation(self.report, self.bundle)
+        self.report['version'] = '0.33.0'
+        # Missing new functional cases is expected; the old profile itself
+        # must not be rejected for lacking the optional historical limits.
+        with self.assertRaisesRegex(ValueError, 'Missing required'):
+            check_validation(self.report, self.bundle)
+        self.report['version'] = '0.34.0'
+        with self.assertRaisesRegex(ValueError, 'Release limits'):
+            check_validation(self.report, self.bundle)
+
+    def test_old_release_cannot_be_relabelled_photorealism(self):
+        self.report.update(graphics_preset='photorealism', release_limits=release_limits_for_preset('photorealism'))
+        with self.assertRaisesRegex(ValueError, '0.34'):
+            check_validation(self.report, self.bundle)
 
     def test_duplicate_profiles_cannot_replace_required_resolution(self):
         self.report['performance'][-1] = copy.deepcopy(self.report['performance'][-2])

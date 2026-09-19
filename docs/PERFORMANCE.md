@@ -1,3 +1,44 @@
+<!-- VROOM-034-RESULTS-BEGIN -->
+# Performances — Vroom 0.34
+
+**PASS — 47/47 contrôles du package Mac, huit mesures de cadence et six tours complets.** Série du 2026-09-19, rapport `completed=true`, aucun échec et toutes les sorties à zéro. Fenêtres visibles et actives, commandes automatisées ; ces contrôles ne constituent pas une session jouée avec une manette physique.
+
+Profil **Photoréalisme : TSR, 80 % interne, Lumen GI/reflets 2, ombres/végétation 3, effets 2, historique TSR à 100 % sur Mac, VSync et plafond de 30 images/s**. Les tableaux excluent les 120 premières images de chaque capture. Ces résultats à 30 Hz ne certifient pas 60 FPS ; les mesures 0.33 et 0.30 restent archivées ci-dessous.
+
+| Mesure | Images analysées | FPS moyen | P99 ms | Max ms | Images >40 ms | CSV |
+|---|---:|---:|---:|---:|---:|---|
+| 1440 × 900 | 1680 | 30.00 | 33.638 | 33.899 | 0 | [Profile(20260919_232041).csv](../Saved/Validation/v0.34.0/20260919-231125-package/Profile%2820260919_232041%29.csv) |
+| 2560 × 1664 | 1680 | 30.00 | 33.591 | 35.382 | 0 | [Profile(20260919_232148).csv](../Saved/Validation/v0.34.0/20260919-231125-package/Profile%2820260919_232148%29.csv) |
+| Autriche | 7680 | 30.00 | 33.575 | 35.125 | 0 | [Profile(20260919_232254).csv](../Saved/Validation/v0.34.0/20260919-231125-package/Profile%2820260919_232254%29.csv) |
+| France | 7680 | 30.00 | 33.586 | 34.819 | 0 | [Profile(20260919_232726).csv](../Saved/Validation/v0.34.0/20260919-231125-package/Profile%2820260919_232726%29.csv) |
+| États-Unis | 7680 | 30.00 | 33.575 | 35.091 | 0 | [Profile(20260919_233154).csv](../Saved/Validation/v0.34.0/20260919-231125-package/Profile%2820260919_233154%29.csv) |
+| Suède | 7680 | 30.00 | 33.573 | 36.889 | 0 | [Profile(20260919_233625).csv](../Saved/Validation/v0.34.0/20260919-231125-package/Profile%2820260919_233625%29.csv) |
+| Japon | 7680 | 30.00 | 33.556 | 39.573 | 0 | [Profile(20260919_234054).csv](../Saved/Validation/v0.34.0/20260919-231125-package/Profile%2820260919_234054%29.csv) |
+| Royaume-Uni | 7680 | 30.00 | 33.518 | 34.856 | 0 | [Profile(20260919_234523).csv](../Saved/Validation/v0.34.0/20260919-231125-package/Profile%2820260919_234523%29.csv) |
+
+## Preuves du package mesuré
+
+| Preuve | SHA-256 |
+|---|---|
+| [Rapport source final](../Saved/Validation/v0.34.0/20260919-231125-package/results.json) | `69b2511dfbc3bcdb2ffb81e4f9d72a6700a79183b4e1e44eb295514b4176e1bb` |
+| Exécutable mesuré | `b760aeaec8a9a6fc3370051dbf6a9fc13dbfe8a9a661b3905524d09b896bb3ea` |
+| [vroom-034-thumb-selected-package.log](../Saved/Logs/vroom-034-thumb-selected-package.log) | `fab8dc9bea8d1289145390d4809032a728db64dd131a7d959a16a26337fafda6` |
+| [portable-thumb-selected.log](../Saved/Validation/v034/portable-thumb-selected.log) | `4a33a6ca2bcd57bec0c68107f8027243d2d3058db4d7c35fa71e3ea3bf793279` |
+| [car-surfaces-circle-final.log](../Saved/Validation/v034/car-surfaces-circle-final.log) | `93136111419012062ab00e00d3bc353513bd3a37011066b4161b311c86fb8bdc` |
+| CSV perf-1440 | `4757e3d8366100cfeb0e92a2ad9bbe9413a44b7ff7f414e204b194027ce33d3d` |
+| CSV perf-2560 | `d84961a5641ef4e8acf93fb8fcb96f1dd655a56f7435811a34fa10fdbc25be8d` |
+| CSV soak-track-1 | `624fe490bb6028d1f634ce4ed7018c68af10c504f6d160b54ea83867ed962f98` |
+| CSV soak-track-2 | `6b1c15f710d7c95fd34df9990968abf21eba469e4723297c4b2af973643cd739` |
+| CSV soak-track-3 | `bb0ec9e740a935350e7b440067523780867a7affda4fe3597b4ba37b7e655f5a` |
+| CSV soak-track-4 | `21f084162c7b5c791e8c6999549ce6602cac6189df4269cb30b8ace3cb057488` |
+| CSV soak-track-5 | `17e1b6ca9ec112543bbb70847a4b42eb4435cf43e85683b1603117e8512f0e63` |
+| CSV soak-track-6 | `bcdfbb9b9d0bda004aacda77971491ebfed8de2b0089bb7eab6ef314231e2ec4` |
+
+Les empreintes de toutes les données embarquées, des captures et des journaux figurent dans le [rapport JSON courant](validation-results.json). Le vérificateur confirme leur stabilité pendant la série ; ces identités ne prouvent pas une installation. Les journaux et CSV sous `Saved/` restent des preuves locales non versionnées ; le bilan JSON et les captures de référence sous `docs/images/` sont conservés dans le dépôt.
+
+Windows/NVIDIA, l’activation matérielle DLSS et les périphériques physiques ne sont pas certifiés par cette série Mac. **Installation Mac vérifiée : `0.34.0-c8a4441fbfd4`.** Le lanceur habituel ouvre cette version ; les empreintes du binaire, des données et du rapport installé correspondent au package mesuré. Le profil Photoréalisme et le FOV 68° ont été enregistrés par le menu, avec contrôle visible au clavier. La version 0.33 est conservée pour revenir en arrière. Le [dépôt Forgejo](https://git.estrasse.fr/david/vroom-unreal) expose séparément l’état des commits publiés.
+<!-- VROOM-034-RESULTS-END -->
+
 # Performances — Vroom 0.33
 
 ## Mesures du 19 septembre 2026

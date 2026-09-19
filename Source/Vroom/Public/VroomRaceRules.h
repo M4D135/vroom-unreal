@@ -117,16 +117,18 @@ inline StartBeep BeepFor(StartSignal Signal)
 {
     switch (Signal)
     {
-    case StartSignal::Red: return {880.0, 0.16, 0.55};
-    case StartSignal::Orange: return {1175.0, 0.20, 0.65};
-    case StartSignal::Green: return {1760.0, 0.38, 0.92};
+    // Two equal preparation calls, then a longer fifth above: a restrained
+    // arcade starting signal, not a claim about real F1 or the original PCM.
+    case StartSignal::Red: return {392.0, 0.24, 0.76};
+    case StartSignal::Orange: return {392.0, 0.24, 0.76};
+    case StartSignal::Green: return {588.0, 0.48, 1.0};
     default: return {};
     }
 }
 
 // A single preallocated voice, mixed into the existing race audio stream.
-// The short fades avoid clicks and require neither a new sound object nor a
-// PCM allocation when a light changes.
+// A rounded, harmonic-rich call replaces the thin high sine beeps. Smooth
+// attack/release avoid clicks; no new sound object or PCM allocation per light.
 struct StartToneVoice
 {
     static constexpr int SampleRate = 48000;
@@ -146,8 +148,25 @@ struct StartToneVoice
     {
         if (Sample >= SampleCount) return 0;
         constexpr double Tau = 6.28318530717958647692;
-        const double Fade = std::min({1.0, Sample / 240.0, (SampleCount - 1 - Sample) / 480.0});
-        const double Value = std::sin(Phase) * Beep.Volume * Fade;
+        const double Attack = std::clamp(Sample / 264.0, 0.0, 1.0); // 5.5 ms
+        const double Release = std::clamp((SampleCount - 1 - Sample) / 3360.0, 0.0, 1.0); // 70 ms
+        const auto Smooth = [](double X) { return X * X * (3.0 - 2.0 * X); };
+        const double Age = double(Sample) / SampleRate;
+        // A short resonant onset settles to a firm body, with no siren sweep
+        // or noisy click masking the engine. Positive harmonic weights sum
+        // to one, so the voice is bounded by Beep.Volume without clipping.
+        const double Body = .96 + .04 * std::max(0.0, 1.0 - Age / .055);
+        const double S = std::sin(Phase), C = std::cos(Phase), S2 = S * S;
+        const double Fundamental = .50 * S;
+        const double Harmonics = .27 * (2.0 * S * C)
+            + .14 * (3.0 * S - 4.0 * S * S2)
+            + .065 * (4.0 * S * C * (1.0 - 2.0 * S2))
+            + .025 * (S * (5.0 - 20.0 * S2 + 16.0 * S2 * S2));
+        const double Raw = Fundamental + Harmonics;
+        // Gentle presence shaping: monotonic on [-1,1], fixes both endpoints,
+        // and stays in [-1,1]. It adds body without a limiter or hard clipping.
+        const double Present = Raw * (1.0 + .20 * (1.0 - std::abs(Raw)));
+        const double Value = Present * Beep.Volume * Body * Smooth(Attack) * Smooth(Release);
         Phase = std::fmod(Phase + Tau * Beep.Frequency / SampleRate, Tau);
         ++Sample;
         return Value;
@@ -161,20 +180,40 @@ struct Wishbone
     bool Steers = false;
 };
 
-// Thin double wishbones in centimetres, matching the existing wheel hubs.
+// Tyre array order is left front/rear, then right front/rear. Derive the slot
+// from the upright, never from an array index that breaks when adding links.
+inline int CarWishboneWheelSlot(const Wishbone& Bar)
+{
+    return (Bar.HubY > 0 ? 2 : 0) + (Bar.Steers ? 0 : 1);
+}
+
+// One source for the player's suspension, in centimetres. Front chassis ends
+// sit inside the low nose; upper/lower pairs meet at the same upright point.
 inline const Wishbone* CarWishbones(int& Count)
 {
     static const Wishbone Bars[] = {
-        {102, -40, 16, 128, -91, 22, true},
-        {96, -44, 34, 128, -91, 48, true},
-        {102, 40, 16, 128, 91, 22, true},
-        {96, 44, 34, 128, 91, 48, true},
-        {-78, -44, 18, -115, -96, 24, false},
-        {-70, -48, 36, -115, -96, 52, false},
-        {-78, 44, 18, -115, 96, 24, false},
-        {-70, 48, 36, -115, 96, 52, false},
+        {65, -19, 49, 128, -74, 43, true},
+        {107, -14, 50, 128, -74, 43, true},
+        {59, -18, 35, 128, -74, 28, true},
+        {103, -14, 35, 128, -74, 28, true},
+        {87, -18, 42, 126, -74, 35, true},
+        {81, -15, 55, 128, -74, 28, true},
+        {65, 19, 49, 128, 74, 43, true},
+        {107, 14, 50, 128, 74, 43, true},
+        {59, 18, 35, 128, 74, 28, true},
+        {103, 14, 35, 128, 74, 28, true},
+        {87, 18, 42, 126, 74, 35, true},
+        {81, 15, 55, 128, 74, 28, true},
+        {-70, -40, 49, -115, -79, 46, false},
+        {-142, -34, 45, -115, -79, 46, false},
+        {-76, -42, 29, -115, -79, 28, false},
+        {-140, -35, 30, -115, -79, 28, false},
+        {-70, 40, 49, -115, 79, 46, false},
+        {-142, 34, 45, -115, 79, 46, false},
+        {-76, 42, 29, -115, 79, 28, false},
+        {-140, 35, 30, -115, 79, 28, false},
     };
-    Count = 8;
+    Count = static_cast<int>(sizeof(Bars) / sizeof(Bars[0]));
     return Bars;
 }
 

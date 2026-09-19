@@ -1,4 +1,4 @@
-# Jouer à Vroom 0.33
+# Jouer à Vroom 0.34
 
 Cette version propose trois formats de course, des commandes configurables et des records locaux. Les règles ajoutées sont des adaptations du prototype inspiré de Vroom ; elles ne constituent pas une restitution intégrale des règles Amiga.
 
@@ -56,7 +56,7 @@ Ces affectations sont les valeurs initiales. **Commandes et son** permet de les 
 | Tab / H | Mode / difficulté suivante au menu |
 | F10 | Alterner le FOV préféré, sa variante −12° et sa variante +12° |
 
-Les variantes F10 sont temporaires ; le FOV de base se règle et se sauvegarde dans **Commandes et son**. Le cockpit garde les gants blancs, la rotation des poignets et le cadrage bas de la 0.30, avec une prise resserrée d’environ **3 mm**. Les vues normales neutre/gauche/droite du package 0.33 ont été inspectées dans la validation visible. Les bornes de caméra sont 55° à 110°.
+Les variantes F10 sont temporaires ; le FOV de base se règle et se sauvegarde entre **60° et 105°** dans **Commandes et son**. Les variantes de −12° et +12° sont bornées entre **55° et 110°**. Le cockpit 0.34 suit la photo F1 fournie comme nouvelle référence : position des yeux plus basse, carrosserie rouge et vrais pneus visibles, volant classique compact à trois branches, sans halo, et **gants blancs à neuf heures et trois heures**. Les rétroviseurs allongés reposent sur des bras rouges coudés, physiquement derrière les pneus. Le tableau de bord reste fixe derrière le volant pendant le braquage. Le cadrage de référence conserve un FOV de 68° et les yeux en position basse. La prise du pouce autour du cercle approuvée par David est celle du package validé et installé.
 
 ## Souris et manette
 
@@ -83,11 +83,29 @@ La liste comporte plusieurs pages. Les flèches ou la croix directionnelle chang
 
 Dans la page des commandes, Entrée lance la saisie d'une touche lorsque la sélection est une attribution ; le bouton **Appliquer** ou Start sur manette enregistre l'ensemble. Dans la page graphique, Entrée/A applique directement et Échap/B annule.
 
+## Choisir la qualité graphique
+
+**Graphismes** propose Performance, Équilibré, Élevé, Ultra et le nouveau **Photoréalisme**. Performance conserve l’objectif de **60 images/s**. Photoréalisme privilégie l’éclairage Lumen, les reflets et les ombres proches des arbres, avec TSR à 80 % et une cible de **30 images/s sur Mac**. Revenir à un autre profil rétablit le plafond normal de 60 images/s.
+
+Le package installé a réussi les huit mesures en Photoréalisme, couvrant les sorties 1440 × 900 et 2560 × 1664 et les six circuits complets : **29,996–30,000 images/s**, avec un maximum de **39,573 ms par image**, après préparation. Ces résultats à 30 images/s ne valident pas la cible de 60 images/s de Performance sur ce package. Le nom Photoréalisme ne garantit pas une scène entièrement photoréaliste. Choisir le profil selon la priorité souhaitée entre précision de l’éclairage et cadence de conduite ; le [bilan 0.34](FINALISATION_034.md) conserve les mesures et les échecs intermédiaires.
+
 ## Déraper, passer au stand et récupérer après un choc
 
 À plus d’environ **44 km/h** sur la route, appuyer sur **Maj** ou **LB/RB** en braquant dans le sens du virage. Garder le bouton enfoncé, puis **contre-braquer modérément** pour tenir la glisse. Au clavier, alterner de brèves pressions sur la direction opposée et de courts relâchements ; à la manette, doser le stick. Le retour à l’écran indique la charge réellement gagnée par ce contrôle.
 
-Relâcher Maj ou LB/RB pour libérer le bonus : **niveau 1, poussée de 0,55 s ; niveau 2, poussée de 1,15 s**. Relâcher trop tôt ne donne rien. Tenir toujours la direction d’entrée ou rester trop longtemps à fond dans la direction opposée fait perdre le contrôle et la charge. Le frein ne provoque pas automatiquement la glisse : il l’annule et coupe une poussée en cours. Un contact, l’herbe, un saut physique, une panne sèche ou une vitesse insuffisante annulent aussi la charge. Après une annulation, relâcher le bouton avant de tenter une nouvelle glisse. Ce mécanisme est une adaptation ludique du prototype.
+La glisse gagne maintenant **trois niveaux**, visibles sur la barre et dans les étincelles :
+
+| Niveau | Couleur | Turbo normal | Avec lâcher parfait |
+|---|---|---:|---:|
+| I | Bleu | 0,55 s | 0,75 s |
+| II | Ambre | 1,15 s | 1,35 s |
+| III | Violet | 1,70 s | 1,90 s |
+
+Relâcher **Maj ou LB/RB** libère le turbo gagné. À chaque nouveau niveau, l’indication **« RELÂCHE MAINTENANT : PARFAIT ! »** apparaît brièvement : relâcher pendant ce signal donne **0,20 s de poussée supplémentaire**. Continuer à tenir une glisse propre permet de viser le niveau suivant ; manquer le signal conserve le turbo normal. Les trois niveaux peuvent être obtenus au clavier en dosant les pressions, sans manette analogique.
+
+Un bon contre-braquage resserre la trajectoire pour garder les longues glisses sur la piste. Les étincelles et les sons distinguent les niveaux ; la poussée arrive progressivement et s’efface en douceur. Le retour visuel n’ajoute aucune secousse de caméra ni variation brutale du champ de vision.
+
+Relâcher trop tôt ne donne rien. Tenir toujours la direction d’entrée ou rester trop longtemps à fond dans la direction opposée fait perdre le contrôle et la charge. Le frein ne provoque pas automatiquement la glisse : il l’annule et coupe une poussée en cours. Un contact, l’herbe, un saut physique, une panne sèche ou une vitesse insuffisante annulent aussi la charge. Après une annulation, relâcher le bouton avant de tenter une nouvelle glisse ; un turbo actif doit se terminer avant d’en amorcer une autre. Ce mécanisme est une adaptation ludique du prototype.
 
 Un petit frottement de roues avec un concurrent peut faire bondir brièvement la voiture. Corriger dans le sens opposé à la poussée reçue aide à la poser : si le choc vous pousse à gauche, corriger à droite, et inversement. Une réception bien corrigée conserve **100 %** de la vitesse d’arrivée, une commande neutre **97 %**, une mauvaise correction **94 %**. Ce rattrapage ne donne aucun boost et ne protège pas d’un second choc sévère.
 
@@ -126,17 +144,21 @@ Depuis la racine du dépôt :
 ```sh
 Tools/build_mac.command --package
 python3 Tools/test_portable.py
-python3 Tools/verify_mac.py --visible --graphics-preset performance --profile --soak
+python3 Tools/verify_mac.py --visible --graphics-preset photorealism --profile --soak
 python3 Tools/install_mac.py --validation "CHEMIN-ANNONCE-PAR-LE-VERIFICATEUR/results.json"
 ```
 
-Remplacer le chemin de la dernière commande par celui annoncé par le vérificateur. Ce n'est pas un fichier fixe : chaque série crée son propre dossier daté. `--visible` affiche et active la fenêtre pour chaque scénario ; `--graphics-preset performance` applique temporairement le profil Performance, sans changer les préférences sauvegardées. `--profile` mesure les deux définitions et `--soak` parcourt les six circuits complets. L'installation exige le rapport réussi correspondant au binaire et aux données cuisinées ; elle refuse un package incomplet ou différent.
+Remplacer le chemin de la dernière commande par celui annoncé par le vérificateur. Ce n'est pas un fichier fixe : chaque série crée son propre dossier daté. `--visible` affiche et active la fenêtre pour chaque scénario ; `--graphics-preset photorealism` applique temporairement le profil Photoréalisme à 30 images/s sur Mac, sans changer les préférences sauvegardées. Pour vérifier séparément la cible de 60 images/s, choisir `--graphics-preset performance`. `--profile` mesure les deux définitions et `--soak` parcourt les six circuits complets. L'installation exige le rapport réussi correspondant au binaire et aux données cuisinées ; elle refuse un package incomplet ou différent.
 
 L'application de lancement stable est `~/Applications/Vroom.app`. Le manifeste actif est `~/Library/Application Support/Vroom/active.json` ; les versions installées et leurs rapports restent dans `~/Library/Application Support/Vroom/Releases/`. Les anciennes versions sont conservées pour un retour arrière. Une compilation seule laisse la version active inchangée.
 
 ## Périmètre de validation
 
-Les tests portables ciblés de conduite, de contre-braquage et de reprise hors piste ont été exécutés. Ils vérifient les règles du modèle, pas la fluidité affichée. **La série du 19 septembre 2026 passe ses 45 contrôles visibles, huit profils et six parcours complets en profil Performance à 70 % interne.** Le [rapport 0.33](FINALISATION_033.md) consigne leur avancement ; compiler ne vaut pas installation.
+Les tests portables ciblés de conduite et de contre-braquage **0.34 passent**, avec les trois niveaux, le lâcher parfait, les annulations et 126 combinaisons de glisse experte. Ils vérifient les règles du modèle, pas la fluidité affichée ni le placement visuel des mains.
+
+La série **0.33 du 19 septembre 2026** a réussi ses 45 contrôles visibles, huit profils et six parcours complets en profil Performance à 70 % interne. Le [rapport 0.33](FINALISATION_033.md) conserve ces preuves ; elles portent sur le package précédent.
+
+La **prise du pouce de la 0.34 est approuvée visuellement par David**, avec le volant circulaire, les gants blancs et le cadrage conservés. Les **31 suites portables passent**, dont les 10 contrôles des gants ; l’audit de séparation avec la jante passe également. La série visible `20260919-231125-package` termine avec **47/47 contrôles PASS**, dont les huit mesures et les six parcours complets. Les vues [neutre](images/cockpit-034-neutral.png), [gauche](images/cockpit-034-left.png) et [droite](images/cockpit-034-right.png) proviennent de cette série. La release **`0.34.0-c8a4441fbfd4` est installée** : les empreintes du binaire, des données et du rapport correspondent aux éléments validés, et la 0.33 reste disponible pour retour arrière. Le [rapport](validation-results.json) et le [bilan 0.34](FINALISATION_034.md) conservent ces preuves séparément des essais précédents. L’état Git est consultable dans le [dépôt](https://git.estrasse.fr/david/vroom-unreal).
 
 Les mesures historiques du package Mac 0.30, datées du **13 septembre 2026**, restent disponibles : 31 cas, huit profils, six circuits complets et 21 contrôles portables. Le profil Performance à 70 % interne atteignait environ 59,98–59,99 images/s sur le Mac Apple M5 24 Go, avec un maximum mesuré de 22,83 ms par image. Ces mesures sous verrouillage du Mac ne certifient ni la version 0.33 ni une session de jeu interactive.
 

@@ -10,6 +10,7 @@ import json
 import math
 from pathlib import Path
 import re
+import random
 import runpy
 import struct
 
@@ -23,6 +24,170 @@ TREES = (
     ('Broadleaf', ('Mesh.109', 'Mesh.017', 'Mesh.020'), 930.0, 400.0, (880, 525, 321)),
     ('Birch', ('Mesh.012', 'Mesh.021', 'Mesh.023'), 1050.0, 220.0, (726, 476, 278)),
 )
+BRANCHED_TREES = (('Conifer', 1150.0, 300.0), ('Umbrella', 980.0, 480.0))
+
+
+class BranchMesh:
+    """Small authored-style branch meshes, with real cylindrical/leaf-card UVs."""
+    def __init__(self):
+        self.data = {'positions': [], 'corners': [], 'triangles': []}
+        self.vertices = {}
+
+    def polygon(self, points, uvs, material):
+        start = len(self.data['corners'])
+        for point, uv in zip(points, uvs):
+            key = tuple(point)
+            if key not in self.vertices:
+                self.vertices[key] = len(self.data['positions'])
+                self.data['positions'].append(key)
+            # Shared positions permit smooth recalculated bark normals while
+            # UV seams remain independent corner attributes.
+            self.data['corners'].append([self.vertices[key], *uv])
+        for i in range(1, len(points) - 1):
+            self.data['triangles'].append([material, start, start + i, start + i + 1])
+
+    def branch(self, centers, radii, sides):
+        # Shared ring orientation prevents twisted bark between tapered joints.
+        direction = unit([centers[-1][i] - centers[0][i] for i in range(3)])
+        reference = (0, 0, 1) if abs(direction[2]) < .9 else (0, 1, 0)
+        across = unit(cross(direction, reference))
+        up = cross(direction, across)
+        rings = [[tuple(center[j] + radius * (across[j] * math.cos(i * math.tau / sides)
+                   + up[j] * math.sin(i * math.tau / sides)) for j in range(3))
+                 for i in range(sides)] for center, radius in zip(centers, radii)]
+        along = 0.0
+        for index in range(len(rings) - 1):
+            next_along = along + math.dist(centers[index], centers[index + 1]) / 160.0
+            for side in range(sides):
+                nxt = (side + 1) % sides
+                self.polygon((rings[index][side], rings[index + 1][side],
+                              rings[index + 1][nxt], rings[index][nxt]),
+                             ((side / sides, along), (side / sides, next_along),
+                              ((side + 1) / sides, next_along), ((side + 1) / sides, along)), 0)
+            along = next_along
+        # Buried root and branch tips need no caps; all visible ends are covered
+        # by a smaller twig/card. This also avoids triangles hidden in crowns.
+
+    def foliage(self, center, direction, length, width, roll=0.0, segments=2):
+        direction = unit(direction)
+        across = unit(cross(direction, (0, 0, 1)))
+        up = cross(direction, across)
+        across = [across[i] * math.cos(roll) + up[i] * math.sin(roll) for i in range(3)]
+        # The photographed branch bends in two planes instead of being a flat
+        # billboard. Both sides render; no per-frame camera-facing work.
+        def point(t, side):
+            bend = math.sin(t * math.pi) * length * .09
+            return tuple(center[i] + direction[i] * (t - .5) * length
+                         + across[i] * side * width * .5 + up[i] * bend for i in range(3))
+        for part in range(segments):
+            low, high = part / segments, (part + 1) / segments
+            self.polygon((point(low, -1), point(high, -1), point(high, 1), point(low, 1)),
+                         ((0, 1 - low), (0, 1 - high), (1, 1 - high), (1, 1 - low)), 1)
+
+
+def cross(a, b):
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+
+
+def branched_tree_lods(species):
+    """Deterministic silhouettes replacing the old opaque polygonal lobes.
+
+    Procedural needle cutouts supply evergreen detail, while the existing CC0
+    bark photograph dresses the tapered branches. No deciduous leaf photograph
+    is repurposed as pine needles.
+    Every LOD retains the same trunk origin and crown envelope.
+    """
+    lods = []
+    for lod in range(3):
+        mesh = BranchMesh()
+        rng = random.Random(6151 if species == 'Conifer' else 6152)
+        sides = (8, 6, 5)[lod]
+        if species == 'Conifer':
+            centers = [(0, 0, 0), (-5, 3, 240), (4, -4, 550), (6, 1, 850), (0, 0, 1120)]
+            mesh.branch(centers, (18, 14, 10, 6, 1), sides)
+            # All levels exist in every LOD: only branch/twig density changes.
+            # Thus distance changes never shift the apex or remove a full tier.
+            for level in range(9):
+                z = 295 + level * 93
+                length = 275 * (1 - level / 11.0)
+                for branch in range(6):
+                    angle = level * 1.27 + branch * math.tau / 6
+                    reach = length * rng.uniform(.87, 1.03)
+                    dz = rng.uniform(-25, 24)
+                    if lod and branch % (2 if lod == 1 else 3):
+                        continue
+                    axis = (math.cos(angle), math.sin(angle), -.16)
+                    end = (axis[0] * reach, axis[1] * reach, z + dz - 26)
+                    if lod < 2:
+                        mesh.branch(((0, 0, z + 15), (end[0] * .52, end[1] * .52, z - 18), end),
+                                    (5.6 * (1 - level / 13), 2.8, .7), 3)
+                    center = (end[0] * .58, end[1] * .58, z + dz)
+                    mesh.foliage(center, axis, reach * 1.16, reach * .62,
+                                 -.16, segments=2 if lod == 0 else 1)
+                    mesh.foliage((center[0], center[1], center[2] + 8), axis,
+                                 reach * 1.02, reach * .58, 1.08, segments=1)
+            mesh.foliage((0, 0, 1091), (.035, .02, 1), 112, 79, segments=1)
+            mesh.foliage((0, 0, 1091), (.035, .02, 1), 112, 79, 1.57, segments=1)
+        else:
+            mesh.branch(((0, 0, 0), (5, -4, 200), (-9, 2, 415), (13, 8, 635)),
+                        (22, 17, 13, 7), sides)
+            for branch in range(9):
+                angle = branch * 2.399963
+                spread = 225 + (branch % 3) * 48
+                end = (math.cos(angle) * spread, math.sin(angle) * spread, 815 + (branch % 3) * 32)
+                mesh.branch(((1, 0, 425 + (branch % 2) * 55),
+                             (end[0] * .58, end[1] * .58, end[2] - 85), end),
+                            (9.5, 5.2, 1.2), (5, 4, 3)[lod])
+                # Open, irregular horizontal crown; gaps reveal branching and
+                # sky, unlike the old eight solid low-poly ellipsoids.
+                for twig in range(5):
+                    a = angle + (twig - 2) * .47
+                    radius = rng.uniform(70, 108)
+                    z = rng.uniform(-18, 20)
+                    if lod == 1 and twig in (1, 3):
+                        continue
+                    if lod == 2 and twig not in (0, 2, 4):
+                        continue
+                    center = (end[0] + math.cos(a) * radius * .38,
+                              end[1] + math.sin(a) * radius * .38, end[2] + z)
+                    mesh.foliage(center, (math.cos(a), math.sin(a), .12),
+                                 208, 153, .18 + (twig % 2) * .35,
+                                 segments=2 if lod == 0 else 1)
+                    if lod < 2 or twig == 2:
+                        mesh.foliage((center[0], center[1], center[2] - 10),
+                                     (math.cos(a + .7), math.sin(a + .7), -.08),
+                                     180, 143, 1.10, segments=1)
+        lods.append(mesh.data)
+    # One shared scale for the complete LOD family preserves the original
+    # placement/collision footprint and does not make trees shrink at distance.
+    radius_limit = next(radius for name, _, radius in BRANCHED_TREES if name == species)
+    scale = min(1.0, radius_limit / max(math.hypot(p[0], p[1]) for lod in lods for p in lod['positions']))
+    for lod in lods:
+        lod['positions'] = [(p[0] * scale, p[1] * scale, max(0.0, p[2])) for p in lod['positions']]
+    return lods
+
+
+def audit_branched_trees():
+    report = {}
+    for species, height, radius in BRANCHED_TREES:
+        lods = branched_tree_lods(species)
+        counts = []
+        for lod in lods:
+            points = lod['positions']
+            assert all(math.isfinite(v) for p in points for v in p)
+            assert min(p[2] for p in points) >= -.5
+            assert max(p[2] for p in points) <= height
+            assert max(math.hypot(p[0], p[1]) for p in points) <= radius + 1.e-6
+            assert {t[0] for t in lod['triangles']} == {0, 1}
+            for material, *indices in lod['triangles']:
+                a, b, c = [points[lod['corners'][i][0]] for i in indices]
+                normal = cross([b[i] - a[i] for i in range(3)], [c[i] - a[i] for i in range(3)])
+                assert sum(v * v for v in normal) > 1.e-12
+            counts.append(len(lod['triangles']))
+        assert counts[0] <= 1400 and counts[0] > counts[1] > counts[2]
+        report[species] = {'lod_triangles': counts, 'height_limit_cm': height,
+                           'radius_limit_cm': radius, 'material_sections': 2}
+    return report
 
 
 class BlendReader:
@@ -244,6 +409,7 @@ def audit():
     report['source_sha256'] = digest(SOURCE / 'free_vegetation_pack.blend')
     report['photographic_textures'] = len(TEXTURES)
     report['maximum_texture_resolution'] = 1024
+    report['branched_trees'] = audit_branched_trees()
     return report
 
 
@@ -253,8 +419,10 @@ def build_tree_assets():
     data = json.loads((SOURCE / 'trees.json').read_text())
     helpers = runpy.run_path(str(Path(__file__).with_name('bootstrap_assets.py')),
                              run_name='vroom_tree_helpers')
-    require, expression, output, scalar, multiply = (
-        helpers[key] for key in ('require','expression','output','scalar','multiply'))
+    require, expression, output, scalar, multiply, connect = (
+        helpers[key] for key in ('require','expression','output','scalar','multiply','connect'))
+    instance_fade = runpy.run_path(str(Path(__file__).with_name('bootstrap_environment_assets.py')),
+                                  run_name='vroom_environment_fade')['apply_instance_fade']
     library = unreal.EditorAssetLibrary
     editor = unreal.MaterialEditingLibrary
     tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -297,7 +465,8 @@ def build_tree_assets():
         texture.set_editor_property('lod_group', unreal.TextureGroup.TEXTUREGROUP_WORLD)
         texture.set_editor_property('max_texture_size', 1024)
         texture.set_editor_property('never_stream', True)
-        # Preserve leaf alpha through mip generation and the .45 masked clip.
+        # Preserve the source cutout through mip generation. The distance-fade
+        # helper remaps this .45 cutoff to the final .5 dither mask afterwards.
         if index:
             texture.set_editor_property('do_scale_mips_for_alpha_coverage', True)
             texture.set_editor_property('alpha_coverage_thresholds', unreal.Vector4(0, 0, 0, .45))
@@ -309,32 +478,79 @@ def build_tree_assets():
         material.set_editor_property('blend_mode', unreal.BlendMode.BLEND_MASKED if index else unreal.BlendMode.BLEND_OPAQUE)
         material.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE
                                      if index else unreal.MaterialShadingModel.MSM_DEFAULT_LIT)
-        material.set_editor_property('opacity_mask_clip_value', .45)
         sample = expression(material, unreal.MaterialExpressionTextureSample, texture=texture,
                             sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
         # Photographic RGB is kept intact. Existing per-instance regional tint
         # must not replace this texture with a uniform painted leaf colour.
         require(editor.connect_material_property(sample, 'RGB', unreal.MaterialProperty.MP_BASE_COLOR), 'Cannot connect tree RGB')
         if index:
-            require(editor.connect_material_property(sample, 'A', unreal.MaterialProperty.MP_OPACITY_MASK), 'Cannot connect tree alpha')
             output(multiply(material, sample, .15), unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
+        # TextureSample's default output is RGB: select its actual A output,
+        # never attempt to component-mask alpha from the three RGB channels.
+        instance_fade(material, helpers, sample if index else None, 'A' if index else '')
         output(scalar(material, .90), unreal.MaterialProperty.MP_ROUGHNESS)
         output(scalar(material, .15), unreal.MaterialProperty.MP_SPECULAR)
         editor.recompile_material(material)
         save(material)
         materials.append(material)
-    for species, _, _, _, budgets in TREES:
+    needle_material = owned_material('M_EnvironmentEvergreenNeedles')
+    editor.delete_all_material_expressions(needle_material)
+    needle_material.set_editor_property('used_with_instanced_static_meshes', True)
+    needle_material.set_editor_property('two_sided', True)
+    needle_material.set_editor_property('blend_mode', unreal.BlendMode.BLEND_MASKED)
+    needle_material.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
+    inputs = []
+    for name in ('UV', 'Variation'):
+        entry = unreal.CustomInput()
+        entry.set_editor_property('input_name', name)
+        inputs.append(entry)
+    needles = expression(needle_material, unreal.MaterialExpressionCustom,
+        output_type=unreal.CustomMaterialOutputType.CMOT_FLOAT4, inputs=inputs, code='''
+// One feathered branchlet on each curved card. Pixel footprint, never time,
+// softens fine needles at distance; no noise texture, loops or CPU animation.
+float t = saturate(1.0 - UV.y);
+float x = (UV.x - 0.5) * 2.0;
+float width = 0.13 + 0.85 * pow(saturate(sin(t * 3.14159265)), 0.7);
+float tip = saturate((0.99 - t) / max(fwidth(t), 0.015));
+float envelope = saturate((width - abs(x)) / max(fwidth(x), 0.018) + 0.5);
+float row = t * 21.0 - abs(x) * 0.82 + (x > 0 ? 0.22 : 0.0);
+float gap = abs(frac(row) - 0.5);
+float pixel = max(fwidth(row), 0.035);
+float needle = saturate((0.19 - gap) / pixel + 0.5);
+float stem = saturate((0.026 * (1.0 - t * 0.55) - abs(x)) / max(fwidth(x), 0.01) + 0.5);
+float alpha = max(stem, needle * envelope) * tip;
+float edge = saturate(abs(x) / max(width, 0.1));
+float3 dark = float3(0.030, 0.069, 0.033);
+float3 light = float3(0.105, 0.162, 0.063);
+float3 tint = lerp(dark, light, edge * 0.65 + t * 0.22);
+tint *= lerp(0.84, 1.18, Variation);
+return float4(tint, alpha);
+''')
+    connect(expression(needle_material, unreal.MaterialExpressionTextureCoordinate), needles, 'UV')
+    connect(expression(needle_material, unreal.MaterialExpressionPerInstanceRandom), needles, 'Variation')
+    rgb = expression(needle_material, unreal.MaterialExpressionComponentMask, r=True, g=True, b=True, a=False)
+    alpha = expression(needle_material, unreal.MaterialExpressionComponentMask, r=False, g=False, b=False, a=True)
+    connect(needles, rgb); connect(needles, alpha)
+    output(rgb, unreal.MaterialProperty.MP_BASE_COLOR)
+    instance_fade(needle_material, helpers, alpha, opacity_clip=.35)
+    output(multiply(needle_material, rgb, .28), unreal.MaterialProperty.MP_SUBSURFACE_COLOR)
+    output(scalar(needle_material, .86), unreal.MaterialProperty.MP_ROUGHNESS)
+    output(scalar(needle_material, .12), unreal.MaterialProperty.MP_SPECULAR)
+    editor.recompile_material(needle_material)
+    save(needle_material)
+
+    def build_mesh(species, lods, selected_materials, budgets, screens):
         path = '/Game/Meshes/SM_Environment' + species
         mesh = require(library.load_asset(path), 'Missing base tree ' + path)
         require(isinstance(mesh, unreal.StaticMesh) and library.get_metadata_tag(mesh, TAG) == ENVIRONMENT_GENERATOR,
                 'Foreign environment tree ' + path)
         mesh.set_editor_property('static_materials', [unreal.StaticMaterial(
-            material_interface=material, material_slot_name=material.get_name()) for material in materials])
+            material_interface=material, material_slot_name=material.get_name()) for material in selected_materials])
         descriptions = []
-        for lod in data['trees'][species]['lods']:
+        for lod in lods:
             description = unreal.StaticMesh.create_static_mesh_description(mesh)
-            groups = [description.create_polygon_group() for _ in materials]
-            for group, material in zip(groups, materials):
+            groups = [description.create_polygon_group() for _ in selected_materials]
+            for group, material in zip(groups, selected_materials):
                 description.set_polygon_group_material_slot_name(group, material.get_name())
             vertices = []
             for point in lod['positions']:
@@ -365,14 +581,20 @@ def build_tree_assets():
             settings.recompute_tangents = True
             settings.generate_lightmap_u_vs = False
             subsystem.set_lod_build_settings(mesh, index, settings)
-        require(subsystem.set_lod_screen_sizes(mesh, [1.0, .06, .022]), 'Cannot set authored tree LOD screens')
+        require(subsystem.set_lod_screen_sizes(mesh, screens), 'Cannot set tree LOD screens')
         # Preserve the base generator tag; its next run can rebuild these owned
         # meshes, followed by this deterministic photographic replacement.
         save(mesh, ENVIRONMENT_GENERATOR)
         counts = [mesh.get_num_triangles(index) for index in range(3)]
         require(counts == list(budgets), 'Authored tree LOD counts changed: ' + str(counts))
         unreal.log('VROOM TREES: ' + species + ' authored LOD triangles=' + str(counts))
-    unreal.log('VROOM TREES: PASS photographic CC0 textures, two masked leaf materials, 3 authored LODs, unchanged collision trunks')
+    for species, _, _, _, budgets in TREES:
+        build_mesh(species, data['trees'][species]['lods'], materials, budgets, [1.0, .06, .022])
+    for species, _, _ in BRANCHED_TREES:
+        lods = branched_tree_lods(species)
+        build_mesh(species, lods, [materials[0], needle_material],
+                   report['branched_trees'][species]['lod_triangles'], [1.0, .08, .028])
+    unreal.log('VROOM TREES: PASS two preserved photographic broadleaves, branched evergreen cutouts, 3 LODs per species, unchanged collision trunks')
     return report
 
 

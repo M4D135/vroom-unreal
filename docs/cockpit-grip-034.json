@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "auditor_sha256": "1e7dc932033ae6ee512a5e6f4513d09396b69f8c648b8b113a693958a26f1af6",
+  "status": "PASS",
+  "minimum_required_clearance_cm": 0.05,
+  "parameters": {
+    "wheel_scale": 0.85,
+    "contact_radius": 11.9,
+    "segments": 160,
+    "tube_segments": 16,
+    "depth_base": -0.34,
+    "tube_radius": 0.765,
+    "rim_radius": 11.9,
+    "radial_recess": 0.0,
+    "depth_recess": 0.0,
+    "tube_reduction": 0.0,
+    "recess_top": 9.0,
+    "neutral_angle": 0.0,
+    "grip_depth": -2.8,
+    "grip_reach": 19.1,
+    "hand_scale": 0.92,
+    "wrist_tilt": 80.0,
+    "depth_offset": -0.4
+  },
+  "hands": {
+    "left": {
+      "minimum_surface_clearance_cm": 0.06671208193470402,
+      "worst_segment_triangle": [
+        75,
+        3270
+      ],
+      "exact_segment_triangle_pairs_tested": 1270,
+      "glove_triangles": 4899,
+      "rim_segments": 160
+    },
+    "right": {
+      "minimum_surface_clearance_cm": 0.06671208193470413,
+      "worst_segment_triangle": [
+        4,
+        3270
+      ],
+      "exact_segment_triangle_pairs_tested": 409,
+      "glove_triangles": 4899,
+      "rim_segments": 160
+    }
+  },
+  "source": {
+    "path": "/Users/david/Downloads/vroom-unreal/Source/Vroom/Private/VroomCockpit.cpp",
+    "sha256": "27301e615fec1771e2a02383d0b8dcfedd1b6729a4e373b8ff4da336d7af46bc",
+    "supported_geometry_function_sha256": {
+      "void ClassicRim()": "ff6b7367668a046fe88bb35c0c059203560be2428d6d06ac8a707b35cc31836a",
+      "FDrivingHandPose DrivingHandPose(": "f194295e54e5d710ebfdf234135d57fa571af6bf40bab6ef2f918875e49c7852",
+      "if (FFileHelper::LoadFileToString(HandData": "1e98d47b527d386443c0c96b61d5218e684a9fd36916a103f607342b0d8e5176"
+    }
+  },
+  "glove": {
+    "path": "/Users/david/Downloads/vroom-unreal/Content/Data/gloves.json",
+    "sha256": "f342faa13e3c64a1883f2b2683ccc6b3e43edf2a565dc2a1cde2c7b06ea68908"
+  },
+  "method": "Exact segment-triangle distance against every glove face; AABB lower bounds prune distant pairs. Subtract each segment capsule radius=max(endpoint radii). Every rendered facet between the reviewed orthonormal rings lies inside this capsule, so positive separation excludes face-interior intersections. Both hands are evaluated separately. Shared rigid tilt and steering preserve separation.",
+  "scope": "Current default cockpit hand pose and ClassicRim only; glove self-intersections, command-line pose overrides, spokes, dashboard, sleeves and body are not certified. Visible appearance still needs runtime inspection."
+}

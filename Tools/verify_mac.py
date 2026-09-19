@@ -20,7 +20,8 @@ import subprocess
 from install_mac import sha256, package_data_paths
 
 from analyze_performance import analyze_csv, analyze_motion
-from regression_gates import PERFORMANCE_LIMITS, MOTION_LIMITS, performance_failures, motion_failures
+from regression_gates import (GRAPHICS_PRESETS, check_release_limits, release_limits_for_preset,
+                              performance_failures, motion_failures)
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTAINER = Path.home() / 'Library/Containers/com.YourCompany.Vroom/Data'
@@ -55,6 +56,8 @@ def validate_resume_identity(previous, current):
         raise ValueError('Resume release limits differ or are missing')
     if previous.get('graphics_preset') != current.get('graphics_preset'):
         raise ValueError('Resume graphics preset differs')
+    for report in (previous, current):
+        check_release_limits(report)
 
 
 def failed_stage(previous, name):
@@ -107,6 +110,8 @@ REQUIRED_MARKERS = {
     'menu-flow': ['Menu self-test PASS', 'Settings self-test PASS'],
     'drift-feedback': ['Drift feedback PASS'],
     'drift-unskilled': ['Drift feedback PASS', 'Drift skill denied PASS'],
+    'drift-expert': ['Drift feedback PASS', 'Expert drift PASS'],
+    'traffic-overtake': ['Traffic overtake PASS'],
     'collision-rub': ['Controlled landing quality='],
     'options': ['Graphics preview PASS'],
     'offroad-left': ['Offroad restart PASS'],
@@ -160,6 +165,8 @@ def start_signal_failures(body, name):
 def case_reusable(previous, name, request, root=ROOT):
     if failed_stage(previous, name):
         return None
+    if previous.get('graphics_preset') != request.get('graphics_preset'):
+        return None
     rows = [row for row in previous.get('cases', []) if row.get('name') == name]
     if len(rows) != 1:
         return None
@@ -184,6 +191,11 @@ def case_reusable(previous, name, request, root=ROOT):
             return None
         commands = re.findall(r'LogInit: Command Line:\s*(.*)', body)
         tokens = shlex.split(commands[-1]) if commands else []
+        preset = request.get('graphics_preset')
+        actual_presets = [token for token in tokens if token.startswith('-VroomGraphicsPreset=')]
+        expected_presets = [] if preset is None else [f'-VroomGraphicsPreset={GRAPHICS_PRESETS.index(preset)}']
+        if actual_presets != expected_presets:
+            return None
     except (ValueError, KeyError):
         return None
     expected = request['flags'] + ['-VroomVerify', '-windowed', '-ForceRes',
@@ -232,8 +244,9 @@ def profile_reusable(previous, name, frame_count, resolution, distance, track, r
     if not csv_path or (row.get('csv_sha256') and sha256(csv_path) != row['csv_sha256']):
         return None
     try:
+        limits = check_release_limits(previous)['performance']
         report = analyze_csv(csv_path, 120)
-        if performance_failures(report, frame_count):
+        if performance_failures(report, frame_count, limits):
             return None
         if track is not None:
             motions = [item for item in previous.get('soak_motion', []) if item.get('track') == track]
@@ -252,10 +265,11 @@ def profile_reusable(previous, name, frame_count, resolution, distance, track, r
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--visible', action='store_true', help='show and activate every functional scenario in the game window')
-    parser.add_argument('--graphics-preset', choices=('performance', 'balanced', 'high', 'ultra'),
-                        help='temporary profile for all checks; preserves saved player preferences')
+    parser.add_argument('--graphics-preset', choices=GRAPHICS_PRESETS,
+                        help='temporary profile; photorealism targets 30 Hz, all others 60 Hz; preserves player preferences')
     parser.add_argument('--editor', action='store_true', help='cockpit checks only, using the compiled editor module')
     parser.add_argument('--profile', action='store_true', help='also run two onscreen 1800-frame profiles and motion telemetry')
+    parser.add_argument('--profile-first', action='store_true', help='run requested profiles, soaks and motion telemetry before functional scenarios')
     parser.add_argument('--soak', action='store_true', help='also drive all six full circuits for at least 120 seconds each, with performance and camera gates')
     parser.add_argument('--resume', type=Path, help='reuse proven PASS stages from this results.json only for the identical package')
     args = parser.parse_args()
@@ -284,7 +298,9 @@ def main():
     summary = {'version': version, 'date': datetime.now().isoformat(), 'editor': args.editor, 'completed': False, 'cases': [], 'performance': []}
     summary['requested'] = {'profile': args.profile, 'soak': args.soak, 'visible': args.visible}
     summary['graphics_preset'] = args.graphics_preset
-    summary['release_limits'] = {'performance': PERFORMANCE_LIMITS, 'motion': MOTION_LIMITS}
+    summary['release_limits'] = release_limits_for_preset(args.graphics_preset)
+    performance_limits = summary['release_limits']['performance']
+    duration_scale = 2 if args.graphics_preset == 'photorealism' else 1
     if not args.editor:
         bundle = executable.parents[2]
         summary['executable_sha256'] = sha256(executable)
@@ -330,7 +346,14 @@ def main():
             request.update(visible=True, offscreen=False)
         return request
 
-    def run(name, flags, seconds=5, capture=True, resolution=(1440, 900), capture_after=3, allow_resume=True):
+    def complete_case(row):
+        row['status'] = 'PASS'
+        write_results()
+        reused = ' (reused evidence)' if 'reused_from' in row else ''
+        print(f'{row["name"]}: PASS{reused}', flush=True)
+
+    def run(name, flags, seconds=5, capture=True, resolution=(1440, 900), capture_after=3,
+            allow_resume=True, defer_pass=False):
         request = request_for(flags, seconds, capture, resolution, capture_after)
         cached = case_reusable(previous, name, request) if allow_resume else None
         if cached:
@@ -341,16 +364,19 @@ def main():
                                        for field in ('log', 'stdout', 'capture') if field in cached}
             if cached.get('foreground', {}).get('display_mode') == 'onscreen_locked':
                 summary['locked_session_measurements'] = True
-            cached.update(status='PASS', request=request, reused_from=str(args.resume.resolve()))
+            cached.update(status='PENDING_METRICS' if defer_pass else 'EXECUTED',
+                          request=request, reused_from=str(args.resume.resolve()))
             summary['cases'].append(cached)
-            write_results()
-            print(f'{name}: PASS (reused evidence)', flush=True)
+            if defer_pass:
+                write_results()
+            else:
+                complete_case(cached)
             return evidence_path(cached['log'], ROOT)
         log, png = out / (name + '.log'), out / (name + '.png')
         cmd = [str(executable), '-LLM', '-windowed', '-ForceRes', f'-ResX={resolution[0]}', f'-ResY={resolution[1]}',
                '-VroomVerify', f'-abslog={log}', f'-VroomExitAfter={seconds}']
         if args.graphics_preset is not None:
-            cmd.append(f'-VroomGraphicsPreset={("performance", "balanced", "high", "ultra").index(args.graphics_preset)}')
+            cmd.append(f'-VroomGraphicsPreset={GRAPHICS_PRESETS.index(args.graphics_preset)}')
         if capture:
             if not args.visible:
                 cmd += ['-RenderOffScreen', '-MetalOffscreenOnly', '-unattended']
@@ -416,10 +442,74 @@ def main():
             row['evidence_sha256']['capture'] = sha256(png)
         gate(name, [f'Missing {marker}' for marker in REQUIRED_MARKERS.get(name, []) if marker not in body]
              + start_signal_failures(body, name))
-        row['status'] = 'PASS'
-        write_results()
-        print(f'{name}: PASS', flush=True)
+        if defer_pass:
+            # Runtime exit and foreground are necessary, but CSV/telemetry
+            # gates still own the verdict, including when reusing evidence.
+            row['status'] = 'PENDING_METRICS'
+            write_results()
+        else:
+            complete_case(row)
         return log
+
+    def run_profiles():
+        if not (args.profile or args.soak):
+            return
+        csv_dir = CONTAINER / 'Library/Application Support/Epic/Vroom/Saved/Profiling/CSV'
+        profiles_to_run = [(1440, 900, 3295, None), (2560, 1664, 2190, None)] if args.profile else []
+        if args.soak:
+            profiles_to_run += [(1440, 900, 0, track) for track in range(6)]
+        for width, height, distance, track in profiles_to_run:
+            frame_count = 7800 if track is not None else 1800
+            name = f'soak-track-{track + 1}' if track is not None else f'perf-{width}'
+            flags = ['-VroomAutoDemo', f'-VroomStartDistance={distance}', '-VroomStartSpeed=30',
+                     f'-csvCaptureFrames={frame_count}', '-csvGpuStats', '-ExitAfterCsvProfiling',
+                     '-LogCmds=LogPSOHitching Verbose']
+            if track is not None:
+                flags += [f'-VroomTrack={track}', '-VroomTourDemo', '-VroomMotionTrace']
+            seconds = (165 if track is not None else 60) * duration_scale
+            cached_profile = profile_reusable(previous, name, frame_count, (width, height), distance, track)
+            if cached_profile and not case_reusable(previous, name, request_for(flags, seconds, False, (width, height))):
+                cached_profile = None
+            before = set(csv_dir.glob('*.csv'))
+            profile_log = run(name, flags, seconds=seconds, capture=False, resolution=(width, height),
+                              allow_resume=cached_profile is not None, defer_pass=True)
+            if cached_profile:
+                profile = cached_profile
+            else:
+                profiles = set(csv_dir.glob('*.csv')) - before
+                gate(name + '-csv', [] if len(profiles) == 1 else [f'Expected one new profile, got {sorted(map(str, profiles))}'])
+                profile = profiles.pop()
+            report = analyze_csv(profile, 120)
+            report['source']['path'] = preserve(profile)
+            summary['performance'].append({'name': name, 'expected_frames': frame_count, 'resolution': [width, height], 'track': track,
+                                           'distance': distance, 'report': report, 'csv_sha256': sha256(profile),
+                                           'display_mode': summary['cases'][-1].get('display_mode', 'onscreen_active'),
+                                           'interaction_verified': False})
+            gate(name, performance_failures(report, frame_count, performance_limits))
+            if track is not None:
+                motion = analyze_motion(profile_log, 120)
+                motion['source']['path'] = str((saved / profile_log.name).relative_to(ROOT))
+                completed = bool(re.search(rf'VROOM-TOUR track={track} [^\n]*complete=1', profile_log.read_text(errors='replace')))
+                summary.setdefault('soak_motion', []).append({'track': track, 'complete': completed, 'report': motion})
+                gate(name + '-coverage', [] if completed else ['The assisted car did not complete a full lap'])
+                gate(name + '-camera', motion_failures(motion, min_samples=7000))
+            complete_case(summary['cases'][-1])
+            print(json.dumps(summary['performance'][-1]), flush=True)
+        old_motion = evidence_path(previous.get('motion', {}).get('source', {}).get('path'), ROOT)
+        reuse_motion = bool(old_motion and not motion_failures(analyze_motion(old_motion, 120)))
+        motion_log = run('motion', ['-VroomAutoDemo', '-VroomStartDistance=3180', '-VroomStartSpeed=30', '-VroomMotionTrace'], seconds=25 * duration_scale,
+                         capture=False, allow_resume=reuse_motion, defer_pass=True)
+        summary['motion'] = analyze_motion(motion_log, 120)
+        summary['motion']['source']['path'] = str((saved / motion_log.name).relative_to(ROOT))
+        gate('motion', motion_failures(summary['motion']))
+        complete_case(summary['cases'][-1])
+
+    if args.profile_first:
+        run_profiles()
+
+    for name, steer, extra in [('neutral', 0, []), ('right', .62, []), ('left', -.62, []),
+                               ('small-right', .04, []), ('mid-left', -.21, [])]:
+        run(name, ['-VroomAutoDemo', '-VroomStartDistance=350', '-VroomStartSpeed=0', f'-VroomPreviewSteering={steer}'] + extra)
 
     if not args.editor:
         for name, flag, expected in [
@@ -436,17 +526,17 @@ def main():
         for track in range(6):
             run(f'track-audit-{track + 1}', ['-VroomAutoDemo', '-VroomTrackAudit', f'-VroomTrack={track}'], seconds=5)
         run('pit-service', ['-VroomPitTest', '-VroomChaseCamera'], seconds=9)
+        run('traffic-overtake', ['-VroomTrafficTest'], seconds=15, capture_after=3)
         drift_log = run('drift-feedback', ['-VroomDriftTest', '-VroomChaseCamera', '-VroomStartDistance=350',
                                          '-VroomStartSpeed=40'], capture_after=1.45)
         gate('drift-feedback', [] if 'Drift feedback PASS' in drift_log.read_text(errors='replace') else ['Missing drift feedback pass'])
         run('drift-unskilled', ['-VroomDriftTest', '-VroomDriftScenario=unskilled', '-VroomChaseCamera',
                                '-VroomStartDistance=350', '-VroomStartSpeed=40'], capture_after=1.45)
+        run('drift-expert', ['-VroomDriftTest', '-VroomDriftScenario=expert', '-VroomChaseCamera',
+                            '-VroomStartDistance=350', '-VroomStartSpeed=40'], seconds=7, capture_after=2.75)
         for scenario in ['slow', 'crash', 'tyre', 'scenery', 'rub', 'rear']:
             run('collision-' + scenario, ['-VroomCollisionTest=' + scenario, '-VroomChaseCamera'], seconds=8)
 
-    for name, steer, extra in [('neutral', 0, []), ('right', .62, []), ('left', -.62, []),
-                               ('small-right', .04, []), ('mid-left', -.21, [])]:
-        run(name, ['-VroomAutoDemo', '-VroomStartDistance=350', '-VroomStartSpeed=0', f'-VroomPreviewSteering={steer}'] + extra)
     if not args.editor:
         run('neutral-16x9', ['-VroomAutoDemo', '-VroomStartDistance=350', '-VroomStartSpeed=0', '-VroomPreviewSteering=0'], resolution=(1600, 900))
         run('cars', ['-VroomAutoDemo', '-VroomStartDistance=55', '-VroomStartSpeed=0', '-VroomPreviewSteering=0', '-VroomChaseCamera'])
@@ -455,56 +545,8 @@ def main():
              else ['Graphics panel was not confirmed open'])
         for panel in ['qualifying', 'results', 'arcade', 'pit', 'controls']:
             run('session-' + panel, ['-VroomSessionPreview=' + panel])
-    if args.profile or args.soak:
-        csv_dir = CONTAINER / 'Library/Application Support/Epic/Vroom/Saved/Profiling/CSV'
-        profiles_to_run = [(1440, 900, 3295, None), (2560, 1664, 2190, None)] if args.profile else []
-        if args.soak:
-            profiles_to_run += [(1440, 900, 0, track) for track in range(6)]
-        for width, height, distance, track in profiles_to_run:
-            frame_count = 7800 if track is not None else 1800
-            name = f'soak-track-{track + 1}' if track is not None else f'perf-{width}'
-            flags = ['-VroomAutoDemo', f'-VroomStartDistance={distance}', '-VroomStartSpeed=30',
-                     f'-csvCaptureFrames={frame_count}', '-csvGpuStats', '-ExitAfterCsvProfiling',
-                     '-LogCmds=LogPSOHitching Verbose']
-            if track is not None:
-                flags += [f'-VroomTrack={track}', '-VroomTourDemo', '-VroomMotionTrace']
-            seconds = 165 if track is not None else 60
-            cached_profile = profile_reusable(previous, name, frame_count, (width, height), distance, track)
-            if cached_profile and not case_reusable(previous, name, request_for(flags, seconds, False, (width, height))):
-                cached_profile = None
-            before = set(csv_dir.glob('*.csv'))
-            profile_log = run(name, flags, seconds=seconds, capture=False, resolution=(width, height),
-                              allow_resume=cached_profile is not None)
-            if cached_profile:
-                profile = cached_profile
-            else:
-                profiles = set(csv_dir.glob('*.csv')) - before
-                gate(name + '-csv', [] if len(profiles) == 1 else [f'Expected one new profile, got {sorted(map(str, profiles))}'])
-                profile = profiles.pop()
-            report = analyze_csv(profile, 120)
-            report['source']['path'] = preserve(profile)
-            summary['performance'].append({'name': name, 'expected_frames': frame_count, 'resolution': [width, height], 'track': track,
-                                           'distance': distance, 'report': report, 'csv_sha256': sha256(profile),
-                                           'display_mode': summary['cases'][-1].get('display_mode', 'onscreen_active'),
-                                           'interaction_verified': False})
-            gate(name, performance_failures(report, frame_count))
-            if track is not None:
-                motion = analyze_motion(profile_log, 120)
-                motion['source']['path'] = str((saved / profile_log.name).relative_to(ROOT))
-                completed = bool(re.search(rf'VROOM-TOUR track={track} [^\n]*complete=1', profile_log.read_text(errors='replace')))
-                summary.setdefault('soak_motion', []).append({'track': track, 'complete': completed, 'report': motion})
-                gate(name + '-coverage', [] if completed else ['The assisted car did not complete a full lap'])
-                gate(name + '-camera', motion_failures(motion, min_samples=7000))
-            write_results()
-            print(json.dumps(summary['performance'][-1]), flush=True)
-        old_motion = evidence_path(previous.get('motion', {}).get('source', {}).get('path'), ROOT)
-        reuse_motion = bool(old_motion and not motion_failures(analyze_motion(old_motion, 120)))
-        motion_log = run('motion', ['-VroomAutoDemo', '-VroomStartDistance=3180', '-VroomStartSpeed=30', '-VroomMotionTrace'], seconds=25,
-                         capture=False, allow_resume=reuse_motion)
-        summary['motion'] = analyze_motion(motion_log, 120)
-        summary['motion']['source']['path'] = str((saved / motion_log.name).relative_to(ROOT))
-        gate('motion', motion_failures(summary['motion']))
-        write_results()
+    if not args.profile_first:
+        run_profiles()
     if not args.editor:
         gate('artifact-unchanged', ['Executable changed during validation']
              if sha256(executable) != summary['executable_sha256'] else [])

@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "status": "PASS_SCOPED_GEOMETRY_AND_CONTACT_CHECKS",
+  "glove": {
+    "path": "Content/Data/gloves.json",
+    "sha256": "f342faa13e3c64a1883f2b2683ccc6b3e43edf2a565dc2a1cde2c7b06ea68908",
+    "selected_candidate": "pulp-candidate-1",
+    "micro_refinement_adopted": false
+  },
+  "source_cockpit_sha256": "27301e615fec1771e2a02383d0b8dcfedd1b6729a4e373b8ff4da336d7af46bc",
+  "coordinate_frame": "Wheel local before shared steering and -25deg tilt; cm, X forward, Y lateral, Z up. Common rigid steering preserves all relative measurements.",
+  "rim": {
+    "circle_radius_cm": 11.9,
+    "axis_depth_cm": -0.34,
+    "tube_radius_cm": 0.765,
+    "all_face_proof": "docs/cockpit-grip-034.json",
+    "minimum_clearance_both_hands_mm": 0.66712082
+  },
+  "patch": {
+    "provenance": "Tests/fixtures/glove_anatomy_baseline.json:thumb_contact_patch; fixed Valve palmar UV region, source vertex405 at distal pulp,140/406 flank it,51 is proximal complement. Points are not chosen by proximity after posing.",
+    "source_glb_sha256": "135189e6a2caab7d5fa0182feda4c2c7b1a9485bc5a7b27b0fe7b5b5ed7e33eb",
+    "source_atlas_sha256": "a424f719450ca9bce29ba28e90712dab4e40b56e67642150379b5359475eb868",
+    "criterion": "Vertex405: surface gap1–4mm, outward normal dot direction to nearest ring-axis point>.3, radial position<=11.9cm. At least one anatomical neighbor140/406: gap0–6mm and dot>.3. Vertex51 is complementary evidence, not a separate pass gate.",
+    "method": "Transform fixed source points/normals with the runtime hand pose; measure nearest point on true circular axis, subtract tube radius. Both hands evaluated independently. Portable tests also reject the former open thumb and dorsal-hook fixtures.",
+    "portable_test": "python3 Tests/glove_clearance_test.py",
+    "hands": {
+      "left": {
+        "palmar_contact_gate": "PASS",
+        "samples": [
+          {
+            "source_vertex": 405,
+            "wheel_local_position_cm": [
+              -0.83632043,
+              -10.07662637,
+              4.77006007
+            ],
+            "wheel_local_outward_normal": [
+              0.58634974,
+              -0.73039326,
+              0.35031368
+            ],
+            "surface_gap_mm": 1.354977,
+            "normal_toward_rim": 0.99907595,
+            "radial_position_cm": 11.14862647
+          },
+          {
+            "source_vertex": 140,
+            "wheel_local_position_cm": [
+              -1.29758778,
+              -10.21062835,
+              5.03318862
+            ],
+            "wheel_local_outward_normal": [
+              0.27006268,
+              -0.69589288,
+              0.66543163
+            ],
+            "surface_gap_mm": 3.228793,
+            "normal_toward_rim": 0.67353255,
+            "radial_position_cm": 11.3837568
+          },
+          {
+            "source_vertex": 406,
+            "wheel_local_position_cm": [
+              -0.58327431,
+              -9.8629256,
+              4.51248233
+            ],
+            "wheel_local_outward_normal": [
+              0.92872988,
+              -0.34342352,
+              0.13971793
+            ],
+            "surface_gap_mm": 3.165275,
+            "normal_toward_rim": 0.56983123,
+            "radial_position_cm": 10.84618818
+          },
+          {
+            "source_vertex": 51,
+            "wheel_local_position_cm": [
+              -0.90664932,
+              -10.39119912,
+              4.00566408
+            ],
+            "wheel_local_outward_normal": [
+              0.56121428,
+              -0.79853154,
+              0.21768302
+            ],
+            "surface_gap_mm": 1.857752,
+            "normal_toward_rim": 0.99565053,
+            "radial_position_cm": 11.13653285
+          }
+        ]
+      },
+      "right": {
+        "palmar_contact_gate": "PASS",
+        "samples": [
+          {
+            "source_vertex": 405,
+            "wheel_local_position_cm": [
+              -0.83632043,
+              10.07662637,
+              4.77006007
+            ],
+            "wheel_local_outward_normal": [
+              0.58634974,
+              0.73039326,
+              0.35031368
+            ],
+            "surface_gap_mm": 1.354977,
+            "normal_toward_rim": 0.99907595,
+            "radial_position_cm": 11.14862647
+          },
+          {
+            "source_vertex": 140,
+            "wheel_local_position_cm": [
+              -1.29758778,
+              10.21062835,
+              5.03318862
+            ],
+            "wheel_local_outward_normal": [
+              0.27006268,
+              0.69589288,
+              0.66543163
+            ],
+            "surface_gap_mm": 3.228793,
+            "normal_toward_rim": 0.67353255,
+            "radial_position_cm": 11.3837568
+          },
+          {
+            "source_vertex": 406,
+            "wheel_local_position_cm": [
+              -0.58327431,
+              9.8629256,
+              4.51248233
+            ],
+            "wheel_local_outward_normal": [
+              0.92872988,
+              0.34342352,
+              0.13971793
+            ],
+            "surface_gap_mm": 3.165275,
+            "normal_toward_rim": 0.56983123,
+            "radial_position_cm": 10.84618818
+          },
+          {
+            "source_vertex": 51,
+            "wheel_local_position_cm": [
+              -0.90664932,
+              10.39119912,
+              4.00566408
+            ],
+            "wheel_local_outward_normal": [
+              0.56121428,
+              0.79853154,
+              0.21768302
+            ],
+            "surface_gap_mm": 1.857752,
+            "normal_toward_rim": 0.99565053,
+            "radial_position_cm": 11.13653285
+          }
+        ]
+      }
+    }
+  },
+  "thumb_index_crossings": {
+    "selected_glove_sha256": "f342faa13e3c64a1883f2b2683ccc6b3e43edf2a565dc2a1cde2c7b06ea68908",
+    "strict_transverse_crossing_pairs": 0,
+    "crossed_thumb_faces": 0,
+    "evidence": "Saved/Validation/v034/thumb-wrap/selected-final-integrity.json",
+    "evidence_sha256": "35587e16d99dc282466f6d0399d5133291169243058c6d072bcb3a99a8b4eb36",
+    "method": "audit_self.py checks both directions of triangle-edge crossings between thumb-mask faces and index-phalange faces after AABB pruning; excludes shared vertex indices and barycentric borders.",
+    "auditor_path": "Saved/Validation/v034/thumb-wrap/audit_self.py",
+    "auditor_sha256": "669c60982566245e1a7bc429158eff6106fd75d885400c08e3eb7bb070af4b94",
+    "limits": "Zero detected strict transverse crossings in this thumb/index region; not a watertight-volume, coplanar-contact, all-finger or universal self-intersection certificate. No zero-penetration-depth claim is made."
+  },
+  "visual_review": {
+    "user_approval": "David explicitly approved this pose with « bien ça! » (reported in the parent task).",
+    "captures": [
+      {
+        "view": "neutral",
+        "path": "Saved/Validation/v034/reference-cockpit/thumb-selected-neutral.png",
+        "sha256": "ac2ddd16f2e785e90f96629638ebed61289e700eb57e2ed0d66d4bf1ca9259f8",
+        "inspected": true
+      },
+      {
+        "view": "right",
+        "path": "Saved/Validation/v034/reference-cockpit/thumb-selected-right.png",
+        "sha256": "fdf47c24a2c6f2ddae773f6ac2a1d605c852c45068d86e37940bfce576f61ef6",
+        "inspected": true
+      },
+      {
+        "view": "left",
+        "path": "Saved/Validation/v034/reference-cockpit/thumb-selected-left.png",
+        "sha256": "e65d4d4f781f26b5d58776d8645425bfbbe9a8f2a69c6f52761444bb11ce6d30",
+        "inspected": true
+      }
+    ],
+    "finding": "White gloves retain the circular rim grip; thumb returns toward the inner rim. Neutral and both steering captures inspected.",
+    "limits": "Editor previews establish visible pose only; packaged performance and full gameplay QA are separate and were not certified by this report."
+  }
+}

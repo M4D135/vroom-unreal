@@ -650,22 +650,33 @@ void AVroomHUD::DrawHUD()
     else if (!NeedsRecovery && (Car->Drive.Drifting || Car->Drive.BoostRemaining > 0))
     {
         const bool Boost = Car->Drive.BoostRemaining > 0 && !Car->Drive.Drifting;
-        const FLinearColor Accent = Boost ? FLinearColor(.35f, 1.f, .88f, 1.f)
-            : FLinearColor(.96f, .63f, .18f, 1.f);
-        const float X = W * .5f - 130, Y = H * .57f;
+        const int32 Tier = Boost ? Car->Drive.BoostTier : Car->Drive.DriftChargeTier();
+        const FLinearColor Accent = Tier >= 3 ? FLinearColor(.87f,.36f,1.f,1.f)
+            : Tier >= 2 ? FLinearColor(1.f,.67f,.18f,1.f) : FLinearColor(.26f,.80f,1.f,1.f);
+        const float X = W * .5f - 130, Y = H * .67f;
         const float Charge = static_cast<float>(Car->Drive.DriftCharge);
         FString Feedback = TEXT("DÉRAPAGE");
-        if (Boost) Feedback = Car->Drive.BoostTier >= 2 ? TEXT("SUPER BOOST") : TEXT("BOOST");
+        if (Boost)
+        {
+            Feedback = FString::Printf(TEXT("TURBO %s%s"), Tier >= 3 ? TEXT("III") : Tier == 2 ? TEXT("II") : TEXT("I"),
+                Car->Drive.BoostPerfect ? TEXT(" · PARFAIT") : TEXT(""));
+            // Bounded peripheral glow: no camera kick or FOV jump on turbo.
+            const float Glow = FMath::Min(.12f, float(Car->Drive.BoostRemaining) * .5f);
+            Rect(0,H*.30f,4,H*.48f,FLinearColor(Accent.R,Accent.G,Accent.B,Glow));
+            Rect(W-4,H*.30f,4,H*.48f,FLinearColor(Accent.R,Accent.G,Accent.B,Glow));
+        }
         else if (Car->Drive.DriftControl < .35)
             Feedback = Car->Drive.DriftDirection > 0 ? TEXT("CONTRE-BRAQUE À GAUCHE") : TEXT("CONTRE-BRAQUE À DROITE");
-        else if (Charge >= 1.f) Feedback = TEXT("RELÂCHE : SUPER BOOST");
-        else if (Charge >= .42f) Feedback = TEXT("RELÂCHE : BOOST");
+        else if (Car->Drive.DriftPerfectWindowRemaining > 0) Feedback = TEXT("RELÂCHE MAINTENANT : PARFAIT !");
+        else if (Tier >= 3) Feedback = TEXT("RELÂCHE : TURBO III");
+        else if (Tier >= 2) Feedback = TEXT("RELÂCHE : TURBO II");
+        else if (Tier >= 1) Feedback = TEXT("RELÂCHE : TURBO I");
         else Feedback = TEXT("GLISSE MAÎTRISÉE");
         Text(Feedback, W * .5f, Y, 17, Accent, true);
-        Fill(X, Y + 29, 260, 5, Boost ? static_cast<float>(Car->Drive.BoostRemaining / (Car->Drive.BoostTier >= 2 ? 1.15 : .55))
-            : Charge / 1.35f, Accent);
+        Fill(X, Y + 29, 260, 5, Boost ? static_cast<float>(Car->Drive.BoostRemaining / Car->Drive.BoostDurationSeconds())
+            : Charge / Vroom::DriveModel::DriftMaxCharge, Accent);
         if (!Boost)
-            for (float Threshold : {.42f, 1.f})
-                Rect(X + 260 * Threshold / 1.35f, Y + 27, 2, 9, Paper);
+            for (float Threshold : {.42f, 1.f, 1.8f})
+                Rect(X + 260 * Threshold / Vroom::DriveModel::DriftMaxCharge, Y + 27, 2, 9, Paper);
     }
 }

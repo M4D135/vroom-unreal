@@ -36,7 +36,7 @@ void Sanitize(FPlayerSettings& S)
 {
     auto Safe = [](float V, float Low, float High, float Default) { return FMath::IsFinite(V) ? FMath::Clamp(V,Low,High) : Default; };
     S.SteeringSensitivity=Safe(S.SteeringSensitivity,.4f,2.f,1.f); S.SteeringDeadzone=Safe(S.SteeringDeadzone,0.f,.3f,.06f);
-    S.MouseSensitivity=Safe(S.MouseSensitivity,.001f,.012f,.004f); S.Fov=Safe(S.Fov,60.f,105.f,80.f);
+    S.MouseSensitivity=Safe(S.MouseSensitivity,.001f,.012f,.004f); S.Fov=Safe(S.Fov,60.f,105.f,68.f);
     S.MasterVolume=Safe(S.MasterVolume,0.f,1.f,1.f); S.EngineVolume=Safe(S.EngineVolume,0.f,1.f,1.f); S.EffectsVolume=Safe(S.EffectsVolume,0.f,1.f,1.f);
 }
 bool Extra(APlayerController* PC, Action What, bool Press)
@@ -84,6 +84,10 @@ void Initialize()
         GConfig->GetFloat(Section,TEXT("SteeringDeadzone"),Applied.SteeringDeadzone,GGameUserSettingsIni);
         GConfig->GetFloat(Section,TEXT("MouseSensitivity"),Applied.MouseSensitivity,GGameUserSettingsIni);
         GConfig->GetFloat(Section,TEXT("Fov"),Applied.Fov,GGameUserSettingsIni);
+        int32 Version = 1;
+        GConfig->GetInt(Section,TEXT("Version"),Version,GGameUserSettingsIni);
+        // Migrate only the former default; preserve an explicitly customised FOV.
+        if (Version < 2 && FMath::IsNearlyEqual(Applied.Fov,80.f)) Applied.Fov=68.f;
         GConfig->GetBool(Section,TEXT("ChaseCamera"),Applied.ChaseCamera,GGameUserSettingsIni);
         GConfig->GetBool(Section,TEXT("Automatic"),Applied.Automatic,GGameUserSettingsIni);
         GConfig->GetBool(Section,TEXT("GhostEnabled"),Applied.GhostEnabled,GGameUserSettingsIni);
@@ -107,7 +111,7 @@ FPlayerSettings& Mutable(){Initialize();return Applied;}
 void Save()
 {
     Initialize(); Sanitize(Applied); if(!GConfig)return;
-    GConfig->SetInt(Section,TEXT("Version"),1,GGameUserSettingsIni);
+    GConfig->SetInt(Section,TEXT("Version"),2,GGameUserSettingsIni);
     GConfig->SetFloat(Section,TEXT("SteeringSensitivity"),Applied.SteeringSensitivity,GGameUserSettingsIni);
     GConfig->SetFloat(Section,TEXT("SteeringDeadzone"),Applied.SteeringDeadzone,GGameUserSettingsIni);
     GConfig->SetFloat(Section,TEXT("MouseSensitivity"),Applied.MouseSensitivity,GGameUserSettingsIni);

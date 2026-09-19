@@ -34,18 +34,6 @@ UStaticMesh* Shape(const TCHAR* Name)
     return LoadObject<UStaticMesh>(nullptr, *Path);
 }
 
-int32 OpponentPartGroup(int32, int32 PartIndex)
-{
-    // Every car has one instance in each complete-surface group: painted
-    // body, white livery, carbon/suspension and the four detailed wheels.
-    return PartIndex;
-}
-
-FTransform OpponentPartTransform(int32)
-{
-    return FTransform::Identity; // Mesh positions are authored at full car scale.
-}
-
 double TerrainGridHeight(const FProcMeshSection* Grid, const FVector& P)
 {
     if (!Grid || Grid->ProcIndexBuffer.Num() < 3 || Grid->ProcVertexBuffer.Num() < 4) return P.Z;
@@ -595,7 +583,7 @@ void AVroomCircuit::BuildScenery()
     auto RoundMetal = Group(TEXT("Cylinder"), TEXT("M_Metal"));
     auto Windows = Group(TEXT("Cube"), TEXT("M_CockpitSlate"));
     auto Apron = Group(TEXT("Cube"), TEXT("M_Asphalt"));
-    auto EnvironmentGroup = [&](const TCHAR* Name, int32 CullDistance)
+    auto EnvironmentGroup = [&](const TCHAR* Name, int32 CullDistance, bool ShadowOnly = false)
     {
         const FString Path = FString::Printf(TEXT("/Game/Meshes/%s.%s"),Name,Name);
         auto* Mesh = LoadObject<UStaticMesh>(nullptr,*Path);
@@ -609,16 +597,29 @@ void AVroomCircuit::BuildScenery()
         C->SetCastShadow(false);
         C->SetAffectDistanceFieldLighting(false);
         C->SetAffectDynamicIndirectLighting(false);
-        C->SetCullDistances(CullDistance-12000,CullDistance);
+        // Materials consume the full fade interval; keep the existing end
+        // distances/GPU budget instead of hiding pop-in with further drawing.
+        C->SetCullDistances(ShadowOnly ? 12000 : CullDistance-12000,CullDistance);
+        if (ShadowOnly)
+        {
+            // Keep distant visible trees in their existing 650-m groups.
+            // This bounded duplicate participates only in nearby shadows.
+            C->SetRenderInMainPass(false);
+            C->SetRenderInDepthPass(false);
+            C->SetVisibleInRayTracing(false);
+            C->bCastFarShadow = false;
+            C->SetVisibility(false);
+            C->ComponentTags.Add(FName(TEXT("VroomTreeShadows")));
+        }
         C->SetNumCustomDataFloats(3);
         C->bAutoRebuildTreeOnInstanceChanges = false;
         C->RegisterComponent(); Scenery.Add(C); return C;
     };
+    const TCHAR* TreeMeshes[] = {TEXT("SM_EnvironmentBroadleaf"), TEXT("SM_EnvironmentConifer"),
+        TEXT("SM_EnvironmentUmbrella"), TEXT("SM_EnvironmentBirch")};
     UHierarchicalInstancedStaticMeshComponent* Forest[] = {
-        EnvironmentGroup(TEXT("SM_EnvironmentBroadleaf"),65000),
-        EnvironmentGroup(TEXT("SM_EnvironmentConifer"),65000),
-        EnvironmentGroup(TEXT("SM_EnvironmentUmbrella"),65000),
-        EnvironmentGroup(TEXT("SM_EnvironmentBirch"),65000)};
+        EnvironmentGroup(TreeMeshes[0],65000), EnvironmentGroup(TreeMeshes[1],65000),
+        EnvironmentGroup(TreeMeshes[2],65000), EnvironmentGroup(TreeMeshes[3],65000)};
     auto* Rocks = EnvironmentGroup(TEXT("SM_EnvironmentRock"),26000);
     auto Trunks = Group(TEXT("Cylinder"), TEXT("M_Wood"));
     UInstancedStaticMeshComponent* Ads[] = {
@@ -774,7 +775,12 @@ void AVroomCircuit::BuildScenery()
                             + GrassRandom.FRandRange(-Spread, Spread));
                         FVector Root = Position(Along, Lateral);
                         if (EncroachesRoad(Root)) continue;
-                        const float Height = GrassRandom.FRandRange(.28f, .58f) + Row * .035f;
+                        // Shorter verge growth leaves the kerb visible. A
+                        // world-space patch pattern breaks the four rigid
+                        // rows without adding instances or runtime animation.
+                        const float Meadow = FMath::PerlinNoise2D(FVector2D(Root.X,Root.Y)*.0009f);
+                        const float Height = GrassRandom.FRandRange(.23f, .46f)
+                            * FMath::Lerp(.72f,1.08f,FMath::Clamp(Meadow+.5f,0.f,1.f)) + Row*.018f;
                         const float Width = GrassRandom.FRandRange(.85f, 1.5f);
                         Root.Z -= .5f; // Bury the roots slightly in the grass ribbon.
                         Patches.Add(FTransform(FRotator(0, GrassRandom.FRandRange(0, 360), 0),
@@ -786,8 +792,6 @@ void AVroomCircuit::BuildScenery()
             Tufts->BuildTreeIfOutdated(false, true);
         }
     }
-    VegetationQuality = -1;
-    UpdateVegetation();
     // Trees are authored branch/crown meshes, with one instanced population
     // per silhouette. Deterministic variation breaks the old evenly spaced
     // cone rows; trunks keep matching physical collision volumes.
@@ -797,11 +801,15 @@ void AVroomCircuit::BuildScenery()
         for (float Side : {-1.f,1.f})
         {
             if (S < 220 && Side > 0) continue; // Pit road stays open.
-            const int32 Population = Random.FRand() < .32f ? 3 : 1;
+            const int32 Population = Random.FRand() < .42f ? 4 : 1;
+            const float GroveAlong = S + Random.FRandRange(-12,12);
+            const float GroveLateral = Random.FRandRange(36,108);
             for (int32 Member = 0; Member < Population; ++Member)
             {
-                const float Along = S + Random.FRandRange(-16,16);
-                const float Lateral = Side * Random.FRandRange(29,Member ? 145 : 82);
+                // Related stems share a grove, leaving clear gaps between
+                // groups instead of an evenly scattered plantation.
+                const float Along = GroveAlong + Random.FRandRange(-13,13);
+                const float Lateral = Side * (GroveLateral + Random.FRandRange(-11,11));
                 FVector Root = Position(Along,Lateral);
                 const float Key = Spline->FindInputKeyClosestToWorldLocation(Root);
                 const FVector Closest = Spline->GetLocationAtSplineInputKey(Key,ESplineCoordinateSpace::World);
@@ -833,6 +841,23 @@ void AVroomCircuit::BuildScenery()
         }
     for (auto* Population : Forest)
         if (Population) { Population->BuildTreeIfOutdated(false,true); Population->MarkRenderStateDirty(); }
+    for (int32 Species = 0; Species < 4; ++Species)
+    {
+        if (!Forest[Species]) continue;
+        auto* ShadowPopulation = EnvironmentGroup(TreeMeshes[Species],16000,true);
+        if (!ShadowPopulation) continue;
+        TArray<FTransform> ShadowTrees;
+        ShadowTrees.Reserve(Forest[Species]->GetInstanceCount());
+        for (int32 Instance = 0; Instance < Forest[Species]->GetInstanceCount(); ++Instance)
+        {
+            FTransform Pose;
+            if (Forest[Species]->GetInstanceTransform(Instance,Pose,true)) ShadowTrees.Add(Pose);
+        }
+        ShadowPopulation->AddInstances(ShadowTrees,false,true,false);
+        ShadowPopulation->BuildTreeIfOutdated(false,true);
+    }
+    VegetationQuality = -1;
+    UpdateVegetation();
     if (Rocks) Rocks->BuildTreeIfOutdated(false,true);
     UE_LOG(LogTemp,Display,TEXT("VROOM: Regional scenery track=%d trees=%d primary=%d relief=%.0fm"),
         TrackIndex,TreeCount,Regional.PrimaryTree,Regional.ReliefM);
@@ -987,6 +1012,41 @@ void AVroomCircuit::BuildScenery()
     };
     LightGantry(0,0,8.5,6.0,0);
     LightGantry(64,12.5,3.8,4.2,1);
+
+    // Test the entire footprint against the nearest driving branch, not only
+    // against the segment that placed it: hairpins can bring another road or
+    // the pit straight beside a proposed sign. This work runs at track build.
+    TArray<FVector,TInlineAllocator<64>> PitClearanceSamples;
+    for (float S = Vroom::TrackLayout::PitEntry; S <= Vroom::TrackLayout::PitExit+1; S += 4)
+        PitClearanceSamples.Add(Position(S,Vroom::TrackLayout::PitCenterAt(S,HalfWidthM)));
+    auto FurnitureClear = [&](const FVector& P, double ClearanceM)
+    {
+        // Check the pit lane independently: on a tight layout its centre may
+        // be close even while another branch is the nearest main-road spline.
+        for (const FVector& PitCenter : PitClearanceSamples)
+            if (FVector::DistSquared2D(P,PitCenter) < 600*600) return false;
+        const float Key = Spline->FindInputKeyClosestToWorldLocation(FVector(P.X,P.Y,0));
+        const FVector Nearest = Spline->GetLocationAtSplineInputKey(Key,ESplineCoordinateSpace::World);
+        const double DistanceM = FVector::Dist2D(P,Nearest)/100;
+        const float Along = Spline->GetDistanceAlongSplineAtSplineInputKey(Key)/100;
+        if (DistanceM < ClearanceM) return false;
+        // Keep all new furniture away from pit entry/exit, even if it belongs
+        // to a different, physically adjacent section of the circuit.
+        return !(Along < 250 && DistanceM < 26);
+    };
+    auto FurnitureFrame = [&](float S, float Lateral)
+    {
+        FTransform F = Frame(S,Lateral);
+        FVector Ground = F.GetLocation(); Ground.Z = TerrainHeightAt(Ground);
+        F.SetLocation(Ground); return F;
+    };
+    auto SmallSignClear = [&](const FTransform& F, double HalfSpan)
+    {
+        for (double X : {-.18,.18}) for (double Y : {-HalfSpan,0.,HalfSpan})
+            if (!FurnitureClear(F.TransformPosition(FVector(X,Y,0)*100),HalfWidthM+1.75)) return false;
+        return true;
+    };
+    int32 BrakeBoardCount = 0, ChevronCount = 0;
     int32 LandmarkIndex = 0;
     for (const auto& Landmark : Landmarks)
     {
@@ -998,35 +1058,122 @@ void AVroomCircuit::BuildScenery()
         for (int32 Bars = 3; Bars >= 1; --Bars)
         {
             const float MarkerS = Landmark.CornerDistance-Bars*35;
-            const FTransform F = Frame(MarkerS,Outside*(HalfWidthM+2.7f));
+            const FTransform F = FurnitureFrame(MarkerS,Outside*(HalfWidthM+2.7f));
+            if (MarkerS < 250 || !SmallSignClear(F,.48)) continue;
             LocalBox(White,F,FVector(0,0,1.1),FVector(.12,.8,1.2));
             for (int32 Bar = 0; Bar < Bars; ++Bar)
                 LocalBox(Posts,F,FVector(-.07,-.25+Bar*.25,1.1),FVector(.025,.10,.75));
             LocalBox(Posts,F,FVector(0,0,.45),FVector(.09,.09,.9));
+            ++BrakeBoardCount;
+        }
+        // Three red chevrons on each white panel keep the bend readable at
+        // speed. They use the same opaque cube groups as kerbs and pit signs.
+        const float TurnSide = -Outside;
+        for (float Offset : {-10.f,14.f,38.f})
+        {
+            const float MarkerS = Landmark.CornerDistance+Offset;
+            if (MarkerS < 250 || Curvature(MarkerS)*TurnSide < .0008f) continue;
+            const FTransform F = FurnitureFrame(MarkerS,Outside*(HalfWidthM+3.8f));
+            if (!SmallSignClear(F,1.3)) continue;
+            LocalBox(Posts,F,FVector(.03,0,1.3),FVector(.18,2.54,1.34));
+            LocalBox(White,F,FVector(-.075,0,1.3),FVector(.045,2.4,1.2));
+            for (int32 Arrow = -1; Arrow <= 1; ++Arrow)
+            {
+                const double Y = Arrow*.72;
+                const FVector Tip = F.TransformPosition(FVector(-.12,Y+TurnSide*.20,1.3)*100);
+                for (double Vertical : {-.37,.37})
+                    Beam(Red,F.TransformPosition(FVector(-.12,Y-TurnSide*.20,1.3+Vertical)*100),Tip,.115);
+            }
+            for (double Side : {-1.,1.})
+                LocalBox(Posts,F,FVector(.05,Side*.85,.48),FVector(.10,.10,.96));
+            ++ChevronCount;
         }
         UE_LOG(LogTemp,Display,TEXT("VROOM: Landmark track=%d index=%d distance=%.1f bend=%.1f curvature=%.5f"),
             TrackIndex,LandmarkIndex,S,Landmark.CornerDistance,Landmark.Severity);
         ++LandmarkIndex;
     }
 
-    // Isolated 8x2-m adverts, never a continuous wall. The first pair is visible
-    // from the starting area. Later boards are separated by hundreds of metres.
+    // Extra overhead adverts restore the original road rhythm between the
+    // braking landmarks. Supports stay outside both the local road and any
+    // nearby branch; the crossbar also clears higher ground/road by 4.5 metres.
+    int32 ExtraGantryCount = 0;
+    float PreviousExtraGantry = -1000;
+    for (float Target = 520; Target < LengthM()-180 && ExtraGantryCount < 8; Target += 750)
+        for (float Shift : {0.f,35.f,-35.f,50.f,-50.f})
+        {
+            const float S = Target+Shift;
+            if (S < 250 || S >= LengthM()-180 || S-PreviousExtraGantry < 650) continue;
+            bool Clear = true;
+            for (const auto& Landmark : Landmarks)
+                if (FMath::Abs(S-Landmark.Distance) < 170) Clear = false;
+            if (!Clear) continue;
+            const FTransform F = Frame(S,0);
+            constexpr double Span = 9.2, Height = 6.4;
+            for (double Side : {-1.,1.}) for (double X : {-.35,.35}) for (double Y : {-.35,.35})
+                if (!FurnitureClear(F.TransformPosition(FVector(X,Side*Span+Y,0)*100),HalfWidthM+2.0)) Clear = false;
+            for (double Y = -Span; Y <= Span; Y += .5)
+            {
+                const FVector Top = F.TransformPosition(FVector(0,Y,Height-.15)*100);
+                const float Key = Spline->FindInputKeyClosestToWorldLocation(FVector(Top.X,Top.Y,0));
+                const FVector Near = Spline->GetLocationAtSplineInputKey(Key,ESplineCoordinateSpace::World);
+                const float Along = Spline->GetDistanceAlongSplineAtSplineInputKey(Key)/100;
+                if (FVector::Dist2D(Top,Near) < (HalfWidthM+.8)*100 && Top.Z-Position(Along).Z < 450) Clear = false;
+            }
+            if (!Clear) continue;
+            LightGantry(S,0,Span,Height,ExtraGantryCount+TrackIndex);
+            PreviousExtraGantry = S;
+            ++ExtraGantryCount;
+            UE_LOG(LogTemp,Display,TEXT("VROOM: Extra gantry track=%d distance=%.1f"),TrackIndex,S);
+            break;
+        }
+
+    // 8x2-m advertising boards every 180 metres, with occasional staggered
+    // pairs. Four existing textures and shared instances keep the cost bounded.
+    int32 AdBoardCount = 0;
     auto TracksideBoard = [&](float S, float Side, int32 Artwork, float Offset = 15.5f)
     {
-        const FVector Ground = Position(S, Side * Offset);
+        if (AdBoardCount >= 64) return false;
+        FVector Ground = Position(S, Side * Offset);
         const float Key = Spline->FindInputKeyClosestToWorldLocation(Ground);
         const FVector Closest = Spline->GetLocationAtSplineInputKey(Key, ESplineCoordinateSpace::World);
-        if (FVector::Dist2D(Ground, Closest) < 1150) return;
+        if (FVector::Dist2D(Ground, Closest) < 1150) return false;
+        Ground.Z = TerrainHeightAt(Ground);
         const FVector CenterPoint = Ground + FVector(0,0,220);
         const FVector Approach = Position(S - 45, 0);
-        Billboard(CenterPoint, Approach - Ground, 8, 2, Artwork, true);
+        FVector Facing = Approach-Ground; Facing.Z = 0; Facing.Normalize();
+        const FVector Across = FVector::CrossProduct(Facing,FVector::UpVector).GetSafeNormal();
+        if (S >= 250)
+            for (double Width : {-4.3,-2.72,0.,2.72,4.3}) for (double Depth : {-1.2,.25})
+                if (!FurnitureClear(Ground+Across*(Width*100)+Facing*(Depth*100),HalfWidthM+3.5)) return false;
+        Billboard(CenterPoint,Facing,8,2,Artwork,false);
+        // Anchor every foot to the actual terrain, including support braces.
+        for (double Support : {-1.,1.})
+        {
+            const FVector Top = CenterPoint+Across*(Support*272)-Facing*16;
+            FVector Foot = Top; Foot.Z = TerrainHeightAt(Foot);
+            FVector RearFoot = Foot-Facing*95; RearFoot.Z = TerrainHeightAt(RearFoot);
+            Pole(Foot,Top+FVector(0,0,56),.13);
+            Beam(Metal,RearFoot,Top+FVector(0,0,30),.075);
+            White->AddInstance(FTransform(FQuat::Identity,Foot+FVector(0,0,10),FVector(.5,.5,.2)),true);
+            White->AddInstance(FTransform(FQuat::Identity,RearFoot+FVector(0,0,7),FVector(.32,.32,.14)),true);
+        }
+        ++AdBoardCount;
+        return true;
     };
     TracksideBoard(30, -1, 1);
     // The eight-metre sign's inner feet otherwise land in the pit entry at
     // lateral 12.9 m. Move the entire visible structure beyond that corridor.
     TracksideBoard(55, 1, 0, 22.f);
-    for (int32 I = 0; 260 + I * 360 < LengthM() - 180; ++I)
-        TracksideBoard(260 + I * 360, I % 2 ? 1 : -1, I % 4);
+    for (int32 I = 0; I < 48 && 310+I*180 < LengthM()-180; ++I)
+    {
+        const float S = 310+I*180, Side = I%2 ? 1.f : -1.f;
+        // A rejected branch-facing footprint can often be placed safely on
+        // the other verge without losing its cadence along the circuit.
+        if (!TracksideBoard(S,Side,I%4)) TracksideBoard(S,-Side,I%4,18.f);
+        if (I%4 == 2 && S+35 < LengthM()-180) TracksideBoard(S+35,-Side,(I+1)%4,18.f);
+    }
+    UE_LOG(LogTemp,Display,TEXT("VROOM: Road furniture track=%d adverts=%d extraGantries=%d brakeBoards=%d chevrons=%d"),
+        TrackIndex,AdBoardCount,ExtraGantryCount,BrakeBoardCount,ChevronCount);
 
     // Compact grandstands, with stepped seating and open roof supports. Their
     // metal/seat instances share the existing scenery draw groups.
@@ -1227,17 +1374,27 @@ void AVroomCircuit::UpdateVegetation()
 {
     const int32 Quality = FMath::Clamp(Vroom::Graphics::FoliageQuality(), 0, 3);
     const bool Wind = Vroom::Graphics::AnimatedGrass();
-    if (Quality == VegetationQuality && Wind == VegetationWind) return;
+    const bool TreeShadows = Vroom::Graphics::PhotorealismEnabled();
+    if (Quality == VegetationQuality && Wind == VegetationWind && TreeShadows == VegetationTreeShadows) return;
     const int32 EndDistance[] = {0, 3000, 4500, 6000};
-    int32 VisibleInstances = 0;
+    int32 VisibleInstances = 0, TreeShadowInstances = 0;
     for (const auto& Component : Scenery)
     {
-        if (!Component || !Component->ComponentHasTag(TEXT("VroomGrass"))) continue;
+        if (!Component) continue;
+        if (Component->ComponentHasTag(TEXT("VroomTreeShadows")))
+        {
+            Component->SetVisibility(TreeShadows);
+            Component->SetCastShadow(TreeShadows);
+            if (TreeShadows) TreeShadowInstances += Component->GetInstanceCount();
+            continue;
+        }
+        if (!Component->ComponentHasTag(TEXT("VroomGrass"))) continue;
         int32 Tier = 1;
         if (Component->ComponentHasTag(TEXT("VroomGrassTier2"))) Tier = 2;
         if (Component->ComponentHasTag(TEXT("VroomGrassTier3"))) Tier = 3;
         Component->SetVisibility(Quality >= Tier);
-        Component->SetCullDistances(FMath::Max(100, EndDistance[Quality] - 1200),
+        // A wider fade remains inside the same 30/45/60-m drawing budget.
+        Component->SetCullDistances(FMath::Max(100, EndDistance[Quality] - 2400),
             FMath::Max(200, EndDistance[Quality]));
         if (auto* Material = Cast<UMaterialInstanceDynamic>(Component->GetMaterial(0)))
             Material->SetScalarParameterValue(TEXT("WindStrength"), Wind ? 1.f : 0.f);
@@ -1245,8 +1402,9 @@ void AVroomCircuit::UpdateVegetation()
     }
     VegetationQuality = Quality;
     VegetationWind = Wind;
-    UE_LOG(LogTemp, Display, TEXT("VROOM: Vegetation quality=%d wind=%d instances=%d cull=%dm"),
-        Quality, Wind, VisibleInstances, EndDistance[Quality] / 100);
+    VegetationTreeShadows = TreeShadows;
+    UE_LOG(LogTemp, Display, TEXT("VROOM: Vegetation quality=%d wind=%d instances=%d cull=%dm treeShadows=%d treeShadowInstances=%d treeShadowCull=160m"),
+        Quality, Wind, VisibleInstances, EndDistance[Quality] / 100, TreeShadows, TreeShadowInstances);
 }
 
 void AVroomCircuit::BuildOpponents()
@@ -1258,19 +1416,27 @@ void AVroomCircuit::BuildOpponents()
     OpponentRecycled.Init(false, 12);
     OpponentFinishTimes.Init(0, 12); RaceFinishDistance = 0;
     OpponentMotionNeedsReset = false;
-    static const TCHAR* Materials[] = { TEXT("M_F1Paint"), TEXT("M_F1Pearl"), TEXT("M_F1Carbon"), TEXT("M_F1Rubber") };
+    UMaterialInterface* Materials[] = { Mat(TEXT("M_F1Paint")), Mat(TEXT("M_F1Pearl")),
+        Mat(TEXT("M_F1Carbon")), Mat(TEXT("M_F1Rubber")), Mat(TEXT("M_F1Rubber")) };
+    UMaterialInterface* Alloy = Mat(TEXT("M_F1Alloy"));
     static const TCHAR* MeshNames[] = { TEXT("SM_F1OpponentPaint"), TEXT("SM_F1OpponentTrim"),
-        TEXT("SM_F1OpponentCarbon"), TEXT("SM_F1OpponentWheels") };
-    for (int32 Group = 0; Group < 4; ++Group)
+        TEXT("SM_F1OpponentCarbon"), TEXT("SM_F1OpponentWheelFront"), TEXT("SM_F1OpponentWheelRear") };
+    for (int32 Group = 0; Group < OpponentMeshGroupCount; ++Group)
     {
-        RenderedOpponentTransforms[Group].Reset(12);
-        NextOpponentTransforms[Group].Reset(12);
+        // One body instance per car, two wheels per axle. Reserve both render
+        // buffers once; no component, material or heap allocation per frame.
+        const int32 Instances = Group >= 3 ? 24 : 12;
+        RenderedOpponentTransforms[Group].Reset(Instances);
+        NextOpponentTransforms[Group].Reset(Instances);
         auto C = NewObject<UInstancedStaticMeshComponent>(this);
         C->SetupAttachment(RootComponent);
         C->SetMobility(EComponentMobility::Movable);
         const FString MeshPath = FString::Printf(TEXT("/Game/Meshes/%s.%s"), MeshNames[Group], MeshNames[Group]);
-        C->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, *MeshPath));
-        C->SetMaterial(0, Mat(Materials[Group]));
+        UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *MeshPath);
+        if (!Mesh) UE_LOG(LogTemp, Error, TEXT("VROOM: Missing rival mesh %s"), *MeshPath);
+        C->SetStaticMesh(Mesh);
+        C->SetMaterial(0, Materials[Group]);
+        if (Group >= 3) C->SetMaterial(1, Alloy);
         if (Group == 0) C->SetNumCustomDataFloats(3);
         C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         C->SetCanEverAffectNavigation(false);
@@ -1304,10 +1470,11 @@ void AVroomCircuit::BuildOpponents()
             FLinearColor(.91f,.60f,.012f), FLinearColor(.02f,.35f,.13f),
             FLinearColor(.33f,.025f,.57f), FLinearColor(.88f,.19f,.012f) };
         const FLinearColor Colour = Liveries[Agent.LiveryIndex];
-        for (int32 J = 0; J < 4; ++J)
+        for (int32 J = 0; J < OpponentMeshGroupCount; ++J)
         {
-            auto* Mesh = OpponentMeshes[OpponentPartGroup(I, J)].Get();
+            auto* Mesh = OpponentMeshes[J].Get();
             const int32 Instance = Mesh->AddInstance(FTransform::Identity, true);
+            if (J >= 3) Mesh->AddInstance(FTransform::Identity, true);
             if (J == 0)
             {
                 Mesh->SetCustomDataValue(Instance, 0, Colour.R, false);
@@ -1321,6 +1488,10 @@ void AVroomCircuit::BuildOpponents()
     RenderedOpponentS.Init(TNumericLimits<double>::Max(), OpponentS.Num());
     RenderedOpponentLanes.Init(TNumericLimits<double>::Max(), OpponentS.Num());
     OpponentVisualYaw.Init(0, OpponentS.Num());
+    OpponentWheelSteering.Init(0, OpponentS.Num());
+    OpponentWheelVisuals.Init(Vroom::WheelVisualState{}, OpponentS.Num());
+    OpponentVisualDiscontinuity.Init(true, OpponentS.Num());
+    UE_LOG(LogTemp, Display, TEXT("VROOM: Rival wheels independent=48 groups=2 frontRadius=35 rearRadius=38"));
     RenderOpponents(1);
 }
 
@@ -1387,6 +1558,8 @@ void AVroomCircuit::AdvanceRace(float H)
                 Agent.Speed = FMath::Max(20.0, TrafficPlayer.Speed * .72);
                 Agent.Pitting = Agent.PitCommitted = Agent.PitExiting = false;
                 Agent.PitTimer = 0;
+                Agent.OvertakeTarget = -2;
+                Agent.OvertakeHold = Agent.LaneVelocity = Agent.DecisionDelay = 0;
                 Agent.Fuel = 1.0;
                 Agent.TyreHealth = 2048.0;
                 PreviousOpponentS[I] = Agent.Distance;
@@ -1414,7 +1587,7 @@ void AVroomCircuit::AdvanceRace(float H)
 
 void AVroomCircuit::RenderOpponents(float Alpha)
 {
-    if (OpponentMeshes.Num() != 4 || PreviousOpponentS.Num() != OpponentS.Num()) return;
+    if (OpponentMeshes.Num() != OpponentMeshGroupCount || PreviousOpponentS.Num() != OpponentS.Num()) return;
     Alpha = FMath::Clamp(Alpha, 0.0f, 1.0f);
     bool Changed = RenderedOpponentS.Num() != OpponentS.Num() || RenderedOpponentLanes.Num() != OpponentS.Num();
     // The traffic planner can choose a lane in one simulation step. Ease only
@@ -1424,11 +1597,33 @@ void AVroomCircuit::RenderOpponents(float Alpha)
     const double YawAlpha = 1 - FMath::Exp(-12.0 * VisualDt);
     for (int32 I = 0; I < OpponentS.Num(); ++I)
     {
+        const double Distance = FMath::Lerp(PreviousOpponentS[I], OpponentS[I], Alpha);
+        auto& Wheels = OpponentWheelVisuals[I];
+        const double BeforeYaw = OpponentVisualYaw[I], BeforeSteering = OpponentWheelSteering[I];
+        const double BeforeFrontRoll = Wheels.FrontRollRad, BeforeRearRoll = Wheels.RearRollRad;
+        const double PlausibleDistance = FMath::Max(3.0, 2 * FMath::Abs(OpponentSpeeds[I]) * VisualDt + .5);
+        const bool Discontinuity = !Wheels.Initialized
+            || FMath::Abs(Distance - Wheels.PreviousDistanceM) > PlausibleDistance;
+        OpponentVisualDiscontinuity[I] = Discontinuity;
+        if (Discontinuity || RaceClock < 0)
+        {
+            Wheels.Reset();
+            OpponentVisualYaw[I] = OpponentWheelSteering[I] = 0;
+        }
         const double TargetYaw = ReactiveTraffic && I < static_cast<int32>(Traffic.size())
             ? FMath::Atan2(Traffic[I].LaneVelocity, FMath::Max(8.0, OpponentSpeeds[I])) : 0;
-        const double BeforeYaw = OpponentVisualYaw[I];
-        OpponentVisualYaw[I] += (TargetYaw - BeforeYaw) * YawAlpha;
+        OpponentVisualYaw[I] += (TargetYaw - OpponentVisualYaw[I]) * YawAlpha;
         Changed |= !FMath::IsNearlyEqual(BeforeYaw, OpponentVisualYaw[I], 1e-7);
+        // Bicycle steering for the road, plus the heading still needed to
+        // enter/leave a lane change. Suspension remains part of the chassis.
+        const double TargetSteering = OpponentSpeeds[I] > .2 && RaceClock >= 0
+            ? FMath::Clamp(FMath::Atan(2.43 * Curvature(Distance + 3))
+                + TargetYaw - OpponentVisualYaw[I], -.35, .35) : 0;
+        OpponentWheelSteering[I] += (TargetSteering - OpponentWheelSteering[I]) * YawAlpha;
+        Wheels.Observe(Distance, OpponentSpeeds[I], VisualDt,
+            Running && !Paused && RaceClock >= 0 && OpponentsVisible);
+        Changed |= Discontinuity || !FMath::IsNearlyEqual(BeforeSteering, OpponentWheelSteering[I], 1e-7)
+            || BeforeFrontRoll != Wheels.FrontRollRad || BeforeRearRoll != Wheels.RearRollRad;
     }
     for (int32 I = 0; I < OpponentS.Num() && !Changed; ++I)
         Changed = !FMath::IsNearlyEqual(RenderedOpponentS[I], FMath::Lerp(PreviousOpponentS[I], OpponentS[I], Alpha), 1e-6)
@@ -1439,7 +1634,7 @@ void AVroomCircuit::RenderOpponents(float Alpha)
         {
             // Clear the last frame's velocity once when stopping or pausing;
             // otherwise a skipped update leaves stale motion vectors in TSR.
-            for (int32 Group = 0; Group < 4; ++Group)
+            for (int32 Group = 0; Group < OpponentMeshGroupCount; ++Group)
                 OpponentMeshes[Group]->BatchUpdateInstancesTransforms(0,
                     RenderedOpponentTransforms[Group], RenderedOpponentTransforms[Group], true, false, false);
             OpponentMotionNeedsReset = false;
@@ -1449,7 +1644,7 @@ void AVroomCircuit::RenderOpponents(float Alpha)
 
     // The previous transform is the last rendered pose, not the last 120-Hz
     // physics pose. Reuse both buffers and preserve BuildOpponents ordering:
-    // four bulk updates, with no per-frame transform-buffer allocations.
+    // five bulk updates, with no per-frame transform-buffer allocations.
     for (auto& Transforms : NextOpponentTransforms) Transforms.Reset();
     RenderedOpponentS.SetNumUninitialized(OpponentS.Num());
     RenderedOpponentLanes.SetNumUninitialized(OpponentS.Num());
@@ -1461,11 +1656,34 @@ void AVroomCircuit::RenderOpponents(float Alpha)
         RenderedOpponentLanes[I] = Lane;
         FRotator Facing = Rotation(Distance);
         Facing.Yaw += FMath::RadiansToDegrees(OpponentVisualYaw[I]);
-        const FTransform Base(Facing, Position(Distance, Lane));
-        for (int32 J = 0; J < 4; ++J)
-            NextOpponentTransforms[OpponentPartGroup(I, J)].Add(OpponentPartTransform(J) * Base);
+        // The asphalt ribbon is four centimetres above the spline. Wheel
+        // centres equal their radii, so lift only the visual car onto it.
+        const FTransform Base(Facing, Position(Distance, Lane) + FVector(0, 0, 4));
+        for (int32 Group = 0; Group < 3; ++Group)
+            NextOpponentTransforms[Group].Add(Base);
+        const auto& Wheels = OpponentWheelVisuals[I];
+        const FQuat Steering(FVector::UpVector, OpponentWheelSteering[I]);
+        const FQuat FrontRotation = Steering * FQuat(FVector::RightVector, Wheels.FrontRollRad);
+        const FQuat RearRotation(FVector::RightVector, Wheels.RearRollRad);
+        for (int32 Side : {-1, 1})
+        {
+            NextOpponentTransforms[3].Add(FTransform(FrontRotation, FVector(128, Side * 91, 35)) * Base);
+            NextOpponentTransforms[4].Add(FTransform(RearRotation, FVector(-115, Side * 96, 38)) * Base);
+        }
+        if (OpponentVisualDiscontinuity[I])
+        {
+            // Grid changes and Arcade recycling are teleports: do not create
+            // a long TSR velocity streak from the old car/wheel position.
+            for (int32 Group = 0; Group < OpponentMeshGroupCount; ++Group)
+                for (int32 Part = 0; Part < (Group >= 3 ? 2 : 1); ++Part)
+                {
+                    const int32 Index = I * (Group >= 3 ? 2 : 1) + Part;
+                    if (RenderedOpponentTransforms[Group].IsValidIndex(Index))
+                        RenderedOpponentTransforms[Group][Index] = NextOpponentTransforms[Group][Index];
+                }
+        }
     }
-    for (int32 Group = 0; Group < 4; ++Group)
+    for (int32 Group = 0; Group < OpponentMeshGroupCount; ++Group)
     {
         auto& Current = NextOpponentTransforms[Group];
         auto& Previous = RenderedOpponentTransforms[Group];

@@ -1,6 +1,8 @@
-# Jeu, courses et stands — 0.33
+# Jeu, courses et stands — 0.34 en validation
 
 Cette version ajoute des épreuves terminées, une progression, un trafic réactif et des arrêts au stand. Les règles ci-dessous décrivent le remake réellement codé. La référence choisie reste Vroom Amiga ; une ressemblance de fonction n'établit pas une reproduction exacte de son programme.
+
+**État de la 0.34 :** les changements d'IA et de dérapage ci-dessous décrivent les sources de la nouvelle version. L'IA a passé ses tests portables ; ses sources sont gelées pour la compilation et la validation visible sous Unreal. Ces contrôles ne remplacent pas les preuves du [package 0.33](FINALISATION_033.md), déjà validé.
 
 ## Choisir une épreuve
 
@@ -12,7 +14,7 @@ Un léger contact avec le décor (60 km/h ou moins) rebondit sans recentrage for
 
 Un tour n'est enregistré comme record, fantôme ou qualification que s'il est propre. Huit points de passage ordonnés interdisent de valider un tour en coupant, en reculant ou en franchissant la ligne sans avoir parcouru le circuit. Un léger débordement salit le chrono sans retirer le tour de course ; la voie des stands n'est pas une coupe. L'interface affiche la raison (`coupe de circuit`, `passage manqué`, `sens inverse`, `sortie de piste`, `contact`). Un tour déjà validé n'est pas retiré.
 
-| Mode | Déroulement de la 0.33 | Fin de l'épreuve |
+| Mode | Déroulement | Fin de l'épreuve |
 |---|---|---|
 | Arcade | Trois tours, du trafic renouvelé et un quota net de dépassements | Réussite au passage de la ligne du troisième tour si le quota est atteint ; échec si le quota manque, si le temps expire avant l'arrivée, ou après immobilisation sans essence |
 | Grand Prix | Un tour qualificatif en solitaire, une grille de treize voitures puis trois tours de course | Classement du joueur à l'arrivée et points de championnat ; panne sèche à l'arrêt traitée comme un abandon sans point |
@@ -41,15 +43,21 @@ La progression suit l'ordre de l'addendum Amiga :
 
 Après chaque Grand Prix, le joueur peut continuer vers la qualification suivante, recommencer ou retourner au menu. En Arcade, continuer demande d'avoir réussi l'étape. Sélectionner manuellement un circuit réinitialise les points et situe la partie à cette étape ; les circuits précédents ne sont pas joués automatiquement. Le résultat affiche le classement général des treize pilotes, leurs points, leurs victoires et leur place dans la dernière course. Les égalités sont départagées par les victoires, puis par le nombre de deuxièmes places, de troisièmes places et ainsi de suite ; une égalité complète utilise l’identifiant du pilote. La dernière étape désigne le champion. Les cumuls restent en mémoire pendant la partie ; reprendre un championnat après fermeture n’est pas implémenté.
 
-## Adversaires et difficulté
+## Adversaires et difficulté — IA 0.34
 
 Le peloton compte douze voitures adverses. Le calcul de trafic est indépendant du rendu et utilise le pas physique de 120 Hz. Il tient compte des autres voitures et du joueur :
 
-- vitesse adaptée à la courbure observée 25 et 90 m plus loin ;
-- choix d'une trajectoire parmi trois voies, avec vérification de l'espace disponible et réservation des destinations proches ;
-- déplacement latéral progressif, limité à 1,8 m/s, et délai entre les décisions pour éviter les changements permanents ;
-- freinage derrière une voiture lente tant que la voie de dépassement n'est pas réellement atteinte ;
+- anticipation du freinage avec neuf sondes entre la position actuelle et 250 m devant la voiture, en tenant compte de sa vitesse, de ses pneus et de la prudence du pilote ;
+- trajectoire continue vers l'extérieur à l'approche d'un virage, vers la corde dans le virage, puis retour vers le centre à la sortie ;
+- choix entre les voies latérales, le centre, la trajectoire de course et la destination actuelle, avec réservation de l'espace et prévision des autres mouvements ;
+- dépassement mémorisé : le pilote garde le côté choisi jusqu'à avoir dégagé la voiture dépassée d'au moins 9 m, après un engagement minimal d'environ 2,3 s ;
+- déplacement latéral limité à 1,8 m/s et accélération latérale limitée à 3,6 m/s² en piste ; une menace de contact peut interrompre immédiatement le déplacement ;
+- freinage derrière une voiture lente tant que sa place n'est pas dégagée, surveillance d'une voiture rapide arrivant sur la voie visée et anticipation d'un joueur qui se rabat ;
 - ralentissement du concurrent touché, puis récupération de son allure normale.
+
+Le freinage vise la vitesse nécessaire à chaque courbure en fonction de la distance restante. Une épingle n'attend donc plus d'entrer dans une fenêtre fixe de 90 m pour être prise en compte. L'usure des pneus réduit aussi le freinage disponible. La réserve de calcul utilise une décélération inférieure à la limite réelle pour conserver une marge. Les trajectoires gauche/droite sont symétriques ; le choix d'une ligne reste soumis à la présence des autres voitures.
+
+Une décision de trajectoire ne suffit pas à déclarer une voie libre. L'IA vérifie des positions futures pendant le déplacement et freine selon sa vitesse de rapprochement. Une seconde vérification à chaque pas empêche une manœuvre latérale de serrer un véhicule déjà à côté. Pour le joueur, elle utilise la position et la vitesse latérale observées, sans lire les commandes. Le modèle est déterministe ; les écarts de régularité sont de petites variations continues liées au parcours, et non des coups de frein d'une seule image.
 
 Les multiplicateurs d'allure valent **0,83 / 0,96 / 1,07** en Facile / Normal / Expert. Un contact diminue la vitesse de l'adversaire et réduit temporairement sa vitesse cible ; la durée dépend de l'importance du choc, entre 0,5 et 3 secondes. Il ne s'agit pas d'une simulation de dégâts complète pour chaque rival.
 
@@ -64,9 +72,9 @@ Les six livrées conservent leur couleur d'origine. L'Amiga ne documentait pas u
 | Violet | Le Technicien | 0,97 | 1,24 | 0,82 | 1,22 | 1,26 | 0,88 | 0,90 |
 | Orange | Le Vétéran | 1,01 | 1,05 | 1,08 | 1,04 | 1,08 | 0,86 | 0,88 |
 
-Ils anticipent la courbure à 25, 90 et 140 m, freinent derrière un rival tant que la voie n'est pas libre, et préparent leur arrêt selon les ressources nécessaires pour atteindre la prochaine entrée puis parcourir un tour supplémentaire. Le minimum reste 18 % d’essence ou 420 unités de pneus ; le seuil prédictif est généralement plus précoce. L'arrêt les immobilise 7 s, comme un service complet du joueur. Le joueur bénéficie d’une baisse de traînée dans le sillage d’une voiture (2 à 16 m, même file). Les IA ne reçoivent plus de bonus caché de vitesse dans cette situation. Dans la voie des stands, un limiteur coupe l'allure vers 60 km/h. Pendant le décompte, l'accélérateur monte le régime sans avancer.
+Les pilotes préparent leur arrêt selon les ressources nécessaires pour atteindre la prochaine entrée puis parcourir un tour supplémentaire. Le minimum reste 18 % d’essence ou 420 unités de pneus ; le seuil prédictif est généralement plus précoce. L'arrêt les immobilise 7 s, comme un service complet du joueur. Le joueur bénéficie d’une baisse de traînée dans le sillage d’une voiture (2 à 16 m, même file). Les IA ne reçoivent pas de bonus caché de vitesse dans cette situation, ni d'accélération destinée à rattraper artificiellement le joueur. Dans la voie des stands, un limiteur coupe l'allure vers 60 km/h. Pendant le décompte, l'accélérateur monte le régime sans avancer.
 
-En Grand Prix, les adversaires gardent leur progression de course. En Arcade, une voiture située plus de 100 m derrière le joueur est replacée entre 230 et 494 m devant lui pour alimenter le trafic. Son historique de dépassement et ses positions précédentes sont réinitialisés. Le Chrono et la qualification masquent entièrement le peloton et ses contacts.
+En Grand Prix, les adversaires gardent leur progression de course. En Arcade, une voiture située plus de 100 m derrière le joueur est replacée entre 230 et 494 m devant lui pour alimenter le trafic. Son historique de dépassement, ses positions précédentes, son mouvement latéral et sa manœuvre en cours sont réinitialisés. Ce renouvellement du trafic Arcade conserve le plein et les pneus neufs déjà prévus dans la 0.33 ; les voitures d'un Grand Prix ne bénéficient pas de cette remise à neuf. Le Chrono et la qualification masquent entièrement le peloton et ses contacts.
 
 Le rendu interpole les positions longitudinales **et latérales**. L'angle visible associé au changement de voie suit un amortissement exponentiel à 12/s, sans modifier les positions testées par le modèle de trafic. Cet amortissement se fige pendant la pause. L'IA ne reproduit pas les routines historiques ; ses lignes de course, réservations de voie et règles de freinage sont une adaptation.
 
@@ -74,7 +82,7 @@ Le rendu interpole les positions longitudinales **et latérales**. L'angle visib
 
 L'état des pneus varie de 2 048 à zéro. Il agit désormais sur trois éléments : l'autorité latérale de la direction, la puissance du freinage et le seuil de perte d'adhérence. Le coefficient vaut `0,65 + 0,35 × état / 2048`, soit **1 avec des pneus neufs et 0,65 avec des pneus entièrement usés**. Le volant conserve sa plage d'animation ; c'est la réponse de la voiture qui change.
 
-Une sollicitation excessive en virage retire 12 unités de pneu par seconde. Certains chocs en retirent aussi. La 0.30 conserve une usure simplifiée : le freinage seul ne possède pas encore sa propre usure, et arriver à zéro ne provoque pas automatiquement l'éclatement historique. Le remplacement aux stands restaure le coefficient à 1.
+Une sollicitation excessive en virage retire 12 unités de pneu par seconde. Certains chocs en retirent aussi. L'usure reste simplifiée : le freinage seul ne possède pas encore sa propre usure, et arriver à zéro ne provoque pas automatiquement l'éclatement historique. Le remplacement aux stands restaure le coefficient à 1.
 
 L'essence diminue avec l'accélérateur. En **course** (Arcade et Grand Prix hors qualification), la consommation et l'usure sont dimensionnées sur la longueur du circuit et la difficulté pour qu'un départ plein/pneus neufs n'aille pas au bout de trois tours sans un arrêt. Le Chrono et la qualification conservent l'ancienne consommation douce (`0,00055` par seconde à pleine commande).
 
@@ -86,17 +94,27 @@ Autonomie nominale sur une course de trois tours, à 60 m/s et 78 % d’accélé
 | Normal | 1,74 | 1,86 | 2 |
 | Expert | 1,56 | 1,68 | 2 |
 
-Les 324 simulations couvrent les six tracés, 2/3/6 tours, trois difficultés et six profils. Deux tours nécessitent un arrêt ; six tours donnent un arrêt en Facile/Normal, deux en Expert. Ce sont des mesures du modèle portable, pas des parties jouées manuellement. Le [rapport 0.33](FINALISATION_033.md) donne la méthode et les preuves.
+Les **324 simulations ont été rejouées avec l'IA 0.34**, sur les approximations portables des six tracés : 2/3/6 tours, trois difficultés et six profils. Toutes terminent leur course. Les nombres d'arrêts restent ceux de la 0.33 : un arrêt pour deux tours ; deux arrêts pour trois tours ; un arrêt en Facile/Normal et deux en Expert pour six tours. Le minimum d'essence observé est désormais **15,93 %**, sur une course de six tours en Suède en difficulté Normal. Les services durent toujours sept secondes et restaurent les ressources à leur fin. Le journal local est `Saved/Validation/v034/ai-resource-races.log` ; il s'agit de mesures du modèle portable, pas de parties jouées manuellement ni d'une validation du package Unreal 0.34. Les preuves de la version précédente restent dans le [rapport 0.33](FINALISATION_033.md).
 
 Les paramètres partagés sont dans `VroomRaceRules.h` et ne dépendent pas du nombre d’images par seconde. Les alertes utilisent l’autonomie nécessaire jusqu’aux prochains stands. Les profils d’IA changent leur effort de conduite, sans facteur donnant des pneus ou du carburant gratuits. À zéro, l’accélérateur ne fournit plus de couple ; une IA ne conserve plus une vitesse minimale gratuite. L’immobilisation sans essence termine la course en abandon ou échec selon le mode.
 
 Les calculs précis et les différences avec les sources de 1991 figurent dans [DRIVING.md](DRIVING.md).
 
-## Dérapage contrôlé et petits contacts
+## Dérapage contrôlé et petits contacts — 0.34
 
 Le dérapage commence avec **Maj** ou **LB/RB** et un braquage dans le sens du virage, sur la route à plus d’environ **44 km/h**. Maintenir ensuite le bouton tout en dosant le **contre-braquage** construit la charge. Au clavier, de courtes pressions sur la direction opposée, séparées de relâchements, permettent ce dosage. La charge récompense la maîtrise de la glisse ; conserver la direction initiale ou bloquer durablement le volant à fond dans l’autre sens finit par l’annuler.
 
-Relâcher volontairement le bouton avec le contrôle et la charge nécessaires libère une poussée de **0,55 s au niveau 1**, **1,15 s au niveau 2**. Le frein n’est pas une entrée automatique en dérapage : il annule la glisse et le boost. Contact, herbe, saut physique, panne sèche et vitesse insuffisante effacent la charge. Il faut relâcher le bouton avant de réarmer une glisse annulée ; répéter rapidement des pressions ne procure pas de bonus gratuit.
+Relâcher volontairement le bouton avec le contrôle et la charge nécessaires libère un turbo. La 0.34 ajoute un troisième palier et une récompense de précision au lâcher :
+
+| Palier | Charge nécessaire, en secondes équivalentes de contrôle parfait | Durée du turbo | Avec lâcher parfait |
+|---|---:|---:|---:|
+| 1 | 0,42 | 0,55 s | 0,75 s |
+| 2 | 1,00 | 1,15 s | 1,35 s |
+| 3 | 1,80 | 1,70 s | 1,90 s |
+
+La charge dépend de la qualité du contre-braquage ; ces seuils ne sont donc pas des durées fixes de maintien du bouton. Atteindre un nouveau palier ouvre une fenêtre de **0,22 s** pour relâcher et gagner **0,20 s** de turbo supplémentaire. La fenêtre n'est ouverte qu'une fois par palier pendant cette glisse : perdre puis regagner le même seuil ne la renouvelle pas. Un lâcher plus tardif conserve le turbo normal si la glisse reste maîtrisée. La charge est plafonnée à 2,10 ; les boosts ne se cumulent pas et aucune nouvelle glisse ne démarre pendant un turbo actif. La poussée monte et redescend progressivement.
+
+Le frein n’est pas une entrée automatique en dérapage : il annule la glisse et le boost. Contact, herbe, saut physique, panne sèche et vitesse insuffisante effacent la charge. Il faut relâcher le bouton avant de réarmer une glisse annulée ; répéter rapidement des pressions ne procure pas de bonus gratuit.
 
 Un frottement léger de roues peut produire un petit bond rattrapable. Pendant le bond, contre-braquer **contre la poussée latérale reçue** réduit le mouvement résiduel à la réception. La voiture conserve alors entre **94 % et 100 %** de sa vitesse d’arrivée : **97 % au neutre**, **100 % pour une correction propre**, **94 % pour une mauvaise correction**. Ce sont des coefficients de conservation, jamais une accélération offerte. Le contact invalide le chrono et efface la charge de dérapage ; un gros impact conserve la casse et sa récupération lente. Les détails et les seuils sont dans [COLLISIONS.md](COLLISIONS.md).
 
@@ -134,7 +152,9 @@ Le format moderne de trois tours, les quotas selon difficulté, le délai Arcade
 
 `python3 Tools/test_portable.py` découvre les suites C++ et Python. Les tests gameplay contrôlent les transitions de modes, la qualification, les points accordés une seule fois, les six étapes, la panne sèche, le quota à l'arrivée, la durée de service, la réduction d'adhérence/freinage, le dépassement d'une voiture arrêtée et un peloton simulé pendant soixante secondes. `Tests/race_rules_test.cpp` ajoute les feux rouge/orange/vert, l'invalidation des tours, l'obligation d'un arrêt sur les six circuits et les trois difficultés, et les profils d'IA par couleur.
 
-Les tests portables ciblés ont été exécutés. `Tests/drift_skill_test.cpp` vérifie notamment les deux niveaux de boost, la modulation clavier, les pertes de contrôle, les annulations et la concordance à 30/60/120 Hz. `Tests/contact_model_test.cpp` contrôle aussi les petits bonds et leur réception sans gain de vitesse. Cela ne valide pas encore le rendu du package final. La série visible complète reste à exécuter et à examiner :
+Pour l'IA 0.34, `Tests/traffic_model_test.cpp`, `Tests/race_rules_test.cpp` et `Tests/race_resources_test.py` ont été exécutés avec succès avant le gel des sources. Les nouveaux scénarios contrôlent, à **30/60/120 Hz**, le freinage avant une épingle avec pneus neufs puis usés, les trajectoires symétriques, le dépassement engagé et son rabattement, la priorité d'une voiture qui arrive derrière, le déplacement latéral du joueur et l'espace entre deux voitures côte à côte. Un peloton de douze pilotes traverse aussi des virages serrés et la ligne de départ, avec un joueur plus lent, sans recouvrement des voitures dans ces simulations. Les trois courses complètes de douze voitures, avec file d'attente et sortie des stands, restent réussies. Le journal ciblé est `Saved/Validation/v034/ai-tests.log`.
+
+Le package 0.33 a déjà passé ses contrôles visibles ; le [rapport 0.33](FINALISATION_033.md) en conserve les résultats. **Le package 0.34 est encore en attente de validation visible** à ce stade documentaire. Les tests portables ci-dessus ne prouvent ni sa cadence de rendu ni l'intégration de ses nouvelles manœuvres. Après compilation, la série visible doit être exécutée et examinée sur ce nouveau package :
 
 ```sh
 python3 Tools/verify_mac.py --visible --graphics-preset performance --profile --soak

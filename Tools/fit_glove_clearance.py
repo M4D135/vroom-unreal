@@ -6,10 +6,14 @@ import math
 def fit(document, grip_depth=-2.8):
     result = copy.deepcopy(document)
     vertices = result['vertices']
-    # Same fixed grip as DrivingHandPose. Rotating both around the wheel keeps
-    # this clearance unchanged in every steering pose and for the mirrored hand.
+    # Preserve the historical round-wheel bake and white glove anatomy.
+    # The current compact wheel uses its own runtime pose; these historical
+    # vertex distances do not certify clearance against the new handles.
     pose = result['driving_grip'] = {'neutral_angle_deg': 30., 'wrist_tilt_deg': 80., 'scale': 1.05,
-        'grip_depth_cm': grip_depth, 'grip_reach_cm': 19.1}
+        'grip_depth_cm': grip_depth, 'grip_reach_cm': 19.1,
+        'hand_depth_offset_cm': -.4}
+    # This fit preserves the established closed grip. The small render-depth
+    # offset moves the whole glove afterward, rather than deforming fingers again.
     angle, tilt = math.radians(180-pose['neutral_angle_deg']), math.radians(pose['wrist_tilt_deg'])
     scale = pose['scale']
     ca, sa, ct, st = math.cos(angle-math.pi), math.sin(angle-math.pi), math.cos(tilt), math.sin(tilt)

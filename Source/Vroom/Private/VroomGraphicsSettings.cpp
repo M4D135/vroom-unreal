@@ -1,4 +1,6 @@
 #include "VroomGraphicsSettings.h"
+#include "VroomGame.h"
+#include "VroomEnvironment.h"
 
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
@@ -27,6 +29,8 @@ namespace
 {
 constexpr const TCHAR* Section = TEXT("Vroom.Graphics");
 constexpr int NumberOfRows = 13;
+constexpr int NumberOfPresets = 5;
+constexpr int PhotorealismPreset = 4;
 constexpr int FrameCaps[] = {30, 60, 120, 0};
 constexpr int AAMethods[] = {AAM_None, AAM_FXAA, AAM_TemporalAA, AAM_TSR};
 
@@ -45,6 +49,7 @@ struct FSettings
     bool VSync = true;
     // Native AA/render scale are retained so disabling DLSS restores them.
     int DLSSMode = 0;
+    bool Photorealism = false;
 };
 
 FSettings Applied, Pending;
@@ -115,16 +120,32 @@ void SetUserCVar(const TCHAR* Name, T Value)
 
 void SetPreset(FSettings& Settings, int Preset)
 {
-    static constexpr int Scale[] = {70, 85, 100, 100};
-    static constexpr int Shadows[] = {1, 2, 3, 3};
-    static constexpr int Foliage[] = {1, 2, 3, 3};
-    static constexpr int Effects[] = {1, 2, 3, 3};
-    Preset = FMath::Clamp(Preset, 0, 3);
+    static constexpr int Scale[] = {70, 85, 100, 100, 80};
+    static constexpr int Shadows[] = {1, 2, 3, 3, 3};
+    static constexpr int Lighting[] = {0, 1, 2, 3, 2};
+    static constexpr int Foliage[] = {1, 2, 3, 3, 3};
+    static constexpr int Effects[] = {1, 2, 3, 3, 2};
+    Preset = FMath::Clamp(Preset, 0, NumberOfPresets - 1);
+    if (Preset == PhotorealismPreset)
+    {
+        // Keep a deliberate 30-Hz rendering budget for photo lighting on the
+        // Mac, rather than silently reusing the legacy 60-Hz preview cap.
+        Settings.FrameCap = 0;
+        Settings.VSync = true;
+        Settings.DLSSMode = 0;
+    }
+    else if (Settings.Photorealism)
+    {
+        // Leaving the photo preset restores the normal 60-Hz budget; selecting
+        // between the four pre-existing presets otherwise keeps its old rules.
+        Settings.FrameCap = 1;
+    }
+    Settings.Photorealism = Preset == PhotorealismPreset;
     Settings.RenderScale = Scale[Preset];
     Settings.AA = Preset < 2 ? 2 : 3;
     Settings.Shadows = Shadows[Preset];
-    Settings.GI = Preset;
-    Settings.Reflections = Preset;
+    Settings.GI = Lighting[Preset];
+    Settings.Reflections = Lighting[Preset];
     Settings.Foliage = Foliage[Preset];
     Settings.Effects = Effects[Preset];
     Settings.Wind = true;
@@ -133,7 +154,7 @@ void SetPreset(FSettings& Settings, int Preset)
 
 int PresetIndex(const FSettings& Settings)
 {
-    for (int Index = 0; Index < 4; ++Index)
+    for (int Index = 0; Index < NumberOfPresets; ++Index)
     {
         FSettings Preset;
         SetPreset(Preset, Index);
@@ -141,10 +162,11 @@ int PresetIndex(const FSettings& Settings)
             Settings.Shadows == Preset.Shadows && Settings.GI == Preset.GI &&
             Settings.Reflections == Preset.Reflections && Settings.Foliage == Preset.Foliage &&
             Settings.Effects == Preset.Effects && Settings.Wind == Preset.Wind &&
-            Settings.MotionBlur == Preset.MotionBlur)
+            Settings.MotionBlur == Preset.MotionBlur && Settings.Photorealism == Preset.Photorealism &&
+            (!Settings.Photorealism || (Settings.FrameCap == Preset.FrameCap && Settings.VSync == Preset.VSync)))
             return Index;
     }
-    return 4;
+    return NumberOfPresets;
 }
 
 void Sanitize(FSettings& Settings)
@@ -177,6 +199,7 @@ void Load(FSettings& Settings)
     GConfig->GetBool(Section, TEXT("MotionBlur"), Settings.MotionBlur, GGameUserSettingsIni);
     GConfig->GetInt(Section, TEXT("FrameCap"), Settings.FrameCap, GGameUserSettingsIni);
     GConfig->GetBool(Section, TEXT("VSync"), Settings.VSync, GGameUserSettingsIni);
+    GConfig->GetBool(Section, TEXT("Photorealism"), Settings.Photorealism, GGameUserSettingsIni);
     const bool bSavedDLSSChoice = GConfig->GetInt(Section, TEXT("DLSSMode"), Settings.DLSSMode, GGameUserSettingsIni);
     if (!bSavedDLSSChoice && DLSSModeSupported(2))
         Settings.DLSSMode = 2;
@@ -187,7 +210,7 @@ void Save(const FSettings& Settings)
 {
     if (!GConfig)
         return;
-    GConfig->SetInt(Section, TEXT("Version"), 1, GGameUserSettingsIni);
+    GConfig->SetInt(Section, TEXT("Version"), 2, GGameUserSettingsIni);
     GConfig->SetInt(Section, TEXT("RenderScale"), Settings.RenderScale, GGameUserSettingsIni);
     GConfig->SetInt(Section, TEXT("AntiAliasing"), Settings.AA, GGameUserSettingsIni);
     GConfig->SetInt(Section, TEXT("Shadows"), Settings.Shadows, GGameUserSettingsIni);
@@ -199,6 +222,7 @@ void Save(const FSettings& Settings)
     GConfig->SetBool(Section, TEXT("MotionBlur"), Settings.MotionBlur, GGameUserSettingsIni);
     GConfig->SetInt(Section, TEXT("FrameCap"), Settings.FrameCap, GGameUserSettingsIni);
     GConfig->SetBool(Section, TEXT("VSync"), Settings.VSync, GGameUserSettingsIni);
+    GConfig->SetBool(Section, TEXT("Photorealism"), Settings.Photorealism, GGameUserSettingsIni);
     GConfig->SetInt(Section, TEXT("DLSSMode"), Settings.DLSSMode, GGameUserSettingsIni);
     GConfig->Flush(false, GGameUserSettingsIni);
 }
@@ -256,6 +280,13 @@ void ApplyToEngine(FSettings& Settings, bool bSave)
     }
     SetUserCVar(TEXT("r.ScreenPercentage"), EffectiveScale);
     SetUserCVar(TEXT("r.AntiAliasingMethod"), Settings.DLSSMode ? AAM_TemporalAA : AAMethods[Settings.AA]);
+#if PLATFORM_MAC
+    // Epic AA allocates a 200% TSR history (four times the output pixels).
+    // Keep Epic rejection/filtering, but use output-sized history for the
+    // Mac photo profile: 2560x1664 measured 27.4 -> 30 FPS with GPU headroom.
+    // Explicitly restore the Epic default when leaving this profile.
+    SetUserCVar(TEXT("r.TSR.History.ScreenPercentage"), Settings.Photorealism ? 100.f : 200.f);
+#endif
 #if VROOM_WITH_DLSS
     if (HasDLSSRuntime())
     {
@@ -280,6 +311,13 @@ void ApplyToEngine(FSettings& Settings, bool bSave)
     SetUserCVar(TEXT("r.DefaultFeature.MotionBlur"), Settings.MotionBlur ? 1 : 0);
     SetUserCVar(TEXT("r.MotionBlur.Amount"), Settings.MotionBlur ? 0.25f : 0.f);
     ApplyDirectionalShadows(Settings.Shadows);
+    // Applying an options draft updates the live lighting as well as the GPU
+    // settings; opening/cancelling the menu never changes the atmosphere.
+    if (GEngine)
+        for (const FWorldContext& Context : GEngine->GetWorldContexts())
+            if (UWorld* World = Context.World(); World && World->IsGameWorld())
+                for (TActorIterator<AVroomCircuit> It(World); It; ++It)
+                    Vroom::Environment::ApplyAtmosphere(World, It->TrackIndex);
     IConsoleManager::Get().CallAllConsoleVariableSinks();
     if (bSave)
     {
@@ -287,11 +325,13 @@ void ApplyToEngine(FSettings& Settings, bool bSave)
             User->SaveSettings();
         Save(Settings);
     }
+    const IConsoleVariable* HistoryScale = IConsoleManager::Get().FindConsoleVariable(TEXT("r.TSR.History.ScreenPercentage"));
     UE_LOG(LogTemp, Display,
-        TEXT("VROOM: Graphics applied scale=%.1f AA=%d shadows=%d GI=%d reflections=%d foliage=%d wind=%d effects=%d blur=%d fps=%d vsync=%d DLSS=%d saved=%d"),
+        TEXT("VROOM: Graphics applied scale=%.1f AA=%d shadows=%d GI=%d reflections=%d foliage=%d wind=%d effects=%d blur=%d fps=%d vsync=%d DLSS=%d saved=%d photo=%d tsrHistory=%.0f"),
         EffectiveScale, Settings.DLSSMode ? AAM_TemporalAA : AAMethods[Settings.AA], Settings.Shadows, Settings.GI,
         Settings.Reflections, Settings.Foliage, Settings.Wind, Settings.Effects,
-        Settings.MotionBlur, FrameCaps[Settings.FrameCap], Settings.VSync, Settings.DLSSMode, bSave);
+        Settings.MotionBlur, FrameCaps[Settings.FrameCap], Settings.VSync, Settings.DLSSMode, bSave, Settings.Photorealism,
+        HistoryScale ? HistoryScale->GetFloat() : -1.f);
 }
 
 FString DLSSStatus()
@@ -347,10 +387,11 @@ void Initialize()
     // Reproducible visible validation without modifying the player's saved profile.
     int32 PreviewPreset = -1;
     if (FParse::Value(FCommandLine::Get(), TEXT("VroomGraphicsPreset="), PreviewPreset)
-        && PreviewPreset >= 0 && PreviewPreset <= 3)
+        && PreviewPreset >= 0 && PreviewPreset < NumberOfPresets)
     {
         SetPreset(Applied, PreviewPreset);
-        Applied.FrameCap = 1;
+        if (PreviewPreset != PhotorealismPreset)
+            Applied.FrameCap = 1;
         Applied.VSync = true;
         Applied.DLSSMode = 0;
         UE_LOG(LogTemp, Display, TEXT("VROOM: Temporary graphics preset=%d (preferences preserved)"), PreviewPreset);
@@ -393,7 +434,8 @@ FString Value(int Row)
     {
     case 0:
     {
-        static const TCHAR* Names[] = {TEXT("Performance"), TEXT("Équilibré"), TEXT("Élevé"), TEXT("Ultra"), TEXT("Personnalisé")};
+        static const TCHAR* Names[] = {TEXT("Performance"), TEXT("Équilibré"), TEXT("Élevé"), TEXT("Ultra"),
+            TEXT("Photoréalisme"), TEXT("Personnalisé")};
         return Names[PresetIndex(Settings)];
     }
     case 1:
@@ -449,7 +491,9 @@ FString Description(int Row)
         return TEXT("Piloté par le mode NVIDIA DLSS. Désactiver DLSS restaure vos réglages de résolution et d’anticrénelage.");
     switch (Row)
     {
-    case 0: return TEXT("Performance favorise la fluidité. Ultra privilégie les détails et l’éclairage.");
+    case 0: return Settings.Photorealism
+        ? TEXT("Photoréalisme vise 30 images/s : TSR à 80 %, éclairage Lumen, reflets et ombres du décor. Performance conserve l’objectif 60 images/s.")
+        : TEXT("Performance favorise la fluidité. Photoréalisme privilégie l’éclairage et les ombres, avec un budget de 30 images/s.");
     case 1: return TEXT("Réduit les pixels calculés. Le texte reste à la résolution de la fenêtre.");
     case 2: return TEXT("TAA adoucit les contours. TSR reconstruit les détails à basse résolution, avec un coût supérieur.");
     case 3: return TEXT("Règle les détails et la portée des ombres. Plus bas libère du temps pour chaque image.");
@@ -490,7 +534,8 @@ void Adjust(int Direction)
     case 0:
     {
         int Preset = PresetIndex(Pending);
-        Preset = Preset == 4 ? (Direction > 0 ? 0 : 3) : (Preset + Direction + 4) % 4;
+        Preset = Preset == NumberOfPresets ? (Direction > 0 ? 0 : NumberOfPresets - 1)
+            : (Preset + Direction + NumberOfPresets) % NumberOfPresets;
         SetPreset(Pending, Preset);
         break;
     }
@@ -534,5 +579,6 @@ void Cancel()
 }
 
 bool AnimatedGrass() { return Applied.Wind; }
+bool PhotorealismEnabled() { return Applied.Photorealism; }
 int FoliageQuality() { return Applied.Foliage; }
 }

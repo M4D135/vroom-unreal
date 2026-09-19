@@ -10,7 +10,7 @@ import re
 import shutil
 import subprocess
 import tempfile
-from regression_gates import performance_failures, motion_failures
+from regression_gates import check_release_limits, performance_failures, motion_failures
 
 ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER_IDENTIFIER = 'fr.estrasse.vroom.launcher'
@@ -45,6 +45,10 @@ def check_validation(report, bundle):
         raise ValueError('Only a successful packaged-game validation may be installed')
     if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){2}', str(report.get('version', ''))):
         raise ValueError('Missing or invalid release version')
+    version = tuple(map(int, report['version'].split('.')))
+    if report.get('graphics_preset') == 'photorealism' and version < (0, 34, 0):
+        raise ValueError('Photorealism profile requires version 0.34 or later')
+    limits = check_release_limits(report, allow_legacy=version < (0, 34, 0))['performance']
     if len(report.get('soak_motion', [])) != 6 or len(report.get('performance', [])) < 8:
         raise ValueError('Missing six-circuit soak or both resolution profiles')
     if {row['track'] for row in report['soak_motion']} != set(range(6)) or not report.get('motion'):
@@ -64,7 +68,7 @@ def check_validation(report, bundle):
             raise ValueError(f'Missing or incorrect required performance profile: {name}')
     for row in report['performance']:
         minimum = 7800 if row['track'] is not None else 1800
-        if row.get('expected_frames', 0) < minimum or performance_failures(row['report'], row['expected_frames']):
+        if row.get('expected_frames', 0) < minimum or performance_failures(row['report'], row['expected_frames'], limits):
             raise ValueError('Performance release gate failed')
     for row in report['soak_motion']:
         if row.get('complete') is not True or motion_failures(row['report'], min_samples=7000):
@@ -79,6 +83,8 @@ def check_validation(report, bundle):
         required.update({'offroad-left', 'offroad-right', 'start-sequence', 'start-restart', 'start-pause', 'start-mute'})
         required.update({'drift-unskilled', 'collision-rub', 'collision-rear'})
         required.update(f'track-audit-{track + 1}' for track in range(6))
+    if tuple(map(int, report['version'].split('.'))) >= (0, 34, 0):
+        required.update({'drift-expert', 'traffic-overtake'})
     if not required <= {case['name'] for case in report.get('cases', [])}:
         raise ValueError('Missing required visual/collision cases')
     if any(case.get('exit') != 0 or case.get('status') != 'PASS' for case in report['cases']):

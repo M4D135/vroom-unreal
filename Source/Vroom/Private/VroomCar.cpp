@@ -42,20 +42,59 @@ FTransform WishboneTransform(const FVector& Chassis, const FVector& Hub)
     const float Length = Delta.Size();
     FTransform Pose;
     Pose.SetLocation((Chassis + Hub) * 0.5f);
-    Pose.SetScale3D(FVector(0.055f, 0.055f, FMath::Max(0.02f, Length * 0.01f)));
+    Pose.SetScale3D(FVector(0.028f, 0.028f, FMath::Max(0.02f, Length * 0.01f)));
     if (Length > 1.f)
         Pose.SetRotation(FQuat::FindBetweenNormals(FVector::UpVector, Delta / Length));
     return Pose;
 }
-int32 WishboneWheelSlot(int32 Bar)
+int32 WishboneWheelSlot(const Vroom::Wishbone& Bar)
 {
-    static const int32 Slots[] = {0, 0, 2, 2, 1, 1, 3, 3};
-    return Slots[FMath::Clamp(Bar, 0, 7)];
+    return Vroom::CarWishboneWheelSlot(Bar);
 }
 }
 
 namespace
 {
+FVector CockpitEye()
+{
+    static FVector Eye(-65,0,82);
+    static bool Init = false;
+    if (!Init)
+    {
+        FParse::Value(FCommandLine::Get(), TEXT("VroomEyeX="), Eye.X);
+        FParse::Value(FCommandLine::Get(), TEXT("VroomEyeZ="), Eye.Z);
+        Init = true;
+    }
+    return Eye;
+}
+float CockpitEyePitch()
+{
+    static float Pitch = 0;
+    static bool Init = false;
+    if (!Init) { FParse::Value(FCommandLine::Get(), TEXT("VroomEyePitch="),Pitch); Init=true; }
+    return Pitch;
+}
+const FTransform& ChaseInspectionView(bool VerificationMode)
+{
+    static const FTransform DefaultView(FRotator(-6,0,0), FVector(-850,0,310));
+    if (!VerificationMode) return DefaultView;
+    static const FTransform InspectionView = []
+    {
+        FVector Eye(-850,0,310);
+        FRotator Rotation(-6,0,0);
+        bool Changed = FParse::Value(FCommandLine::Get(), TEXT("VroomChaseEyeX="), Eye.X);
+        Changed |= FParse::Value(FCommandLine::Get(), TEXT("VroomChaseEyeY="), Eye.Y);
+        Changed |= FParse::Value(FCommandLine::Get(), TEXT("VroomChaseEyeZ="), Eye.Z);
+        Changed |= FParse::Value(FCommandLine::Get(), TEXT("VroomChasePitch="), Rotation.Pitch);
+        Changed |= FParse::Value(FCommandLine::Get(), TEXT("VroomChaseYaw="), Rotation.Yaw);
+        if (Changed)
+            UE_LOG(LogTemp, Display, TEXT("VROOM: QA chase view eye=(%.1f,%.1f,%.1f) pitch=%.1f yaw=%.1f"),
+                Eye.X, Eye.Y, Eye.Z, Rotation.Pitch, Rotation.Yaw);
+        return FTransform(Rotation, Eye);
+    }();
+    return InspectionView;
+}
+
 float CockpitCameraSteeringYaw()
 {
     static float Value = -0.40f;
@@ -71,7 +110,7 @@ float CockpitCameraSteeringYaw()
 
 float CockpitWheelSteeringScale()
 {
-    static float Value = 0.34f;
+    static float Value = 0.45f;
     static bool Init = false;
     if (!Init)
     {
@@ -84,7 +123,7 @@ float CockpitWheelSteeringScale()
 
 float CockpitWheelSteeringDamping()
 {
-    static float Value = 24.f;
+    static float Value = 90.f;
     static bool Init = false;
     if (!Init)
     {
@@ -128,9 +167,9 @@ AVroomCar::AVroomCar()
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("CarRoot"));
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("CockpitCamera"));
     Camera->SetupAttachment(RootComponent);
-    Camera->SetRelativeLocation(FVector(0,0,170));
-    Camera->SetRelativeRotation(FRotator(-2,0,0));
-    Camera->SetFieldOfView(80);
+    Camera->SetRelativeLocation(CockpitEye());
+    Camera->SetRelativeRotation(FRotator(CockpitEyePitch(),0,0));
+    Camera->SetFieldOfView(68);
     // Preserve the vertical field used by the original camera setup when the
     // 16:10 Mac viewport changes to a 16:9 4K viewport.
     Camera->SetAspectRatio(16.f / 9.f);
@@ -155,11 +194,12 @@ void AVroomCar::BeginPlay()
     AutoDemo |= FParse::Param(FCommandLine::Get(), TEXT("VroomDriftTest"));
     FParse::Value(FCommandLine::Get(), TEXT("VroomCollisionTest="), TestImpact);
     PitTest = FParse::Param(FCommandLine::Get(), TEXT("VroomPitTest"));
+    TrafficTest = FParse::Param(FCommandLine::Get(), TEXT("VroomTrafficTest"));
     FParse::Value(FCommandLine::Get(), TEXT("VroomOffroadTest="), OffroadTestSide);
     OffroadTestSide = FMath::Clamp(OffroadTestSide, -1, 1);
     StartTest = FParse::Param(FCommandLine::Get(), TEXT("VroomStartTest"));
     FParse::Value(FCommandLine::Get(), TEXT("VroomStartScenario="), StartTestScenario);
-    AutoDemo |= !TestImpact.IsEmpty() || PitTest || OffroadTestSide != 0 || StartTest;
+    AutoDemo |= !TestImpact.IsEmpty() || PitTest || TrafficTest || OffroadTestSide != 0 || StartTest;
     TickDebug = FParse::Param(FCommandLine::Get(), TEXT("VroomTickDebug"));
     MotionTrace = FParse::Param(FCommandLine::Get(), TEXT("VroomMotionTrace"));
     VerificationMode = FParse::Param(FCommandLine::Get(), TEXT("VroomVerify"));
@@ -188,7 +228,7 @@ void AVroomCar::BeginPlay()
         PreviousDrive = Drive.State;
         PreviousVisualHeading = Drive.VisualHeading();
     }
-    auto Part = [&](const TCHAR* Mesh, const TCHAR* Material, FVector P, bool Tyre = false)
+    auto Part = [&](const TCHAR* Mesh, const TCHAR* Material, FVector P, bool Tyre = false, bool CockpitHidden = false)
     {
         auto C = NewObject<UStaticMeshComponent>(this);
         C->SetupAttachment(RootComponent);
@@ -198,6 +238,11 @@ void AVroomCar::BeginPlay()
         C->SetRelativeLocation(P);
         C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         C->SetCanEverAffectNavigation(false);
+        if (CockpitHidden)
+        {
+            C->ComponentTags.Add(FName(TEXT("VroomCockpitHidden")));
+            C->SetVisibility(ChaseCamera);
+        }
 #if PLATFORM_MAC
         C->SetAffectDistanceFieldLighting(false);
         C->SetAffectDynamicIndirectLighting(false);
@@ -220,6 +265,11 @@ void AVroomCar::BeginPlay()
         Part(TEXT("SM_F1WheelFront"),TEXT("M_F1Rubber"),FVector(128,Side*91,35),true);
         Part(TEXT("SM_F1WheelRear"),TEXT("M_F1Rubber"),FVector(-115,Side*96,38),true);
     }
+    // Add the chase-only driver after the wheels, preserving all existing body
+    // and tyre indices (including front wing index 2 used by crash deformation).
+    Part(TEXT("SM_F1PlayerDriverPaint"),TEXT("M_F1Paint"),FVector::ZeroVector,false,true);
+    Part(TEXT("SM_F1PlayerDriverTrim"),TEXT("M_F1Pearl"),FVector::ZeroVector,false,true);
+    Part(TEXT("SM_F1PlayerDriverCarbon"),TEXT("M_F1Carbon"),FVector::ZeroVector,false,true);
     int32 WishboneCount = 0;
     const Vroom::Wishbone* Wishbones = Vroom::CarWishbones(WishboneCount);
     for (int32 I = 0; I < WishboneCount; ++I)
@@ -230,7 +280,7 @@ void AVroomCar::BeginPlay()
         C->SetupAttachment(RootComponent);
         C->SetMobility(EComponentMobility::Movable);
         C->SetStaticMesh(Shape(TEXT("Cylinder")));
-        C->SetMaterial(0, Mat(TEXT("M_Metal")));
+        C->SetMaterial(0, Mat(TEXT("M_F1Carbon")));
         C->SetRelativeTransform(WishboneTransform(Chassis, Hub));
         C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         C->SetCanEverAffectNavigation(false);
@@ -243,7 +293,7 @@ void AVroomCar::BeginPlay()
         SuspensionChassis.Add(Chassis);
         SuspensionHubs.Add(Hub);
         SuspensionSteers.Add(Wishbones[I].Steers ? 1 : 0);
-        SuspensionWheelIndex.Add(WishboneWheelSlot(I));
+        SuspensionWheelIndex.Add(WishboneWheelSlot(Wishbones[I]));
     }
     BuildCockpit();
     BuildMirrors();
@@ -288,8 +338,10 @@ void AVroomCar::PlaceOnStartingGrid()
 
 void AVroomCar::ResetCar()
 {
+    if (auto* Feedback = FindComponentByClass<UVroomFeedbackComponent>()) Feedback->ResetForRace();
     LandingFeedbackTime = LandingQuality = 0;
     Drive.Reset();
+    PlayerWheelVisual.Reset();
     Contacts.Reset();
     Pit = Vroom::PitStopModel{};
     PlaceOnStartingGrid();
@@ -701,6 +753,25 @@ void AVroomCar::Tick(float Dt)
         Session.SelectTrack(Circuit->TrackIndex);
         TourStartDistance = Drive.State.DistanceM;
         if (TourDemo) Circuit->ConfigureTraffic(true, false, Session.Difficulty);
+        if (TrafficTest)
+        {
+            ResetCar();
+            Drive.State.DistanceM = 350;
+            PreviousDrive = Drive.State;
+            Circuit->ConfigureTraffic(true, false, Vroom::RaceDifficulty::Normal);
+            Circuit->ReactiveTraffic = true;
+            for (int32 I = 0; I < Circuit->OpponentS.Num(); ++I)
+            {
+                auto& Rival = Circuit->Traffic[I];
+                Rival = Vroom::TrafficCar{};
+                Rival.Distance = I == 0 ? 295 : 1050 + I * 40;
+                Rival.Speed = I == 0 ? 50 : 30;
+                Circuit->OpponentS[I] = Circuit->PreviousOpponentS[I] = Rival.Distance;
+                Circuit->OpponentLanes[I] = Circuit->PreviousOpponentLanes[I] = 0;
+                Circuit->OpponentSpeeds[I] = Rival.Speed;
+            }
+            Circuit->Running = true; Circuit->Paused = false; Circuit->RaceClock = 0;
+        }
         if (OffroadTestSide != 0)
         {
             ResetCar();
@@ -936,7 +1007,7 @@ void AVroomCar::Tick(float Dt)
         FString Scenario;
         FParse::Value(FCommandLine::Get(), TEXT("VroomDriftScenario="), Scenario);
         Input.Throttle = .6;
-        Input.Drift = TestSeconds >= .2 && TestSeconds < 1.8;
+        Input.Drift = TestSeconds >= .2 && TestSeconds < (Scenario == TEXT("expert") ? 2.55 : 1.8);
         if (Input.Drift)
             Input.Steer = TestSeconds < .5 || Scenario == TEXT("unskilled") ? .8 : -.45;
     }
@@ -948,6 +1019,7 @@ void AVroomCar::Tick(float Dt)
         else InputSteering = 0.f;
     }
     if (PitTest) { Input = Vroom::DriveInput{}; Input.Throttle = 1; }
+    if (TrafficTest) Input = Vroom::DriveInput{};
     if (OffroadTestSide != 0)
     {
         Input = Vroom::DriveInput{}; Input.Throttle = 1;
@@ -1003,7 +1075,7 @@ void AVroomCar::Tick(float Dt)
     {
         const bool Blink = Contacts.State.InvulnerabilityRemaining > 0
             && FMath::Fmod(Contacts.State.InvulnerabilityRemaining, .2) < .08;
-        const bool Expected = !ChaseCamera && !Blink;
+        const bool Expected = !Blink;
         bool Correct = IsCockpitVisible() == Expected
             && CockpitRoot && CockpitRoot->IsVisible() == Expected
             && MirrorRoot && MirrorRoot->IsVisible() == Expected;
@@ -1021,7 +1093,7 @@ void AVroomCar::Tick(float Dt)
 void AVroomCar::UpdateDiagnostics(float Dt)
 {
     PreviewClock += Dt;
-    const bool SimulationTest = !TestImpact.IsEmpty() || PitTest || OffroadTestSide != 0 || StartTest
+    const bool SimulationTest = !TestImpact.IsEmpty() || PitTest || TrafficTest || OffroadTestSide != 0 || StartTest
         || FParse::Param(FCommandLine::Get(), TEXT("VroomDriftTest"));
     const double CheckClock = SimulationTest ? TestSeconds : PreviewClock;
     if (!PreparingCircuit && !CapturePath.IsEmpty() && CheckClock >= CaptureAfter)
@@ -1075,6 +1147,14 @@ void AVroomCar::UpdateDiagnostics(float Dt)
                 Passed ? TEXT("PASS") : TEXT("FAIL"), StartTestStationary, Circuit->RaceClock,
                 Drive.State.DistanceM - StartTestDistance);
         }
+        if (TrafficTest)
+        {
+            Passed &= TrafficTestCommitted && TrafficTestBraked && TrafficTestAlongside && TrafficTestClear
+                && TrafficTestCompleted && TestContacts == 0 && TestRespawns == 0;
+            UE_LOG(LogTemp, Display, TEXT("VROOM: Traffic overtake %s committed=%d braked=%d alongside=%d clear=%d completed=%d"),
+                Passed ? TEXT("PASS") : TEXT("FAIL"), TrafficTestCommitted, TrafficTestBraked,
+                TrafficTestAlongside, TrafficTestClear, TrafficTestCompleted);
+        }
         UE_LOG(LogTemp, Display, TEXT("VROOM: Verification %s scenario=%s contacts=%d respawns=%d visibilityErrors=%d"), Passed ? TEXT("PASS") : TEXT("FAIL"), *TestImpact, TestContacts, TestRespawns, TestVisibilityErrors);
         FPlatformMisc::RequestExitWithStatus(false, Passed ? 0 : 1);
     }
@@ -1087,10 +1167,25 @@ void AVroomCar::SimulateStep(const Vroom::DriveInput& RawInput, double H)
     PreviousVisualHeading = Contacts.State.ControlsLocked ? Drive.State.HeadingRad : Drive.VisualHeading();
     PreviousContact = Contacts.State;
     PreviousHopHeight = Drive.HopHeightM;
+    Circuit->TrafficPlayer.LaneVelocity = Circuit->TrafficPlayerActive && H > 0
+        ? FMath::Clamp((Drive.State.LateralM - Circuit->TrafficPlayer.Lateral) / H, -12.0, 12.0) : 0;
     Circuit->TrafficPlayer.Distance = Drive.State.DistanceM;
     Circuit->TrafficPlayer.Lateral = Drive.State.LateralM;
     Circuit->TrafficPlayer.Speed = Drive.State.SpeedMps;
     Circuit->TrafficPlayerActive = !TourDemo && Circuit->OpponentsVisible;
+    if (TrafficTest && !Circuit->Traffic.empty())
+    {
+        const auto& Rival = Circuit->Traffic[0];
+        const double Gap = Rival.Distance - Drive.State.DistanceM;
+        TrafficTestCommitted |= Rival.OvertakeTarget == -1;
+        TrafficTestBraked |= Gap < -5 && Rival.Speed < 48;
+        if (FMath::Abs(Gap) < 4.6)
+        {
+            TrafficTestAlongside = true;
+            TrafficTestClear &= FMath::Abs(Rival.Lateral - Drive.State.LateralM) > 2.15;
+        }
+        TrafficTestCompleted |= Gap > 12 && Rival.OvertakeTarget == -2;
+    }
     if (StartTest && Circuit->RaceClock < 0)
     {
         StartTestStationary &= FMath::Abs(Drive.State.DistanceM - StartTestDistance) < .001;
@@ -1425,41 +1520,43 @@ void AVroomCar::UpdatePresentation(double Alpha)
     R.Pitch += FMath::RadiansToDegrees(FMath::Lerp(PreviousContact.PitchRad, Contacts.State.PitchRad, Alpha));
     R.Roll += FMath::RadiansToDegrees(FMath::Lerp(PreviousContact.RollRad, Contacts.State.RollRad, Alpha));
     SetActorLocationAndRotation(Circuit->Position(S, L) + FVector(0,0,6 + Height * 100), R);
-    // Leave the road horizon beneath the Amiga information band in both views.
-    Camera->SetRelativeLocation(ChaseCamera ? FVector(-850,0,310) : FVector(0,0,170));
+    // Physical driver eye uses the same chassis and wheel positions as the chase view.
+    const FTransform& ChaseView = ChaseInspectionView(VerificationMode);
+    Camera->SetRelativeLocation(ChaseCamera ? ChaseView.GetLocation() : CockpitEye());
     const float FovOffsets[] = {0,-12,12};
-    Camera->SetFieldOfView(FMath::Clamp((VerificationMode ? 80.f : Vroom::Settings::Get().Fov) + FovOffsets[FovIndex], 55.f, 110.f));
+    Camera->SetFieldOfView(FMath::Clamp((VerificationMode ? 68.f : Vroom::Settings::Get().Fov) + FovOffsets[FovIndex], 55.f, 110.f));
     VisualSteering = FMath::Clamp(static_cast<float>(FMath::Lerp(PreviousDrive.Steering, Drive.State.Steering, Alpha)), -1.f, 1.f);
     const float SmoothedSteering = UpdateCockpit(VisualSteering);
     static const bool InspectCockpit = FParse::Param(FCommandLine::Get(), TEXT("VroomInspectCockpit"));
-    const FRotator TargetCamRot = ChaseCamera ? FRotator(-6,0,0) : FRotator(InspectCockpit ? -20 : -2,0,SmoothedSteering * CockpitCameraSteeringYaw());
+    const FRotator TargetCamRot = ChaseCamera ? ChaseView.Rotator() : FRotator(InspectCockpit ? -14 : CockpitEyePitch(),0,SmoothedSteering * CockpitCameraSteeringYaw());
     const double CamDt = Circuit->Paused ? 0.0 : FMath::Clamp(static_cast<double>(GetWorld()->GetDeltaSeconds()), 0.0, .1);
     Camera->SetRelativeRotation(FQuat::Slerp(Camera->GetRelativeRotation().Quaternion(), TargetCamRot.Quaternion(),
         Vroom::ExponentialAlpha(110, CamDt)));
 
     const bool Broken = Contacts.State.Phase == Vroom::ContactPhase::Crashed || Contacts.State.Phase == Vroom::ContactPhase::Recovering;
+    const double WheelSpeed = FMath::Lerp(PreviousDrive.SpeedMps, Drive.State.SpeedMps, Alpha);
+    PlayerWheelVisual.Observe(S, WheelSpeed, CamDt, Circuit->Running && !Circuit->Paused && !Broken);
+    auto FrontYaw = [&](double Side)
+    {
+        return Broken ? 0.0 : Vroom::FrontWheelYaw(VisualSteering, WheelSpeed, Side,
+            CockpitWheelSteeringScale(), CockpitWheelSteeringDamping());
+    };
     for (int32 I : TyrePartIndices)
     {
         FTransform Pose = BodyBaseTransforms[I];
-        // The Amiga view separates the small front wheels from the low cockpit.
-        // Keep the external model intact and stage this view to its composition.
-        if (!ChaseCamera && Pose.GetLocation().X > 0)
-        {
-            FVector P = Pose.GetLocation(); P.X = 270; P.Z = 29;
-            Pose.SetLocation(P);
-            Pose.SetScale3D(Pose.GetScale3D() * .82);
-        }
-        FRotator Wheel = Pose.Rotator();
-        if (!Broken && Pose.GetLocation().X > 0) Wheel.Yaw += FMath::RadiansToDegrees(SmoothedSteering * CockpitWheelSteeringScale() / (1 + Drive.State.SpeedMps / CockpitWheelSteeringDamping()));
-        Pose.SetRotation(Wheel.Quaternion()); BodyParts[I]->SetRelativeTransform(Pose);
+        const bool Front = Pose.GetLocation().X > 0;
+        const double Yaw = Front ? FrontYaw(Pose.GetLocation().Y < 0 ? -1 : 1) : 0;
+        const double Roll = Front ? PlayerWheelVisual.FrontRollRad : PlayerWheelVisual.RearRollRad;
+        // Steer the axle around Z, then roll the complete tyre/rim around its
+        // local Y axis. The suspension pickups receive yaw only below.
+        Pose.SetRotation(FQuat(FVector::UpVector, Yaw) * FQuat(FVector::RightVector, Roll) * Pose.GetRotation());
+        BodyParts[I]->SetRelativeTransform(Pose);
     }
     FTransform Nose = BodyBaseTransforms[2];
     if (Broken) Nose.SetRotation(FRotator(-18, 9, 12).Quaternion());
     BodyParts[2]->SetRelativeTransform(Nose);
 
     const bool Blink = Contacts.State.InvulnerabilityRemaining > 0 && FMath::Fmod(Contacts.State.InvulnerabilityRemaining, .2) < .08;
-    const float SteerYaw = SmoothedSteering * CockpitWheelSteeringScale()
-        / (1 + Drive.State.SpeedMps / CockpitWheelSteeringDamping());
     for (int32 I = 0; I < SuspensionBars.Num(); ++I)
     {
         UStaticMeshComponent* Bar = SuspensionBars[I];
@@ -1467,14 +1564,16 @@ void AVroomCar::UpdatePresentation(double Alpha)
         const FVector Chassis = SuspensionChassis[I];
         FVector Hub = SuspensionHubs[I];
         const int32 Slot = SuspensionWheelIndex.IsValidIndex(I) ? SuspensionWheelIndex[I] : INDEX_NONE;
-        if (TyrePartIndices.IsValidIndex(Slot) && BodyParts.IsValidIndex(TyrePartIndices[Slot]) && BodyParts[TyrePartIndices[Slot]])
+        if (TyrePartIndices.IsValidIndex(Slot) && BodyParts.IsValidIndex(TyrePartIndices[Slot])
+            && BodyBaseTransforms.IsValidIndex(TyrePartIndices[Slot]) && BodyParts[TyrePartIndices[Slot]])
         {
             const FVector Wheel = BodyParts[TyrePartIndices[Slot]]->GetRelativeLocation();
-            const FVector Inner(0.f, Wheel.Y >= 0.f ? -16.f : 16.f, Hub.Z - Wheel.Z);
+            const FVector Inner = Hub - BodyBaseTransforms[TyrePartIndices[Slot]].GetLocation();
             Hub = Wheel + Inner;
             if (!Broken && SuspensionSteers.IsValidIndex(I) && SuspensionSteers[I])
             {
-                const float Cos = FMath::Cos(SteerYaw), Sin = FMath::Sin(SteerYaw);
+                const double SteerYaw = FrontYaw(Wheel.Y < 0 ? -1 : 1);
+                const double Cos = FMath::Cos(SteerYaw), Sin = FMath::Sin(SteerYaw);
                 Hub = Wheel + FVector(Inner.X * Cos - Inner.Y * Sin, Inner.X * Sin + Inner.Y * Cos, Inner.Z);
             }
         }
@@ -1485,7 +1584,9 @@ void AVroomCar::UpdatePresentation(double Alpha)
     for (int32 I = 0; I < BodyParts.Num(); ++I)
     {
         const bool FrontTyre = TyrePartIndices.Contains(I) && BodyBaseTransforms[I].GetLocation().X > 0;
-        BodyParts[I]->SetVisibility(!Blink && (ChaseCamera || FrontTyre));
+        const bool CockpitHidden = BodyParts[I]->ComponentHasTag(FName(TEXT("VroomCockpitHidden")));
+        BodyParts[I]->SetVisibility(!Blink && (ChaseCamera
+            || (!CockpitHidden && (FrontTyre || !TyrePartIndices.Contains(I)))));
     }
 }
 

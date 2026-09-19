@@ -45,8 +45,12 @@ public:
     // Both are zero when idle; the internal slide retains its blend-out pose.
     int DriftDirection = 0;
     double DriftControl = 0;
+    // Each newly earned tier offers one short release window. Staying in the
+    // slide still earns its normal turbo; an accurately timed release lasts longer.
+    double DriftPerfectWindowRemaining = 0;
     double BoostRemaining = 0;
     int BoostTier = 0;
+    bool BoostPerfect = false;
     double HopHeightM = 0;
     // Lateral impulse from bumps / barrier bounces; decays in Integrate.
     double ExtraLatVel = 0;
@@ -136,6 +140,12 @@ public:
     inline static constexpr double DriftEntrySteer = 0.22;
     inline static constexpr double DriftChargeBoost01 = 0.42;
     inline static constexpr double DriftChargeBoost02 = 1.00;
+    inline static constexpr double DriftChargeBoost03 = 1.80;
+    inline static constexpr double DriftMaxCharge = 2.10;
+    inline static constexpr double DriftPerfectReleaseWindowSeconds = 0.22;
+    inline static constexpr double DriftPerfectBonusSeconds = 0.20;
+    inline static constexpr double BoostBlendInSeconds = 0.10;
+    inline static constexpr double BoostBlendOutSeconds = 0.16;
     inline static constexpr double DriftLatGain = 0.060;
     inline static constexpr double DriftSlipGain = 0.28;
     inline static constexpr double DriftMaxSkidAngle = 0.52;
@@ -149,6 +159,20 @@ public:
     // Keep room for the road tangent's own angular acceleration in a bend.
     inline static constexpr double MaxChassisSlipAcceleration = 160.0 * 3.14159265358979323846 / 180.0;
     inline static constexpr double ChassisSlipFrequency = 18.0;
+
+    int DriftChargeTier() const
+    {
+        return DriftCharge >= DriftChargeBoost03 ? 3 : DriftCharge >= DriftChargeBoost02 ? 2
+            : DriftCharge >= DriftChargeBoost01 ? 1 : 0;
+    }
+
+    static double BoostDurationSeconds(int tier, bool perfect = false)
+    {
+        const double duration = tier >= 3 ? 1.70 : tier == 2 ? 1.15 : tier == 1 ? 0.55 : 0;
+        return duration > 0 ? duration + (perfect ? DriftPerfectBonusSeconds : 0) : 0;
+    }
+
+    double BoostDurationSeconds() const { return BoostDurationSeconds(BoostTier, BoostPerfect); }
 
     // Curve loading and grass steering loss build with speed. Applying the
     // full arcade wash at walking pace made wash/steer almost speed-independent:
@@ -178,13 +202,16 @@ public:
     void CancelArcadeEffects(bool CancelHop = true)
     {
         Drifting = false;
-        DriftCharge = DriftBlend = 0;
+        DriftCharge = DriftBlend = DriftTractionControl = 0;
         DriftDirection = 0;
         DriftSlideDirection = 0;
         DriftControl = DriftAge = DriftLostControl = DriftFullCounter = DriftReleaseAge = DriftArmAge = 0;
+        DriftPerfectWindowRemaining = 0;
+        DriftHighestTier = 0;
         DriftNeedsRelease = true;
-        BoostRemaining = 0;
+        BoostRemaining = BoostElapsed = 0;
         BoostTier = 0;
+        BoostPerfect = false;
         if (CancelHop)
             HopHeightM = HopElapsed = HopDuration = HopPeakM = 0;
         ChassisSlipRate = 0;
@@ -208,11 +235,15 @@ public:
         DriftDirection = 0;
         DriftSlideDirection = 0;
         DriftControl = DriftAge = DriftLostControl = DriftFullCounter = DriftArmAge = 0;
+        DriftPerfectWindowRemaining = 0;
+        DriftHighestTier = 0;
         DriftReleaseAge = DriftRearmSeconds;
         DriftBlend = 0;
+        DriftTractionControl = 0;
         DriftNeedsRelease = false;
-        BoostRemaining = 0;
+        BoostRemaining = BoostElapsed = 0;
         BoostTier = 0;
+        BoostPerfect = false;
         HopHeightM = 0;
         ExtraLatVel = 0;
         HopElapsed = 0;
@@ -281,11 +312,14 @@ private:
     double HopDuration = 0;
     double HopPeakM = 0;
     double DriftBlend = 0;
+    double DriftTractionControl = 0;
     bool DriftNeedsRelease = false;
     double DriftAge = 0, DriftLostControl = 0, DriftFullCounter = 0;
     double DriftArmAge = 0;
     int DriftSlideDirection = 0;
+    int DriftHighestTier = 0;
     double DriftReleaseAge = DriftRearmSeconds;
+    double BoostElapsed = 0;
 
     static double FiniteClamp(double value, double low, double high, double fallback)
     {
@@ -316,11 +350,12 @@ private:
         ChassisSlip = FiniteClamp(ChassisSlip, -DriftMaxSkidAngle, DriftMaxSkidAngle, 0);
         ChassisSlipRate = FiniteClamp(ChassisSlipRate, -3.0, 3.0, 0);
         ExtraLatVel = FiniteClamp(ExtraLatVel, -40, 40, 0);
-        DriftCharge = FiniteClamp(DriftCharge, 0, 1.4, 0);
+        DriftCharge = FiniteClamp(DriftCharge, 0, DriftMaxCharge, 0);
         DriftControl = FiniteClamp(DriftControl, 0, 1, 0);
         DriftDirection = std::clamp(DriftDirection, -1, 1);
+        DriftPerfectWindowRemaining = FiniteClamp(DriftPerfectWindowRemaining, 0, DriftPerfectReleaseWindowSeconds, 0);
         BoostRemaining = FiniteClamp(BoostRemaining, 0, 3, 0);
-        BoostTier = std::clamp(BoostTier, 0, 2);
+        BoostTier = std::clamp(BoostTier, 0, 3);
         HopHeightM = FiniteClamp(HopHeightM, 0, 1.5, 0);
     }
 
@@ -378,6 +413,7 @@ private:
         if (Drifting)
         {
             DriftAge += h;
+            DriftPerfectWindowRemaining = std::max(0.0, DriftPerfectWindowRemaining - h);
             const double counter = -State.Steering * DriftDirection;
             // Moderate opposite lock gives full control. Full digital lock is
             // useful briefly, but must be relaxed before its .90 s limit.
@@ -390,9 +426,14 @@ private:
                     : DriftLostControl + h;
                 DriftFullCounter = counter > .90 ? DriftFullCounter + h : std::max(0.0, DriftFullCounter - 3.0 * h);
                 if (DriftControl >= .30 && driftSurfaceValid)
-                    DriftCharge = std::min(1.35, DriftCharge + h * DriftControl);
+                    DriftCharge = std::min(DriftMaxCharge, DriftCharge + h * DriftControl);
                 else
                     DriftCharge = std::max(0.0, DriftCharge - .18 * h);
+                if (DriftChargeTier() > DriftHighestTier)
+                {
+                    DriftHighestTier = DriftChargeTier();
+                    DriftPerfectWindowRemaining = DriftPerfectReleaseWindowSeconds;
+                }
             }
             const bool controlled = DriftLostControl < DriftControlGraceSeconds &&
                 DriftFullCounter < DriftFullCounterLimitSeconds;
@@ -403,17 +444,22 @@ private:
                 if (!driftCommand && driftSurfaceValid && controlled && DriftLostControl < .18 &&
                     DriftCharge >= DriftChargeBoost01)
                 {
-                    BoostTier = DriftCharge >= DriftChargeBoost02 ? 2 : 1;
-                    BoostRemaining = BoostTier == 2 ? 1.15 : 0.55;
+                    BoostTier = DriftChargeTier();
+                    BoostPerfect = DriftPerfectWindowRemaining > 0 && BoostTier == DriftHighestTier;
+                    BoostRemaining = BoostDurationSeconds(BoostTier, BoostPerfect);
+                    BoostElapsed = 0;
                 }
                 else
                 {
                     BoostTier = 0;
-                    BoostRemaining = 0;
+                    BoostRemaining = BoostElapsed = 0;
+                    BoostPerfect = false;
                 }
                 Drifting = false;
                 DriftDirection = 0;
                 DriftCharge = DriftControl = 0;
+                DriftPerfectWindowRemaining = 0;
+                DriftHighestTier = 0;
                 DriftNeedsRelease = driftCommand;
                 DriftReleaseAge = 0;
             }
@@ -428,6 +474,8 @@ private:
                 Drifting = true;
                 DriftDirection = DriftSlideDirection = input.Steer > 0 ? 1 : -1;
                 DriftCharge = DriftControl = DriftAge = DriftLostControl = DriftFullCounter = 0;
+                DriftPerfectWindowRemaining = 0;
+                DriftHighestTier = 0;
                 DriftReleaseAge = 0;
             }
             else if (DriftArmAge >= .16 || !driftSurfaceValid ||
@@ -439,6 +487,8 @@ private:
         }
         const double blendSeconds = Drifting ? DriftBlendInSeconds : DriftBlendOutSeconds;
         DriftBlend += ((Drifting ? 1.0 : 0.0) - DriftBlend) * (1.0 - std::exp(-h / blendSeconds));
+        DriftTractionControl += ((Drifting ? DriftControl : 0.0) - DriftTractionControl)
+            * (1.0 - std::exp(-h / 0.09));
         if (HopDuration > 0)
         {
             HopElapsed += h;
@@ -466,7 +516,10 @@ private:
         double wash = ArcadeWashLatMps(speed, curvature);
         if (airborne)
             wash *= 0.22;
-        wash *= 1.0 - 0.58 * DriftBlend;
+        // Countersteer recovers enough lateral grip to hold a long slide on
+        // the original narrow road. Neutral / poor control keeps the wider arc;
+        // this changes tyre force, never lane position or camera orientation.
+        wash *= 1.0 - (0.58 + 0.20 * DriftTractionControl) * DriftBlend;
         const double fullSteerLat = std::max(std::abs(ArcadeSteerLatMps(1.0, speed)), 0.35);
         const double demanded = std::abs(wash) / fullSteerLat;
 
@@ -501,8 +554,9 @@ private:
         double acceleration = (256.0 * 20.0 / (GearInertia[gear] * 5.4)) * netMoment;
         if (input.Brake > 0 || !driftRoadValid || Fuel <= 0)
         {
-            BoostRemaining = 0;
+            BoostRemaining = BoostElapsed = 0;
             BoostTier = 0;
+            BoostPerfect = false;
         }
         if (input.Throttle == 0 && State.SpeedMps > 0 && BoostRemaining <= 0)
             acceleration -= 1.2;
@@ -510,10 +564,20 @@ private:
             acceleration -= 9.81 * grade / std::sqrt(1 + grade * grade);
         if (BoostRemaining > 0)
         {
-            acceleration += BoostTier >= 2 ? 22.0 : 14.0;
+            // Power arrives and expires progressively, so the stronger third
+            // tier adds speed without an acceleration step at either endpoint.
+            BoostElapsed += h;
+            const auto smooth = [](double x) { x = std::clamp(x, 0.0, 1.0); return x * x * (3.0 - 2.0 * x); };
+            const double envelope = std::min(smooth(BoostElapsed / BoostBlendInSeconds),
+                smooth(BoostRemaining / BoostBlendOutSeconds));
+            acceleration += (BoostTier >= 3 ? 26.0 : BoostTier == 2 ? 22.0 : 14.0) * envelope;
             BoostRemaining = std::max(0.0, BoostRemaining - h);
             if (BoostRemaining <= 0)
+            {
                 BoostTier = 0;
+                BoostPerfect = false;
+                BoostElapsed = 0;
+            }
         }
         State.SpeedMps = std::clamp(State.SpeedMps + acceleration * h, 0.0, 120.0);
 
@@ -524,7 +588,8 @@ private:
         if (airborne)
             steerLat *= 0.88;
         double latVel = steerLat * (1.0 - .70 * DriftBlend) - wash + ExtraLatVel;
-        latVel += DriftBlend * DriftSlideDirection * std::min(State.SpeedMps, 54.0) * DriftLatGain;
+        latVel += DriftBlend * DriftSlideDirection * std::min(State.SpeedMps, 54.0) * DriftLatGain
+            * (1.0 - 0.25 * DriftTractionControl);
         const double metric = std::clamp(1.0 - curvature * State.LateralM, 0.3, 3.0);
         const double progress = State.SpeedMps / metric;
         VelocityHeadingRad = 0;
