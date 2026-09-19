@@ -480,7 +480,17 @@ void AVroomHUD::DrawHUD()
 
     const FLinearColor Detail(0.55f, 0.72f, 0.78f, 1);
     Text(FString::Printf(TEXT("V%s"), Vroom::AppVersion), W - 64, H - 30, 12, Detail);
-    Text(TEXT("O  GRAPHISMES"), W - 194, H - 29, 11, Muted);
+    static double LastFpsTime = 0; static float ShownFps = 60.f;
+    {
+        const double Now = FPlatformTime::Seconds();
+        if (LastFpsTime > 0)
+        {
+            const float Dt = static_cast<float>(Now - LastFpsTime);
+            if (Dt > 0) ShownFps = ShownFps * 0.9f + (1.f / Dt) * 0.1f;
+        }
+        LastFpsTime = Now;
+    }
+    Text(FString::Printf(TEXT("%d FPS"), FMath::RoundToInt(ShownFps)), W - 194, H - 29, 11, Muted);
 
     const bool NeedsRecovery = Contact.Phase == Vroom::ContactPhase::Crashed
         || Contact.Phase == Vroom::ContactPhase::Recovering;
