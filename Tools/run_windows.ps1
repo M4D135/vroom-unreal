@@ -52,16 +52,15 @@ try {
         $Found = @($Candidates | ForEach-Object { Join-Path $ArchiveDirectory $_ } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
         if ($Found.Count -ne 1) { throw "Binaire natif $Configuration absent ou ambigu dans $ArchiveDirectory. Lancer build_windows.ps1 ou choisir la Configuration construite." }
         $Executable = $Found[0]
-        if ($ExpectedVersion) {
-            $Manifest = Get-Content -LiteralPath (Join-Path $ArchiveDirectory 'vroom-build.json') -Raw | ConvertFrom-Json
-            if ($Manifest.version -ne $ExpectedVersion) { throw 'Le manifeste du package ne correspond pas a ExpectedVersion.' }
-            $Hash = (Get-FileHash -LiteralPath $Executable -Algorithm SHA256).Hash.ToLowerInvariant()
-            if ($Hash -ne $Manifest.executable_sha256) { throw 'Le binaire a change depuis le manifeste du package.' }
-        }
+        . (Join-Path $PSScriptRoot 'windows_package.ps1')
+        $Manifest = Get-Content -LiteralPath (Join-Path $ArchiveDirectory 'vroom-build.json') -Raw | ConvertFrom-Json
+        if ($ExpectedVersion -and $Manifest.version -ne $ExpectedVersion) { throw 'Le manifeste du package ne correspond pas a ExpectedVersion.' }
+        if ($Manifest.configuration -ne $Configuration) { throw 'La configuration du package ne correspond pas au lancement.' }
+        $Executable = Test-VroomPackage $ArchiveDirectory $Manifest
         $WorkingDirectory = Split-Path -Parent $Executable
     }
     if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) { throw "Executable absent : $Executable" }
-    $LaunchArguments += @('-d3d12', "-ResX=$Width", "-ResY=$Height", '-ForceRes', '-NoSplash')
+    $LaunchArguments += @('-d3d12', '-SaveToUserDir', "-ResX=$Width", "-ResY=$Height", '-ForceRes', '-NoSplash')
     if ($Windowed) { $LaunchArguments += '-windowed' } else { $LaunchArguments += '-fullscreen' }
     foreach ($Argument in $GameArguments) {
         if ($Argument -match '^-(ResX|ResY|ForceRes|windowed|fullscreen|d3d11|d3d12|dx11|dx12|vulkan)(=|$)') {

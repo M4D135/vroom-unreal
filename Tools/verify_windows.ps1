@@ -3,13 +3,16 @@
 .SYNOPSIS
 Verify an existing native Windows Development package, with explicit version.
 .EXAMPLE
-.\Tools\verify_windows.ps1 -ExpectedVersion 0.30.0 -Profile -TargetFPS 60
+.\Tools\verify_windows.ps1 -ExpectedVersion 0.34.0 -Profile -TargetFPS 60
 .EXAMPLE
-.\Tools\verify_windows.ps1 -ExpectedVersion 0.30.0 -Profile -Soak -TargetFPS 120 -ExpectedDLSS quality
+.\Tools\verify_windows.ps1 -ExpectedVersion 0.34.0 -Profile -Soak -TargetFPS 120 -ExpectedDLSS quality
 .NOTES
 Requires Python 3.10+ and an interactive Windows desktop. No build/download occurs.
 Captures are onscreen. TargetFPS sets acceptance gates, not graphics preferences.
 Prepared on Mac; Windows execution remains unverified until results.json exists.
+0.34 requires the complete schema-2 package manifest. Gameplay checks include
+offroad recovery, pit service, starts, expert drift and committed overtaking.
+SaveToUserDir keeps runtime saves outside the immutable delivery directory.
 #>
 [CmdletBinding()]
 param(

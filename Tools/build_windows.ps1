@@ -9,7 +9,7 @@ Build Vroom for Unreal Engine 5.8 / Windows x64. No software is installed.
 .NOTES
 Package keeps the committed assets. Assets explicitly regenerates bootstrap assets.
 Entry points/arguments checked against UE 5.8 UBT and AutomationTool sources.
-This script has not been executed on Windows or parsed by PowerShell on the Mac.
+Native Windows build remains unverified until run on a Windows build host.
 #>
 [CmdletBinding()]
 param(
@@ -17,7 +17,9 @@ param(
     [string]$ProjectDir = (Split-Path -Parent $PSScriptRoot),
     [string]$ArchiveDirectory,
     [ValidateSet('Package', 'Editor', 'Assets')][string]$Mode = 'Package',
-    [ValidateSet('Development', 'Shipping')][string]$Configuration = 'Development'
+    [ValidateSet('Development', 'Shipping')][string]$Configuration = 'Development',
+    [switch]$CreateZip,
+    [string]$ZipPath
 )
 
 Set-StrictMode -Version Latest
@@ -60,6 +62,9 @@ try {
         throw 'Ce script demande Windows x64. Utiliser build_linux.sh ou build_mac.command sur les autres systemes.'
     }
     if (-not [Environment]::Is64BitOperatingSystem) { throw 'Windows x64 est requis.' }
+    if ($CreateZip -and $Mode -ne 'Package') { throw 'CreateZip demande le mode Package.' }
+    if ($ZipPath -and -not $CreateZip) { throw 'ZipPath demande CreateZip.' }
+    . (Join-Path $PSScriptRoot 'windows_package.ps1')
     $ProjectDir = (Resolve-Path -LiteralPath $ProjectDir).Path
     $ProjectFile = Join-Path $ProjectDir 'Vroom.uproject'
     if (-not (Test-Path -LiteralPath $ProjectFile -PathType Leaf)) { throw "Projet absent : $ProjectFile" }
@@ -89,6 +94,9 @@ try {
         throw "Generateur absent : $Bootstrap"
     }
     if ($Mode -eq 'Package') {
+        if ((Test-Path -LiteralPath $ArchiveDirectory) -and @(Get-ChildItem -LiteralPath $ArchiveDirectory -Force).Count) {
+            throw 'ArchiveDirectory doit etre vide pour eviter un melange de builds. Choisir un nouveau dossier ; le package precedent reste conserve.'
+        }
         foreach ($Asset in @('Content\Maps\Circuit.umap', 'Content\Materials\M_Asphalt.uasset', 'Content\Data\tracks.json', 'Content\Data\gloves.json', 'Content\Meshes\SM_EnvironmentBroadleaf.uasset', 'Content\Materials\M_EnvironmentGround.uasset')) {
             if (-not (Test-Path -LiteralPath (Join-Path $ProjectDir $Asset) -PathType Leaf)) {
                 throw "Asset absent : $Asset. Recuperer les assets versionnes ou lancer -Mode Assets."
@@ -109,12 +117,12 @@ try {
             }
         } elseif ($Mode -eq 'Package') {
             New-Item -ItemType Directory -Path $ArchiveDirectory -Force | Out-Null
-            Invoke-VroomTool $AutomationTool @('BuildCookRun', "-project=$ProjectFile", '-nop4', '-unattended', '-WaitForUATMutex', '-platform=Win64', "-clientconfig=$Configuration", '-build', '-cook', '-stage', '-pak', '-iostore', '-package', '-archive', "-archivedirectory=$ArchiveDirectory", '-utf8output')
-            $Candidates = @('Windows\Vroom.exe', 'WindowsNoEditor\Vroom.exe', 'Vroom.exe')
+            Invoke-VroomTool $AutomationTool @('BuildCookRun', "-project=$ProjectFile", '-nop4', '-unattended', '-WaitForUATMutex', '-platform=Win64', "-clientconfig=$Configuration", '-build', '-cook', '-stage', '-pak', '-iostore', '-package', '-prereqs', '-archive', "-archivedirectory=$ArchiveDirectory", '-utf8output')
+            $Candidates = @('Windows\Vroom.exe', 'WindowsNoEditor\Vroom.exe')
             $Built = @($Candidates | ForEach-Object { Join-Path $ArchiveDirectory $_ } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
             if ($Built.Count -eq 0) { throw "UAT termine mais lanceur Vroom.exe non trouve dans $ArchiveDirectory. Examiner la sortie UAT." }
             $NativeName = if ($Configuration -eq 'Shipping') { 'Vroom-Win64-Shipping.exe' } else { 'Vroom.exe' }
-            $NativeCandidates = @("Windows\Vroom\Binaries\Win64\$NativeName", "WindowsNoEditor\Vroom\Binaries\Win64\$NativeName", "Vroom\Binaries\Win64\$NativeName")
+            $NativeCandidates = @("Windows\Vroom\Binaries\Win64\$NativeName", "WindowsNoEditor\Vroom\Binaries\Win64\$NativeName")
             $Native = @($NativeCandidates | Where-Object { Test-Path -LiteralPath (Join-Path $ArchiveDirectory $_) -PathType Leaf })
             if ($Native.Count -ne 1) { throw 'Le binaire natif du jeu est absent ou ambigu; aucun manifeste de validation ne sera cree.' }
             $VersionLine = @(Select-String -LiteralPath (Join-Path $ProjectDir 'Config\DefaultGame.ini') -Pattern '^ProjectVersion=(.+)$')
@@ -124,17 +132,52 @@ try {
                     @{ path = $_.FullName.Substring($ProjectDir.Length + 1).Replace('\','/'); sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
                 }
             })
+            $SourceFiles += @{ path = 'Vroom.uproject'; sha256 = (Get-FileHash -LiteralPath $ProjectFile -Algorithm SHA256).Hash.ToLowerInvariant() }
+            $PackageRoot = $Native[0].Split('\')[0]
+            $PackageDirectory = Join-Path $ArchiveDirectory $PackageRoot
+            $Launcher = "@echo off`r`nsetlocal`r`nstart `"`" /wait `"%~dp0Vroom.exe`" -SaveToUserDir -d3d12 -windowed -ResX=1920 -ResY=1080`r`nexit /b %errorlevel%`r`n"
+            [IO.File]::WriteAllText((Join-Path $PackageDirectory 'Jouer.cmd'), $Launcher, [Text.Encoding]::ASCII)
+            $Readme = @'
+VROOM - WINDOWS X64
+
+Extraire tout le ZIP puis ouvrir Windows\Jouer.cmd (ne pas lancer depuis le ZIP).
+Unreal Engine et Visual Studio ne sont pas necessaires pour jouer.
+Si Windows signale un runtime Visual C++ absent, lancer le programme fourni
+Engine\Extras\Redist\en-us\vc_redist.x64.exe dans ce dossier, puis reessayer.
+Le lanceur commence en fenetre 1920x1080, DirectX 12. Le menu O regle la qualite.
+Entree : rouler ; W/Z/fleche haut : accelerer ; A/Q/D/fleches : braquer ;
+S/fleche bas : freiner ; Maj : glisse ; P : pause ; Echap : menu.
+Les preferences et sauvegardes restent dans le dossier utilisateur Windows.
+
+Ce paquet est compile ; ses essais natifs et performances sont distincts.
+DLSS n'est disponible que si le plugin compatible et la carte le permettent.
+Le manifeste vroom-build.json et le fichier ZIP.sha256 identifient les fichiers.
+Les licences des gants Valve et des arbres sont fournies dans Licences.
+'@
+            [IO.File]::WriteAllText((Join-Path $PackageDirectory 'LISEZ-MOI.txt'), $Readme, [Text.Encoding]::ASCII)
+            $Licences = Join-Path $PackageDirectory 'Licences'
+            New-Item -ItemType Directory -Path $Licences -Force | Out-Null
+            Copy-Item -LiteralPath (Join-Path $ProjectDir 'Content\ArtSource\Gloves\LICENSE') -Destination (Join-Path $Licences 'Valve-Gloves.txt')
+            Copy-Item -LiteralPath (Join-Path $ProjectDir 'Content\ArtSource\TreesRealistic\LICENSE-CC0.txt') -Destination (Join-Path $Licences 'Trees-CC0.txt')
             $Manifest = @{
-                schema_version = 1; version = $VersionLine[0].Matches[0].Groups[1].Value.Trim()
+                schema_version = 2; version = $VersionLine[0].Matches[0].Groups[1].Value.Trim()
                 engine_version = "$($Version.MajorVersion).$($Version.MinorVersion).$($Version.PatchVersion)"
                 configuration = $Configuration; platform = 'Win64'; built_utc = [DateTime]::UtcNow.ToString('o')
                 executable = $Native[0].Replace('\','/')
                 executable_sha256 = (Get-FileHash -LiteralPath (Join-Path $ArchiveDirectory $Native[0]) -Algorithm SHA256).Hash.ToLowerInvariant()
                 source_files = $SourceFiles
+                package_root = $PackageRoot
+                package_files = @(Get-VroomPackageFiles $ArchiveDirectory $PackageRoot)
             }
+            $null = Test-VroomPackage $ArchiveDirectory $Manifest
             $Manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $ArchiveDirectory 'vroom-build.json') -Encoding UTF8
             Write-Host "Package $Configuration cree : $($Built[0])"
             Write-Host 'Manifeste natif et empreintes : vroom-build.json. Verification Windows reste a executer.'
+            if ($CreateZip) {
+                if ([string]::IsNullOrWhiteSpace($ZipPath)) { $ZipPath = Join-Path $ProjectDir ("dist\Vroom-$($Manifest.version)-Win64-$Configuration.zip") }
+                elseif (-not [IO.Path]::IsPathRooted($ZipPath)) { $ZipPath = Join-Path $ProjectDir $ZipPath }
+                Export-VroomWindowsZip $ArchiveDirectory $ZipPath
+            }
         } else {
             Write-Host 'Module Editor construit. run_windows.ps1 -Editor permet de jouer sans nouveau build.'
         }

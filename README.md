@@ -20,6 +20,9 @@ Les mesures historiques de la 0.30 restent documentées dans [VALIDATION.md](doc
 
 
 Le [mode d'emploi](docs/PLAYER.md) décrit les commandes, les règles exactes et les sauvegardes. Les fonctionnalités annoncées ici sont celles du code de cette branche ; [VALIDATION.md](docs/VALIDATION.md) distingue les essais réellement réalisés et leurs limites. **Windows, DLSS et l'essai d'une manette physique restent à valider.**
+
+Le [guide Windows 0.34](docs/WINDOWS.md) prépare les prérequis, la compilation et le ZIP Development. **Aucun exécutable Windows 0.34 n’a encore été produit ou testé** ; les [contrôles RTX 5090](docs/RTX5090.md) restent à exécuter sur un PC natif.
+
 ## Jouer sur le Mac
 
 La version compilée et testée ici cible **Unreal Engine 5.8, Mac Apple Silicon**. Des profils **RTX 5090 sous Linux/Vulkan et Windows/DirectX 12** sont également préparés ; leurs builds et leur rendu sur le PC restent à vérifier. Voir [docs/RTX5090.md](docs/RTX5090.md). L'installation Mac utilisée se trouve dans `/Users/Shared/Epic Games/UE_5.8`. Une compilation du code nécessite Xcode avec les outils de développement et la configuration acceptée par cette installation Unreal. Les lanceurs n'installent aucun logiciel.

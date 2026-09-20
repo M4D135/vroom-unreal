@@ -20,6 +20,9 @@ import sys
 
 from analyze_performance import analyze_csv, analyze_motion, is_csv_metadata
 from regression_gates import performance_failures, motion_failures, MOTION_LIMITS
+# These helpers only inspect text; importing them does not run any Mac tools.
+# Keep the gameplay/start evidence protocol identical across native runners.
+from verify_mac import REQUIRED_MARKERS, runtime_failures, start_signal_failures
 
 
 def version_tuple(value):
@@ -38,9 +41,14 @@ def sha256(path):
 
 
 def validate_manifest(manifest, root, archive, expected_version):
+    root, archive = root.resolve(), archive.resolve()
     errors = []
-    if manifest.get('schema_version') != 1:
+    schema = manifest.get('schema_version')
+    release = version_tuple(expected_version)
+    if schema not in (1, 2) or (release >= (0, 34, 0) and schema != 2):
         errors.append('Unsupported build manifest schema')
+    if manifest.get('platform') != 'Win64':
+        errors.append('Build manifest platform must be Win64')
     if manifest.get('configuration') != 'Development':
         errors.append('Verification requires a Development package with logs and CSV profiling')
     if version_tuple(str(manifest.get('version', ''))) != version_tuple(expected_version):
@@ -62,13 +70,55 @@ def validate_manifest(manifest, root, archive, expected_version):
     recorded = {row['path'] for row in files}
     current = {p.relative_to(root).as_posix() for folder in ('Source','Config','Content')
                for p in (root/folder).rglob('*') if p.is_file()}
+    if schema == 2:
+        current.add('Vroom.uproject')
     if current - recorded:
         errors.append('Source/assets added since package build: ' + ', '.join(sorted(current-recorded)))
     for row in files:
         p = contained(root, row['path'])
         if not p.is_file() or sha256(p) != row['sha256'].lower():
             errors.append('Source/asset changed since package build: ' + row['path'])
+    if schema == 2:
+        if manifest.get('package_root') not in ('Windows', 'WindowsNoEditor'):
+            errors.append('Package root must be Windows or WindowsNoEditor')
+        package_root = contained(archive, manifest.get('package_root', ''))
+        if package_root == archive.resolve() or not package_root.is_dir():
+            errors.append('Build manifest requires a distinct existing package root')
+        elif not executable.is_relative_to(package_root):
+            errors.append('Native executable is outside the manifested package root')
+        package_files = manifest.get('package_files', [])
+        if not package_files:
+            errors.append('Build manifest lacks packaged file fingerprints')
+        recorded_package = set()
+        for row in package_files:
+            relative = row['path']
+            packaged = contained(archive, relative)
+            if not packaged.is_relative_to(package_root):
+                errors.append('Packaged file is outside package root: ' + relative)
+                continue
+            if relative.casefold() in recorded_package:
+                errors.append('Duplicate packaged file fingerprint: ' + relative)
+            recorded_package.add(relative.casefold())
+            if not packaged.is_file() or sha256(packaged) != row['sha256'].lower():
+                errors.append('Packaged file missing or changed since build: ' + relative)
+        if package_root.is_dir() and package_root != archive.resolve():
+            current_package = {p.relative_to(archive).as_posix().casefold()
+                               for p in package_root.rglob('*') if p.is_file()}
+            if current_package - recorded_package:
+                errors.append('Packaged files added since build: ' + ', '.join(sorted(current_package-recorded_package)))
     return executable, errors
+
+
+def gameplay_failures(text, name, version, flags):
+    failures, checks = runtime_failures(text, version, flags)
+    failures += [f'Missing {marker}' for marker in REQUIRED_MARKERS.get(name, []) if marker not in text]
+    failures += start_signal_failures(text, name)
+    return failures, checks
+
+
+def soak_coverage_failures(text, track):
+    return [] if re.search(rf'VROOM-TOUR track={track} [^\n]*complete=1(?:\s|$)', text) else [
+        'The assisted car did not complete a full lap on the requested circuit']
 
 
 def unreal_command_line(executable, arguments):
@@ -165,25 +215,32 @@ def main(argv=None):
                   max_p99_ms=a.max_p99_ms or budget*1.08,
                   max_frame_ms=a.max_frame_ms or budget*2+.17,
                   max_over_20_ms_fraction=a.max_over_20_ms_fraction)
-    summary = dict(version=a.expected_version,platform='Windows',date=datetime.now(timezone.utc).isoformat(),
+    summary = dict(version=a.expected_version,platform='Windows',date=datetime.now(timezone.utc).isoformat(),completed=False,
                    source_build_manifest=manifest,executable=str(executable),cases=[],performance=[],
                    expected_gpu=a.expected_gpu,expected_dlss=a.expected_dlss,
                    release_limits=dict(performance=limits,motion=MOTION_LIMITS,target_fps=a.target_fps),
                    limitations=['Onscreen images still require human visual review.',
-                                'DLSS effective mode is the game API result; no frame generation is integrated.'])
+                                'DLSS effective mode is the game API result; no frame generation is integrated.',
+                                'Optional proprietary plugin source reproducibility is not certified; packaged runtime files are fingerprinted.'])
     def save():
         (out/'results.json').write_text(json.dumps(summary,indent=2)+'\n',encoding='utf-8')
     def gate(name, reasons):
         if reasons:
-            summary.setdefault('failures',[]).append(dict(name=name,reasons=reasons));save()
+            summary.setdefault('failures',[]).append(dict(name=name,reasons=reasons))
+            for row in summary['cases']:
+                if row['name'] == name or name.startswith(row['name'] + '-'):
+                    row['status'] = 'FAIL'
+            save()
             raise RuntimeError(name+': '+'; '.join(reasons))
-    def run(name,flags,seconds=6,capture=True):
+    def complete_case(row):
+        row['status']='PASS';save();print(row['name']+': PASS',flush=True)
+    def run(name,flags,seconds=6,capture=True,capture_after=3,defer_pass=False):
         log=out/(name+'.log'); png=out/(name+'.png')
-        args=['-d3d12','-windowed','-ForceRes',f'-ResX={a.width}',f'-ResY={a.height}',
+        args=['-d3d12','-windowed','-ForceRes','-SaveToUserDir',f'-ResX={a.width}',f'-ResY={a.height}',
               '-VroomVerify','-NoSplash',f'-abslog={log}',f'-VroomExitAfter={seconds}']
-        if capture:args += [f'-VroomCapture={png}','-VroomCaptureAfter=3']
+        if capture:args += [f'-VroomCapture={png}',f'-VroomCaptureAfter={capture_after}']
         args += flags
-        row=dict(name=name,arguments=args,offscreen=False,log=str(log));summary['cases'].append(row);save()
+        row=dict(name=name,arguments=args,offscreen=False,log=str(log),status='RUNNING');summary['cases'].append(row);save()
         try:
             with (out/(name+'-stdout.log')).open('w') as stream:
                 proc=subprocess.run(unreal_command_line(executable,args),executable=str(executable),
@@ -192,13 +249,9 @@ def main(argv=None):
             gate(name,['Native game process timed out; its process was stopped'])
         row['exit']=proc.returncode
         text=log.read_text(encoding='utf-8-sig',errors='replace') if log.exists() else ''
-        checks=[line for line in text.splitlines() if 'VROOM: Verification ' in line]
+        reasons,checks=gameplay_failures(text,name,a.expected_version,flags)
         row['checks']=checks; row['runtime']=runtime_evidence(text)
-        versions=re.findall(r'VROOM: Version ([\d.]+)',text)
-        reasons=[]
         if proc.returncode:reasons.append('Nonzero game exit: '+str(proc.returncode))
-        if not versions or version_tuple(versions[-1])!=version_tuple(a.expected_version):reasons.append('Runtime version missing/mismatched')
-        if (not checks and '-ExitAfterCsvProfiling' not in flags) or any('FAIL' in c for c in checks):reasons.append('Missing or failed game verification')
         gpu=row['runtime']['selected_gpu']
         if not gpu or a.expected_gpu.lower() not in gpu.lower():reasons.append('Selected GPU missing or not '+a.expected_gpu)
         if row['runtime']['rhi']!='D3D12':reasons.append('D3D12 runtime not confirmed')
@@ -213,12 +266,33 @@ def main(argv=None):
                 else:
                     size=struct.unpack('>II',data[16:24]);row.update(capture=str(png),size=list(size))
                     if size!=(a.width,a.height):reasons.append('Actual screenshot resolution differs from requested dimensions')
-        gate(name,reasons);save();print(name+': PASS',flush=True);return log
+        gate(name,reasons)
+        if defer_pass:
+            row['status']='PENDING_METRICS';save()
+        else:
+            complete_case(row)
+        return log
     for name,steer in [('neutral',0),('small-right',.04),('mid-left',-.21),('right',.62),('left',-.62)]:
         run(name,['-VroomAutoDemo','-VroomStartDistance=350','-VroomStartSpeed=0',f'-VroomPreviewSteering={steer}'])
     run('cars',['-VroomAutoDemo','-VroomStartDistance=55','-VroomStartSpeed=0','-VroomChaseCamera'])
     run('options',['-VroomGraphicsPreview'])
-    for scenario in ('slow','crash','tyre','scenery'):
+    for name,flag in [('progress-data','-VroomProgressTest'),('menu-flow','-VroomMenuTest')]:
+        run(name,[flag],capture=False)
+    for name,side in [('offroad-left',-1),('offroad-right',1)]:
+        run(name,[f'-VroomOffroadTest={side}','-VroomTrack=4'],seconds=10,capture_after=8)
+    run('start-sequence',['-VroomStartTest'],seconds=6,capture_after=2)
+    for scenario in ('restart','pause','mute'):
+        run('start-'+scenario,['-VroomStartTest','-VroomStartScenario='+scenario],seconds=8,capture_after=4)
+    for track in range(6):
+        run(f'track-audit-{track+1}',['-VroomAutoDemo','-VroomTrackAudit',f'-VroomTrack={track}'],seconds=5)
+    run('pit-service',['-VroomPitTest','-VroomChaseCamera'],seconds=9)
+    run('traffic-overtake',['-VroomTrafficTest'],seconds=15)
+    for name,scenario,seconds,capture_after in [('drift-feedback',None,6,1.45),
+            ('drift-unskilled','unskilled',6,1.45),('drift-expert','expert',7,2.75)]:
+        flags=['-VroomDriftTest','-VroomChaseCamera','-VroomStartDistance=350','-VroomStartSpeed=40']
+        if scenario:flags.append('-VroomDriftScenario='+scenario)
+        run(name,flags,seconds=seconds,capture_after=capture_after)
+    for scenario in ('slow','crash','tyre','scenery','rub','rear'):
         run('collision-'+scenario,['-VroomCollisionTest='+scenario,'-VroomChaseCamera'],seconds=8)
     profile_dirs={root/'Saved/Profiling/CSV',executable.parents[2]/'Saved/Profiling/CSV',
                   Path(os.environ['LOCALAPPDATA'])/'Vroom/Saved/Profiling/CSV'}
@@ -231,7 +305,7 @@ def main(argv=None):
         flags=['-VroomAutoDemo','-VroomStartDistance=0','-VroomStartSpeed=30',f'-csvCaptureFrames={frames}',
                '-csvGpuStats','-ExitAfterCsvProfiling','-VroomMotionTrace']
         if track is not None:flags += [f'-VroomTrack={track}','-VroomTourDemo']
-        log=run(name,flags,seconds=int(frames/max(15,a.target_fps*.5))+90,capture=False)
+        log=run(name,flags,seconds=int(frames/max(15,a.target_fps*.5))+90,capture=False,defer_pass=True)
         created=profiles()-before;gate(name,[] if len(created)==1 else ['Expected exactly one new native CSV profile'])
         path=created.pop();report=analyze_csv(path,a.warmup);metadata=csv_metadata(path)
         target=out/(name+'.csv');target.write_bytes(path.read_bytes());report['source']['path']=str(target)
@@ -243,8 +317,14 @@ def main(argv=None):
             if raw is None or raw.strip('"')!=str(value):reasons.append('Actual CSV output resolution unconfirmed: '+axis)
         gate(name,reasons)
         motion=analyze_motion(log,a.warmup);row['motion']=motion
-        gate(name+'-camera',motion_failures(motion,min_samples=min(1000,frames-a.warmup)))
-        save()
+        gate(name+'-camera',motion_failures(motion,min_samples=7000 if track is not None else min(1000,frames-a.warmup)))
+        if track is not None:
+            coverage_failures=soak_coverage_failures(log.read_text(encoding='utf-8-sig',errors='replace'),track)
+            row['complete']=not coverage_failures
+            gate(name+'-coverage',coverage_failures)
+        complete_case(summary['cases'][-1])
+    _,artifact_failures=validate_manifest(manifest,root,archive,a.expected_version)
+    gate('artifact-unchanged',artifact_failures)
     summary['completed']=True;save();print('RESULTS: '+str(out/'results.json'))
 
 if __name__=='__main__':
