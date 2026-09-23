@@ -14,7 +14,7 @@ Native Windows build remains unverified until run on a Windows build host.
 [CmdletBinding()]
 param(
     [string]$EngineRoot = $env:VROOM_UE_ROOT,
-    [string]$ProjectDir = (Split-Path -Parent $PSScriptRoot),
+    [string]$ProjectDir,
     [string]$ArchiveDirectory,
     [ValidateSet('Package', 'Editor', 'Assets')][string]$Mode = 'Package',
     [ValidateSet('Development', 'Shipping')][string]$Configuration = 'Development',
@@ -58,6 +58,10 @@ function Invoke-VroomTool([string]$Tool, [string[]]$ToolArguments) {
 }
 
 try {
+    # Windows PowerShell 5.1 can bind defaults before PSScriptRoot is set.
+    if ([string]::IsNullOrWhiteSpace($ProjectDir)) {
+        $ProjectDir = Split-Path -Parent $PSScriptRoot
+    }
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
         throw 'Ce script demande Windows x64. Utiliser build_linux.sh ou build_mac.command sur les autres systemes.'
     }

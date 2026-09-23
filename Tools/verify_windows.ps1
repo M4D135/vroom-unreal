@@ -17,7 +17,7 @@ SaveToUserDir keeps runtime saves outside the immutable delivery directory.
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$true)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$ExpectedVersion,
-    [string]$ProjectDir = (Split-Path -Parent $PSScriptRoot),
+    [string]$ProjectDir,
     [string]$ArchiveDirectory,
     [string]$Python = 'py',
     [switch]$Profile,
@@ -37,6 +37,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 try {
+    # Windows PowerShell 5.1 can bind defaults before PSScriptRoot is set.
+    if ([string]::IsNullOrWhiteSpace($ProjectDir)) {
+        $ProjectDir = Split-Path -Parent $PSScriptRoot
+    }
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw 'Ce controle demande Windows natif et un bureau interactif.' }
     $ProjectDir = (Resolve-Path -LiteralPath $ProjectDir).Path
     $Runner = Join-Path $ProjectDir 'Tools\windows_verification.py'

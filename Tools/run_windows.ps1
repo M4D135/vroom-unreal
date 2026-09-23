@@ -12,7 +12,7 @@ No Windows/PowerShell execution was performed on the preparation Mac.
 #>
 [CmdletBinding()]
 param(
-    [string]$ProjectDir = (Split-Path -Parent $PSScriptRoot),
+    [string]$ProjectDir,
     [string]$ArchiveDirectory,
     [string]$EngineRoot = $env:VROOM_UE_ROOT,
     [switch]$Editor,
@@ -28,6 +28,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 try {
+    # Windows PowerShell 5.1 can bind defaults before PSScriptRoot is set.
+    if ([string]::IsNullOrWhiteSpace($ProjectDir)) {
+        $ProjectDir = Split-Path -Parent $PSScriptRoot
+    }
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw 'Ce lanceur demande Windows x64.' }
     $ProjectDir = (Resolve-Path -LiteralPath $ProjectDir).Path
     $LaunchArguments = @()
