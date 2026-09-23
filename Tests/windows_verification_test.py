@@ -181,6 +181,33 @@ LogTemp: VROOM: Graphics applied scale=100 AA=4 DLSS=0 saved=0'''
             self.assertTrue(soak_coverage_failures(text,2))
         self.assertFalse(soak_coverage_failures('VROOM-TOUR track=2 distanceCovered=5000 complete=1\n',2))
 
+    def test_shadow_overflow_rejects_a_passing_gameplay_scenario(self):
+        base='VROOM: Version 0.34\nVROOM: Verification PASS\n'
+        warnings=(
+            '[VSM] Non-Nanite Marking Job Queue overflow. Performance may be affected. '
+            'This occurs when many non-nanite meshes cover a large area of the shadow map.',
+            '[VSM] Page Pool overflow detected, this will produce visual artifacts (missing shadow). '
+            'Increase the page pool limit or reduce resolution bias to avoid.',
+            'Virtual Shadow Map Page Pool overflow (42 page allocations were not served), '
+            'this will produce visual artifacts (missing shadow), increase the page pool limit or reduce resolution bias to avoid.',
+        )
+        self.assertFalse(gameplay_failures(base,'pit-service','0.34.0',[])[0])
+        for warning in warnings:
+            with self.subTest(warning=warning):
+                line='[2026.09.23-14.04.59:955][  1]LogRenderer: Warning: '+warning
+                failures,checks=gameplay_failures(base+line+'\n','pit-service','0.34.0',[])
+                self.assertEqual(failures,[line])
+                self.assertEqual(checks,['VROOM: Verification PASS'])
+
+    def test_shadow_configuration_logs_do_not_fail_gameplay(self):
+        text=('VROOM: Version 0.34\nVROOM: Verification PASS\n'
+              'LogConfig: Set CVar [[r.Shadow.Virtual.NonNanite.IncludeInCoarsePages:0]]\n'
+              'LogConfig: Set CVar [[r.Shadow.Virtual.MaxPhysicalPages:8192]]\n'
+              'LogConfig: Set CVar [[r.Shadow.Virtual.AllowScreenOverflowMessages:1]]\n'
+              'LogRenderer: Display: Recreating Shadow.Virtual.PhysicalPagePool due to size or flags change. '
+              'This will also drop any cached pages.\n')
+        self.assertFalse(gameplay_failures(text,'pit-service','0.34.0',[])[0])
+
     def run_native_fixture(self, failure=None, soak=False, graphics_preset=None):
         """Execute the real runner/gates with only native processes replaced."""
         self.prepare_034()
@@ -194,6 +221,8 @@ LogTemp: VROOM: Graphics applied scale=100 AA=4 DLSS=0 saved=0'''
         def child(command,**kwargs):
             tokens=captured_commands[command];values=dict(token.split('=',1) for token in tokens if '=' in token)
             self.assertIn('-SaveToUserDir',tokens)
+            # Both performance/soak use synchronous CSV; gameplay-only runs do not.
+            self.assertEqual(tokens.count('-csvNoProcessingThread'),int('-csvCaptureFrames' in values))
             log=Path(values['-abslog']);name=log.stem;executed.append(name)
             text=('VROOM: Version 0.34.0\nVROOM: Verification PASS\n'
                   'LogD3D12RHI: Found D3D12 adapter 0: NVIDIA GeForce RTX 5090 (VendorId: 10de\n'

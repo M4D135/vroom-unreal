@@ -111,6 +111,14 @@ def validate_manifest(manifest, root, archive, expected_version):
 
 def gameplay_failures(text, name, version, flags):
     failures, checks = runtime_failures(text, version, flags)
+    # UE 5.8 VirtualShadowMapCacheManager.cpp emits these runtime warnings.
+    # Match the messages, not VSM CVar names printed during engine startup.
+    shadow_overflows = (
+        '[VSM] Non-Nanite Marking Job Queue overflow',
+        '[VSM] Page Pool overflow detected',
+        'Virtual Shadow Map Page Pool overflow (',
+    )
+    failures += [line for line in text.splitlines() if any(message in line for message in shadow_overflows)]
     failures += [f'Missing {marker}' for marker in REQUIRED_MARKERS.get(name, []) if marker not in text]
     failures += start_signal_failures(text, name)
     return failures, checks
@@ -309,8 +317,10 @@ def main(argv=None):
     if a.soak:cases += [(f'soak-track-{t+1}',t,max(a.frames,130*a.target_fps))for t in range(6)]
     for name,track,frames in cases:
         before=profiles()
+        # UE 5.8.3 Windows crashed at exit with the CSV processing thread;
+        # native A/B captures completed cleanly with synchronous CSV processing.
         flags=['-VroomAutoDemo','-VroomStartDistance=0','-VroomStartSpeed=30',f'-csvCaptureFrames={frames}',
-               '-csvGpuStats','-ExitAfterCsvProfiling','-VroomMotionTrace']
+               '-csvGpuStats','-csvNoProcessingThread','-ExitAfterCsvProfiling','-VroomMotionTrace']
         if track is not None:flags += [f'-VroomTrack={track}','-VroomTourDemo']
         log=run(name,flags,seconds=int(frames/max(15,a.target_fps*.5))+90,capture=False,defer_pass=True)
         created=profiles()-before;gate(name,[] if len(created)==1 else ['Expected exactly one new native CSV profile'])

@@ -379,6 +379,11 @@ void Initialize()
 #if PLATFORM_MAC
     SetPreset(Applied, 0);
     Applied.FrameCap = 1;
+#elif PLATFORM_WINDOWS
+    // Start with the measured 1080p Ultra/60 profile. Load below still restores
+    // an explicit player choice, including 120 FPS or an uncapped framerate.
+    SetPreset(Applied, 3);
+    Applied.FrameCap = 1;
 #else
     SetPreset(Applied, 3);
     Applied.FrameCap = 2;
