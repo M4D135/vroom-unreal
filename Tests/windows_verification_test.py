@@ -102,6 +102,15 @@ LogTemp: VROOM: Graphics applied scale=100 AA=4 DLSS=0 saved=0'''
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             parse_args(['--expected-version','0.30.0','--frames','120'])
 
+    def test_graphics_preset_is_optional_and_bounded(self):
+        self.assertIsNone(parse_args(['--expected-version','0.34.0']).graphics_preset)
+        for preset in range(5):
+            self.assertEqual(parse_args(['--expected-version','0.34.0',
+                                        '--graphics-preset',str(preset)]).graphics_preset,preset)
+        for invalid in ('-1','5','ultra'):
+            with self.subTest(value=invalid),contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):
+                parse_args(['--expected-version','0.34.0','--graphics-preset',invalid])
+
     def prepare_034(self):
         self.ini.write_text('ProjectVersion=0.34.0\n')
         (self.root/'Vroom.uproject').write_text('{}')
@@ -172,13 +181,15 @@ LogTemp: VROOM: Graphics applied scale=100 AA=4 DLSS=0 saved=0'''
             self.assertTrue(soak_coverage_failures(text,2))
         self.assertFalse(soak_coverage_failures('VROOM-TOUR track=2 distanceCovered=5000 complete=1\n',2))
 
-    def run_native_fixture(self, failure=None, soak=False):
+    def run_native_fixture(self, failure=None, soak=False, graphics_preset=None):
         """Execute the real runner/gates with only native processes replaced."""
         self.prepare_034()
         (self.archive/'vroom-build.json').write_text(json.dumps(self.manifest))
         csv_dir=self.root/'Saved/Profiling/CSV';csv_dir.mkdir(parents=True)
-        args=parse_args(['--project-dir',str(self.root),'--archive-directory',str(self.archive),
-                         '--expected-version','0.34.0','--frames','300','--soak' if soak else '--profile'])
+        cli=['--project-dir',str(self.root),'--archive-directory',str(self.archive),
+             '--expected-version','0.34.0','--frames','300','--soak' if soak else '--profile']
+        if graphics_preset is not None:cli += ['--graphics-preset',str(graphics_preset)]
+        args=parse_args(cli)
         output=io.StringIO();executed=[];captured_commands={}
         def child(command,**kwargs):
             tokens=captured_commands[command];values=dict(token.split('=',1) for token in tokens if '=' in token)
@@ -187,6 +198,10 @@ LogTemp: VROOM: Graphics applied scale=100 AA=4 DLSS=0 saved=0'''
             text=('VROOM: Version 0.34.0\nVROOM: Verification PASS\n'
                   'LogD3D12RHI: Found D3D12 adapter 0: NVIDIA GeForce RTX 5090 (VendorId: 10de\n'
                   'LogD3D12RHI: Chosen D3D12 Adapter Id = 0\nVROOM: Graphics applied DLSS=0\n')
+            if '-VroomGraphicsPreset' in values and failure!='preset-missing':
+                preset=values['-VroomGraphicsPreset']
+                if failure=='preset-wrong':preset='30'
+                text+=f'VROOM: Temporary graphics preset={preset} (preferences preserved)\n'
             text+='\n'.join(runner.REQUIRED_MARKERS.get(name,[]))+'\n'
             if name.startswith('start-'):
                 if name=='start-restart':
@@ -230,6 +245,30 @@ LogTemp: VROOM: Graphics applied scale=100 AA=4 DLSS=0 saved=0'''
             self.assertIn(required,names)
         self.assertEqual(len(names),33)
         self.assertEqual(output.count('performance: PASS'),1)
+        self.assertIsNone(report['temporary_graphics_preset'])
+        self.assertTrue(all(not any(arg.startswith('-VroomGraphicsPreset=') for arg in row['arguments'])
+                            for row in report['cases']))
+
+    def test_explicit_graphics_preset_reaches_every_case_and_soak(self):
+        report,_,_=self.run_native_fixture(soak=True,graphics_preset=3)
+        self.assertEqual(report['temporary_graphics_preset'],3)
+        self.assertEqual(len(report['performance']),6)
+        for row in report['cases']:
+            self.assertEqual(row['arguments'].count('-VroomGraphicsPreset=3'),1)
+
+    def test_explicit_zero_graphics_preset_is_not_treated_as_absent(self):
+        report,_,_=self.run_native_fixture(graphics_preset=0)
+        self.assertEqual(report['temporary_graphics_preset'],0)
+        for row in report['cases']:
+            self.assertEqual(row['arguments'].count('-VroomGraphicsPreset=0'),1)
+
+    def test_missing_graphics_preset_evidence_fails(self):
+        report,_,_=self.run_native_fixture('preset-missing',graphics_preset=3)
+        self.assertIn('Requested temporary graphics preset was not confirmed by the game',report['failures'][0]['reasons'])
+
+    def test_different_graphics_preset_evidence_fails(self):
+        report,_,_=self.run_native_fixture('preset-wrong',graphics_preset=3)
+        self.assertIn('Requested temporary graphics preset was not confirmed by the game',report['failures'][0]['reasons'])
 
     def test_failed_profile_never_prints_pass(self):
         report,output,_=self.run_native_fixture('hitch')

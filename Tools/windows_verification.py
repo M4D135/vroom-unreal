@@ -176,6 +176,8 @@ def parse_args(argv=None):
     p.add_argument('--profile', action='store_true'); p.add_argument('--soak', action='store_true')
     p.add_argument('--target-fps', type=int, choices=(60,120), default=60,
                    help='Validation target; does not silently overwrite saved graphics settings')
+    p.add_argument('--graphics-preset', type=int, choices=range(5),
+                   help='Explicit temporary game preset (0-4); leaves saved preferences unchanged')
     p.add_argument('--frames', type=int, default=1800)
     p.add_argument('--warmup', type=int, default=120)
     p.add_argument('--min-mean-fps', type=float)
@@ -218,6 +220,7 @@ def main(argv=None):
     summary = dict(version=a.expected_version,platform='Windows',date=datetime.now(timezone.utc).isoformat(),completed=False,
                    source_build_manifest=manifest,executable=str(executable),cases=[],performance=[],
                    expected_gpu=a.expected_gpu,expected_dlss=a.expected_dlss,
+                   temporary_graphics_preset=a.graphics_preset,
                    release_limits=dict(performance=limits,motion=MOTION_LIMITS,target_fps=a.target_fps),
                    limitations=['Onscreen images still require human visual review.',
                                 'DLSS effective mode is the game API result; no frame generation is integrated.',
@@ -238,6 +241,7 @@ def main(argv=None):
         log=out/(name+'.log'); png=out/(name+'.png')
         args=['-d3d12','-windowed','-ForceRes','-SaveToUserDir',f'-ResX={a.width}',f'-ResY={a.height}',
               '-VroomVerify','-NoSplash',f'-abslog={log}',f'-VroomExitAfter={seconds}']
+        if a.graphics_preset is not None:args += [f'-VroomGraphicsPreset={a.graphics_preset}']
         if capture:args += [f'-VroomCapture={png}',f'-VroomCaptureAfter={capture_after}']
         args += flags
         row=dict(name=name,arguments=args,offscreen=False,log=str(log),status='RUNNING');summary['cases'].append(row);save()
@@ -250,6 +254,9 @@ def main(argv=None):
         row['exit']=proc.returncode
         text=log.read_text(encoding='utf-8-sig',errors='replace') if log.exists() else ''
         reasons,checks=gameplay_failures(text,name,a.expected_version,flags)
+        if a.graphics_preset is not None and not re.search(
+                rf'VROOM: Temporary graphics preset={a.graphics_preset}(?:\s|$)', text):
+            reasons.append('Requested temporary graphics preset was not confirmed by the game')
         row['checks']=checks; row['runtime']=runtime_evidence(text)
         if proc.returncode:reasons.append('Nonzero game exit: '+str(proc.returncode))
         gpu=row['runtime']['selected_gpu']

@@ -6,6 +6,8 @@ Verify an existing native Windows Development package, with explicit version.
 .\Tools\verify_windows.ps1 -ExpectedVersion 0.34.0 -Profile -TargetFPS 60
 .EXAMPLE
 .\Tools\verify_windows.ps1 -ExpectedVersion 0.34.0 -Profile -Soak -TargetFPS 120 -ExpectedDLSS quality
+.EXAMPLE
+.\Tools\verify_windows.ps1 -ExpectedVersion 0.34.0 -GraphicsPreset 3 -Width 1920 -Height 1080 -Profile -Soak -TargetFPS 60
 .NOTES
 Requires Python 3.10+ and an interactive Windows desktop. No build/download occurs.
 Captures are onscreen. TargetFPS sets acceptance gates, not graphics preferences.
@@ -13,6 +15,8 @@ Prepared on Mac; Windows execution remains unverified until results.json exists.
 0.34 requires the complete schema-2 package manifest. Gameplay checks include
 offroad recovery, pit service, starts, expert drift and committed overtaking.
 SaveToUserDir keeps runtime saves outside the immutable delivery directory.
+GraphicsPreset explicitly applies a temporary native-AA preset without saving:
+0-3 cap at 60 FPS, 4 at 30 FPS. Omit it to retain the user's graphics choices.
 #>
 [CmdletBinding()]
 param(
@@ -25,6 +29,7 @@ param(
     [ValidateRange(320,16384)][int]$Width = 3840,
     [ValidateRange(200,16384)][int]$Height = 2160,
     [ValidateSet(60,120)][int]$TargetFPS = 60,
+    [ValidateRange(0,4)][int]$GraphicsPreset,
     [ValidateRange(241,1000000)][int]$Frames = 1800,
     [ValidateRange(0,100000)][int]$Warmup = 120,
     [string]$ExpectedGPU = 'RTX 5090',
@@ -57,6 +62,7 @@ try {
     }
     if ($Profile) { $Arguments += '--profile' }
     if ($Soak) { $Arguments += '--soak' }
+    if ($PSBoundParameters.ContainsKey('GraphicsPreset')) { $Arguments += @('--graphics-preset', "$GraphicsPreset") }
     foreach ($Pair in @(@('--min-mean-fps',$MinMeanFPS), @('--max-p99-ms',$MaxP99Ms), @('--max-frame-ms',$MaxFrameMs))) {
         if ([double]::IsNaN([double]$Pair[1]) -or [double]::IsInfinity([double]$Pair[1])) { throw 'Les seuils doivent etre finis.' }
         if ([double]$Pair[1] -lt 0) { throw 'Les seuils doivent etre positifs ou zero pour les valeurs par defaut.' }

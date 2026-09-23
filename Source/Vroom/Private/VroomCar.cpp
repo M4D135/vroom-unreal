@@ -1092,7 +1092,9 @@ void AVroomCar::Tick(float Dt)
 
 void AVroomCar::UpdateDiagnostics(float Dt)
 {
-    PreviewClock += Dt;
+    // Capture/exit timers measure the ready scene, not cold PSO preparation.
+    // Simulation scenarios already use TestSeconds, which advances in physics.
+    if (!PreparingCircuit) PreviewClock += Dt;
     const bool SimulationTest = !TestImpact.IsEmpty() || PitTest || TrafficTest || OffroadTestSide != 0 || StartTest
         || FParse::Param(FCommandLine::Get(), TEXT("VroomDriftTest"));
     const double CheckClock = SimulationTest ? TestSeconds : PreviewClock;

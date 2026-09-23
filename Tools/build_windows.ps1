@@ -121,7 +121,11 @@ try {
             }
         } elseif ($Mode -eq 'Package') {
             New-Item -ItemType Directory -Path $ArchiveDirectory -Force | Out-Null
-            Invoke-VroomTool $AutomationTool @('BuildCookRun', "-project=$ProjectFile", '-nop4', '-unattended', '-WaitForUATMutex', '-platform=Win64', "-clientconfig=$Configuration", '-build', '-cook', '-stage', '-pak', '-iostore', '-package', '-prereqs', '-archive', "-archivedirectory=$ArchiveDirectory", '-utf8output')
+            # UE 5.8 omits its platform subfolder when any archive path component
+            # starts with Windows or Win64. Give UAT the package directory explicitly
+            # so distribution roots such as Win64-<date> still contain Windows/.
+            $UatArchiveDirectory = Join-Path $ArchiveDirectory 'Windows'
+            Invoke-VroomTool $AutomationTool @('BuildCookRun', "-project=$ProjectFile", '-nop4', '-unattended', '-WaitForUATMutex', '-platform=Win64', "-clientconfig=$Configuration", '-build', '-cook', '-stage', '-pak', '-iostore', '-package', '-prereqs', '-archive', "-archivedirectory=$UatArchiveDirectory", '-utf8output')
             $Candidates = @('Windows\Vroom.exe', 'WindowsNoEditor\Vroom.exe')
             $Built = @($Candidates | ForEach-Object { Join-Path $ArchiveDirectory $_ } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
             if ($Built.Count -eq 0) { throw "UAT termine mais lanceur Vroom.exe non trouve dans $ArchiveDirectory. Examiner la sortie UAT." }
