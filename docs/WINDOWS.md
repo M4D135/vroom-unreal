@@ -1,6 +1,6 @@
 # Construire Vroom 0.34 sur Windows
 
-**État au 20 septembre 2026 : portage préparé, aucun exécutable Windows 0.34 produit ou testé.** L’accès à `david-pc` a expiré et aucun environnement Windows natif n’est disponible pour cette passe. La version Mac installée et ses mesures ne valident pas Windows. Les commandes suivantes sont à exécuter sur un PC Windows x64.
+**État au 23 septembre 2026 : environnement Windows préparé, aucun exécutable Windows 0.34 produit ou testé.** Les sources 0.34 et les outils de compilation sont présents sur un PC Windows 11 avec une RTX 5060 Laptop GPU. Les fixtures de l’outillage passent nativement et l’installation d’Unreal Engine 5.8 a été lancée depuis Epic. La version Mac et les tests de l’outillage ne valident pas le jeu Windows.
 
 Une archive nommée **`Vroom-0.34.0-Windows-Sources-<commit>.zip` est un kit de compilation**, contenant les sources et assets du dépôt au commit indiqué. Elle doit être extraite puis compilée selon ce guide ; ce n’est pas le ZIP du jeu prêt à lancer.
 
@@ -65,3 +65,15 @@ Le défaut attend une **RTX 5090** ; pour une autre carte, fournir son nom atten
 Un ZIP construit n’est pas une validation de jeu. La compilation Windows, les prérequis sur une machine vierge, le lancement, le GPU sélectionné, la cadence, les contrôleurs physiques et DLSS restent à vérifier nativement. Aucun résultat Mac ne les remplace ; aucun service de compilation cloud n’a été installé.
 
 L’outillage a été contrôlé sur Mac : **cinq fichiers PowerShell analysés sans erreur**, **28 assertions sur des packages factices et leur ZIP**, et **19 tests Python du vérificateur réussis**. Ces contrôles utilisent PowerShell 7.6.6 et des fixtures, sans exécuter Unreal ni un jeu Windows. Les [preuves et limites](RTX5090.md#contrôles-de-loutillage-sur-mac) restent séparées des futurs essais natifs.
+
+### Préparation native du 23 septembre 2026
+
+Les sources du commit `6191b5a751c8907c28542e1f5c6b79a5e260d3c6` ont été extraites dans `C:\Vroom-Build-20260923\Project\vroom-unreal`. L’archive transférée a été vérifiée sur les deux machines : SHA-256 `22c56d0ddea02fc95c032c1b004a84fd7c334c7cba79698723a05defd4c0d664`.
+
+Visual Studio 2022 17.14.41, MSVC 14.44.35207 et le SDK Windows 10.0.26100.0 sont disponibles. Python 3.13.15 est installé dans le dossier `Tools\Python313` de cette préparation, sans modification du PATH global.
+
+Sous Windows PowerShell 5.1, les cinq scripts se parsèment sans erreur et les **28 assertions de packages factices passent**. Le premier passage des tests Python a révélé quatre échecs causés par le parseur POSIX `shlex` dans le faux processus de test. La fixture conserve désormais les arguments structurés tout en appelant la véritable fonction de génération de commande Windows. Avec ce correctif et un cas couvrant les chemins Windows/POSIX, **20 tests Python passent sous Windows et sur Mac**. Les scripts de production et les assets du jeu sont inchangés.
+
+Les journaux locaux se trouvent sous `C:\Vroom-Build-20260923\Logs` : `powershell-syntax-001.json`, `windows-package-fixtures-001.log`, `windows-verification-fixtures-002.log` et `preflight-receipt-20260923.json`. Le fichier de test initial est conservé dans ce même dossier. Ces essais ne lancent aucun jeu.
+
+Le catalogue Windows obtenu via Legendary 0.21.1 retournait zéro asset, y compris avec `--include-ue`. L’utilisateur a ensuite lancé l’installation depuis Epic dans `C:\Program Files\Epic Games\UE_5.8` ; son dossier de téléchargement existe, mais les exécutables du moteur ne sont pas encore présents au moment de ce relevé. Un raccourci `Projet Vroom` sur le bureau pointe vers le `.uproject`. Après installation complète, il reste à compiler et à exécuter la validation dans une session Windows interactive avec `-ExpectedGPU 'NVIDIA GeForce RTX 5060 Laptop GPU'`.

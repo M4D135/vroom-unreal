@@ -7,7 +7,6 @@ import copy
 import io
 import json
 from pathlib import Path
-import shlex
 import struct
 import sys
 import tempfile
@@ -18,6 +17,13 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'Tools'))
 import windows_verification as runner
 from windows_verification import (validate_manifest,sha256,unreal_command_line,runtime_evidence,
                                   version_tuple,parse_args,gameplay_failures,soak_coverage_failures)
+
+def capture_command_line(executable, arguments, captured):
+    # Exercise the real Windows quoting, but let the fake process consume the
+    # original arguments: POSIX shlex corrupts unquoted Windows backslashes.
+    command = unreal_command_line(executable, arguments)
+    captured[command] = [str(executable), *arguments]
+    return command
 
 class WindowsVerificationTests(unittest.TestCase):
     def setUp(self):
@@ -55,6 +61,26 @@ class WindowsVerificationTests(unittest.TestCase):
         self.assertEqual(command,'"C:\\Program Files\\Vroom.exe" -d3d12 -abslog="C:\\Users\\David Test\\a.log" -Name=a&b')
         with self.assertRaises(ValueError):unreal_command_line('game.exe',['-bad="quote"'])
         with self.assertRaises(ValueError):unreal_command_line('game.exe',['-bad=\n'])
+
+    def test_fixture_preserves_windows_and_posix_arguments(self):
+        cases = [
+            (r'C:\Users\degun\Vroom.exe', r'C:\Users\degun\Temp\neutral.log'),
+            (r'C:\Program Files\Vroom.exe', r'C:\Users\David Test\Temp\neutral.log'),
+            ('/tmp/vroom/Vroom.exe', '/tmp/vroom/neutral.log'),
+            ('/tmp/vroom test/Vroom.exe', '/tmp/vroom test/neutral.log'),
+            (r'/tmp/vroom\test/Vroom.exe', r'/tmp/vroom\test/neutral.log'),
+        ]
+        for executable, log in cases:
+            with self.subTest(executable=executable, log=log):
+                arguments = ['-d3d12', '-abslog=' + log, '-Name=a&b']
+                captured = {}
+                command = capture_command_line(executable, arguments, captured)
+                self.assertIsInstance(command, str)
+                self.assertEqual(command, unreal_command_line(executable, arguments))
+                tokens = captured[command]
+                self.assertEqual(tokens, [executable, *arguments])
+                values = dict(token.split('=', 1) for token in tokens[1:] if '=' in token)
+                self.assertEqual(values['-abslog'], log)
     def test_selected_adapter_not_merely_present_gpu(self):
         text='''LogD3D12RHI: Found D3D12 adapter 0: Intel Graphics (VendorId: 8086, DeviceId: 01
 LogD3D12RHI: Found D3D12 adapter 1: NVIDIA GeForce RTX 5090 (VendorId: 10de, DeviceId: 02
@@ -153,9 +179,9 @@ LogTemp: VROOM: Graphics applied scale=100 AA=4 DLSS=0 saved=0'''
         csv_dir=self.root/'Saved/Profiling/CSV';csv_dir.mkdir(parents=True)
         args=parse_args(['--project-dir',str(self.root),'--archive-directory',str(self.archive),
                          '--expected-version','0.34.0','--frames','300','--soak' if soak else '--profile'])
-        output=io.StringIO();executed=[]
+        output=io.StringIO();executed=[];captured_commands={}
         def child(command,**kwargs):
-            tokens=shlex.split(command);values=dict(token.split('=',1) for token in tokens if '=' in token)
+            tokens=captured_commands[command];values=dict(token.split('=',1) for token in tokens if '=' in token)
             self.assertIn('-SaveToUserDir',tokens)
             log=Path(values['-abslog']);name=log.stem;executed.append(name)
             text=('VROOM: Version 0.34.0\nVROOM: Verification PASS\n'
@@ -184,6 +210,8 @@ LogTemp: VROOM: Graphics applied scale=100 AA=4 DLSS=0 saved=0'''
             return SimpleNamespace(returncode=0)
         with mock.patch.object(runner,'parse_args',return_value=args), \
              mock.patch.object(runner,'os',SimpleNamespace(name='nt',environ={'LOCALAPPDATA':str(self.root/'local')})), \
+             mock.patch.object(runner,'unreal_command_line',side_effect=lambda executable,arguments:
+                               capture_command_line(executable,arguments,captured_commands)), \
              mock.patch.object(runner.subprocess,'run',side_effect=child),contextlib.redirect_stdout(output):
             if failure:
                 with self.assertRaises(RuntimeError):runner.main([])
