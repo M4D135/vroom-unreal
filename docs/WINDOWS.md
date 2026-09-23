@@ -74,7 +74,7 @@ Ajouter `-ArchiveDirectory` pour désigner le package effectivement construit. L
 
 Les captures de performance et d’endurance Windows utilisent `-csvNoProcessingThread` avec `-ExitAfterCsvProfiling`. Deux captures natives de 1 800 images reproduisaient un crash de fermeture du thread de traitement CSV d’UE 5.8.3, code `777003` ; le même essai avec traitement CSV synchrone a produit son fichier et quitté avec le code `0`. Ce drapeau est absent des scénarios fonctionnels. Les seuils de validation et les 120 images de chauffe écartées de l’analyse restent inchangés. Le vérificateur rejette également les avertissements natifs de débordement de la file VSM et du pool de pages, même lorsqu’un scénario annonce `Verification PASS`.
 
-Un ZIP construit n’est pas une validation de jeu. Le package `010` a réussi la suite complète décrite ci-dessous, sur le matériel et le profil indiqués. Les tests du build suivant `011`, les prérequis sur une autre machine vierge, les contrôleurs physiques et DLSS restent à vérifier. Aucun service de compilation cloud n’a été installé.
+Un ZIP construit n’est pas une validation de jeu. Le package `010` a réussi la suite complète décrite ci-dessous, sur le matériel et le profil indiqués. Le build suivant `011` a passé les cinq contrôles ciblés décrits plus bas ; les prérequis sur une autre machine vierge, les contrôleurs physiques et DLSS restent à vérifier. Aucun service de compilation cloud n’a été installé.
 
 L’outillage a été contrôlé sur Mac : **cinq fichiers PowerShell analysés sans erreur** et **28 assertions sur des packages factices et leur ZIP**. Les **27 tests Python actuels du vérificateur passent sur Mac et Windows**, y compris le rejet des avertissements VSM et la présence du drapeau CSV uniquement pendant les captures de performance/endurance. Les contrôles Mac utilisent PowerShell 7.6.6 et des fixtures, sans exécuter Unreal ni un jeu Windows. Ces [preuves et limites](RTX5090.md#contrôles-de-loutillage-sur-mac) restent distinctes des essais natifs décrits ci-dessous.
 
@@ -136,6 +136,8 @@ Ces sondes courtes ne suffisaient pas : le build `009` a encore échoué au dép
 Le package `C:\Vroom-Build-20260923\Packages\Win64-20260923-171119` intègre le correctif partagé **`e02ac13`**. Compilation Editor/Game, cook et empaquetage réussis. ZIP `Vroom-0.34.0-Win64-20260923-171119.zip`, SHA-256 `93e1a268ded402813a668f192a001536a340977b796759ab3ae71d91c9593fb1`.
 
 La série visible `startup-validation-20260923-151521-006-b7131450` passe **5/5** : lancement normal, quatre premières images, navigation des menus, départ, puis profilage séparé. Chaque processus sort à zéro ; les empreintes du package et de ses sources restent conformes. Rapport SHA-256 `db5bcf67e57c94f47bb501e6f8777bd53eb08a7bce72197342dee2c845f7bf6a`, conservé localement dans le dossier `diagnostics` cité ci-dessus.
+
+Les deux scripts exacts de cette campagne sont archivés dans `Tools/diagnostics/20260923/`, avec leurs contraintes de machine et de session ; ils ne remplacent pas la suite complète.
 
 La revue visuelle des quatre premières images confirme deux aplats sombres, puis deux images du menu complet. Le titre après préparation et le cockpit au départ ont aussi été inspectés. Aucune scène seule avant le titre dans ces captures. Les lectures GPU de ces images ne servent pas de mesure de durée de démarrage.
 
