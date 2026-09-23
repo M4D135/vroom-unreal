@@ -143,7 +143,7 @@ try {
             $SourceFiles += @{ path = 'Vroom.uproject'; sha256 = (Get-FileHash -LiteralPath $ProjectFile -Algorithm SHA256).Hash.ToLowerInvariant() }
             $PackageRoot = $Native[0].Split('\')[0]
             $PackageDirectory = Join-Path $ArchiveDirectory $PackageRoot
-            $Launcher = "@echo off`r`nsetlocal`r`nstart `"`" /wait `"%~dp0Vroom.exe`" -SaveToUserDir -d3d12 -windowed -ResX=1920 -ResY=1080`r`nexit /b %errorlevel%`r`n"
+            $Launcher = "@echo off`r`nsetlocal`r`nstart `"`" /wait `"%~dp0Vroom.exe`" -NoSplash -SaveToUserDir -d3d12 -windowed -ResX=1920 -ResY=1080`r`nexit /b %errorlevel%`r`n"
             [IO.File]::WriteAllText((Join-Path $PackageDirectory 'Jouer.cmd'), $Launcher, [Text.Encoding]::ASCII)
             $Readme = @'
 VROOM - WINDOWS X64

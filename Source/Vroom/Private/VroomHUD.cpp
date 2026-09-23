@@ -15,6 +15,7 @@
 #include "HAL/PlatformTime.h"
 #include "CanvasTypes.h"
 #include "RenderCommandFence.h"
+#include "Misc/ScopeExit.h"
 
 namespace
 {
@@ -89,6 +90,10 @@ void AVroomHUD::DrawHUD()
     if (!Car || !Car->Circuit) return;
     const AVroomCircuit* Circuit = Car->Circuit;
     const FVroomTrack* Track = Circuit->CurrentTrack();
+    if (!Track) return;
+    // The viewport keeps its initial opaque cover until a complete HUD draw.
+    // Its PostRender runs after the canvas below has been submitted.
+    ON_SCOPE_EXIT { PresentationDrawn = true; };
     const Vroom::ContactState& Contact = Car->Contacts.State;
 
     // Work in a fixed minimum design space, then scale cleanly up to 4K.

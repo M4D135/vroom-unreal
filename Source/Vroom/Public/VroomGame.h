@@ -163,7 +163,8 @@ public:
     void HandleAction(Vroom::Action Action);
     double GetLandingFeedbackTime() const { return LandingFeedbackTime; }
     double GetLandingQuality() const { return LandingQuality; }
-    bool PreparingCircuit = false;
+    // The first rendered frame can precede the first tick that finds the circuit.
+    bool PreparingCircuit = true;
     uint32 PendingRenderJobs = 0;
     UPROPERTY() TObjectPtr<USceneComponent> MirrorRoot;
     UPROPERTY() TObjectPtr<USceneCaptureComponent2D> MirrorCapture;
@@ -321,7 +322,9 @@ public:
     virtual void DrawHUD() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     bool IsCanvasPreparationComplete() const;
+    bool HasDrawnPresentation() const { return PresentationDrawn; }
 private:
+    bool PresentationDrawn = false;
     bool CanvasWarmupSubmitted = false;
     TUniquePtr<FRenderCommandFence> CanvasWarmupFence;
     void Label(const FString& S, float X, float Y, float Size, FLinearColor Color, bool CentreX = false);

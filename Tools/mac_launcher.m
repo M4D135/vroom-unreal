@@ -54,7 +54,7 @@ int main(int argc, const char *argv[]) {
         if (![hash isEqualToString:expected]) return Fail(@"Le binaire a changé depuis sa validation. Réinstaller le package validé.");
         // Both Desktop and Applications enter here and use this same explicit manifest.
         // Keep the low-level memory tracker active throughout Cocoa startup.
-        NSMutableArray *arguments = [NSMutableArray arrayWithArray:@[@"-n", bundle, @"--args", @"-LLM", @"-windowed", @"-ResX=1440", @"-ResY=900"]];
+        NSMutableArray *arguments = [NSMutableArray arrayWithArray:@[@"-n", bundle, @"--args", @"-NoSplash", @"-LLM", @"-windowed", @"-ResX=1440", @"-ResY=900"]];
         for (int i = 1; i < argc; i++) [arguments addObject:[NSString stringWithUTF8String:argv[i]]];
         NSTask *task = [[NSTask alloc] init];
         task.executableURL = [NSURL fileURLWithPath:@"/usr/bin/open"];
