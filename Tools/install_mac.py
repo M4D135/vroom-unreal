@@ -124,11 +124,15 @@ def check_app_destination(path, identifiers):
 def build_launcher(prepared, version):
     executable = prepared / 'Contents/MacOS/VroomLauncher'
     executable.parent.mkdir(parents=True)
+    resources = prepared / 'Contents/Resources'
+    resources.mkdir()
+    shutil.copy2(ROOT / 'Build/Mac/Application.icns', resources / 'Application.icns')
     subprocess.run(['xcrun', 'clang', '-O2', '-fobjc-arc', '-Wno-deprecated-declarations',
                     '-framework', 'Cocoa', str(ROOT / 'Tools/mac_launcher.m'), '-o', str(executable)], check=True)
     (prepared / 'Contents/Info.plist').write_bytes(plistlib.dumps({
         'CFBundleIdentifier': LAUNCHER_IDENTIFIER, 'CFBundleExecutable': 'VroomLauncher',
         'CFBundleName': 'Vroom', 'CFBundleDisplayName': 'Vroom', 'CFBundlePackageType': 'APPL',
+        'CFBundleIconFile': 'Application.icns',
         'CFBundleShortVersionString': version, 'CFBundleVersion': version,
         'LSUIElement': True, 'NSHighResolutionCapable': True,
     }))
