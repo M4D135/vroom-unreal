@@ -39,7 +39,7 @@ def copy_validation_report(source, destination):
         shutil.copy2(source, destination)
 
 
-def check_validation(report, bundle):
+def check_validation(report, bundle, scope='full'):
     if (report.get('forced') or report.get('editor') or report.get('failures') or
             report.get('completed') is not True):
         raise ValueError('Only a successful packaged-game validation may be installed')
@@ -48,6 +48,55 @@ def check_validation(report, bundle):
     version = tuple(map(int, report['version'].split('.')))
     if report.get('graphics_preset') == 'photorealism' and version < (0, 34, 0):
         raise ValueError('Photorealism profile requires version 0.34 or later')
+    if scope not in {'full', 'targeted-gameplay'}:
+        raise ValueError(f'Unknown validation scope: {scope}')
+    if report.get('scope', 'full') != scope:
+        raise ValueError('Report scope differs from the explicitly requested validation scope')
+    if scope == 'targeted-gameplay':
+        check_targeted_gameplay(report, version)
+    else:
+        check_full_gameplay(report, version)
+    expected = report.get('executable_sha256')
+    if not expected or sha256(bundle / 'Contents/MacOS/Vroom') != expected:
+        raise ValueError('Binary differs from the validated artifact')
+    paks = bundle / 'Contents/UE/Vroom/Content/Paks'
+    if not paks.is_dir() or not list(paks.glob('*.ucas')):
+        raise ValueError('Incomplete packaged game: cooked data missing')
+    if not report.get('package_data_sha256'):
+        raise ValueError('Missing packaged data fingerprints')
+    if package_data_paths(bundle) != set(report['package_data_sha256']):
+        raise ValueError('Packaged data file list differs from validation')
+    for relative, digest in report['package_data_sha256'].items():
+        if sha256(bundle / relative) != digest:
+            raise ValueError(f'Packaged data differs from validation: {relative}')
+
+
+def check_targeted_gameplay(report, version):
+    """Explicit functional release gate; does not certify performance or endurance."""
+    if version < (0, 35, 0) or report.get('platform') != 'Mac':
+        raise ValueError('Targeted gameplay requires a Mac release >= 0.35.0')
+    if (report.get('forced') is not False or report.get('editor') is not False or
+            report.get('failures') != [] or report.get('performance_retested') is not False):
+        raise ValueError('Targeted gameplay requires explicit successful non-forced declarations')
+    if any(key in report for key in ('performance', 'soak_motion', 'motion')):
+        raise ValueError('Targeted gameplay cannot reuse or ignore full performance measurements')
+    required = {'cockpit-final', 'collision-crash', 'drift-expert', 'drift-keyboard',
+                'start-mute', 'start-pause', 'pit-service', 'collision-rub',
+                'start-sequence', 'drift-straight', 'traffic-overtake'}
+    cases = report.get('cases')
+    if not isinstance(cases, list) or any(not isinstance(case, dict) for case in cases):
+        raise ValueError('Missing targeted gameplay cases')
+    names = [case.get('name') for case in cases]
+    if len(names) != len(required) or set(names) != required:
+        raise ValueError('Targeted gameplay requires exactly eleven unique scenarios')
+    for case in cases:
+        if (type(case.get('exit')) is not int or case['exit'] != 0 or case.get('status') != 'PASS' or
+                case.get('offscreen') is not False or case.get('foreground') is not True):
+            raise ValueError(f'Targeted scenario must pass visibly in the foreground: {case["name"]}')
+
+
+def check_full_gameplay(report, version):
+    """Historical complete gate, retained for full validation and older rollback."""
     limits = check_release_limits(report, allow_legacy=version < (0, 34, 0))['performance']
     if len(report.get('soak_motion', [])) != 6 or len(report.get('performance', [])) < 8:
         raise ValueError('Missing six-circuit soak or both resolution profiles')
@@ -89,19 +138,6 @@ def check_validation(report, bundle):
         raise ValueError('Missing required visual/collision cases')
     if any(case.get('exit') != 0 or case.get('status') != 'PASS' for case in report['cases']):
         raise ValueError('A required game case failed or has no PASS result')
-    expected = report.get('executable_sha256')
-    if not expected or sha256(bundle / 'Contents/MacOS/Vroom') != expected:
-        raise ValueError('Binary differs from the validated artifact')
-    paks = bundle / 'Contents/UE/Vroom/Content/Paks'
-    if not paks.is_dir() or not list(paks.glob('*.ucas')):
-        raise ValueError('Incomplete packaged game: cooked data missing')
-    if not report.get('package_data_sha256'):
-        raise ValueError('Missing packaged data fingerprints')
-    if package_data_paths(bundle) != set(report['package_data_sha256']):
-        raise ValueError('Packaged data file list differs from validation')
-    for relative, digest in report['package_data_sha256'].items():
-        if sha256(bundle / relative) != digest:
-            raise ValueError(f'Packaged data differs from validation: {relative}')
 
 
 def path_exists(path):
@@ -189,11 +225,11 @@ def activate_release(home, prepared, manifest):
         raise
 
 
-def install_release(validation, bundle, home=None):
+def install_release(validation, bundle, home=None, scope='full'):
     home = Path.home() if home is None else Path(home)
     report = json.loads(validation.read_text())
     bundle = bundle.resolve()
-    check_validation(report, bundle)
+    check_validation(report, bundle, scope=scope)
     applications = home / 'Applications'
     desktop = home / 'Desktop'
     # Reject conflicting apps before creating a release or touching the active one.
@@ -206,24 +242,24 @@ def install_release(validation, bundle, home=None):
     installed = release / 'Vroom.app'
     releases.mkdir(parents=True, exist_ok=True)
     if installed.exists():
-        check_validation(report, installed)
+        check_validation(report, installed, scope=scope)
     else:
         with tempfile.TemporaryDirectory(prefix='.install-', dir=releases) as temporary:
             stage = Path(temporary) / 'Vroom.app'
             shutil.copytree(bundle, stage, symlinks=True)
-            check_validation(report, stage)
+            check_validation(report, stage, scope=scope)
             release.mkdir(exist_ok=True)
             stage.rename(installed)
     stored_validation = release / 'validation.json'
     if stored_validation.exists():
         # Keep an already installed report immutable so an interrupted reinstall
         # cannot invalidate the currently active manifest's report digest.
-        check_validation(json.loads(stored_validation.read_text()), installed)
+        check_validation(json.loads(stored_validation.read_text()), installed, scope=scope)
     else:
         copy_validation_report(validation, stored_validation)
     applications.mkdir(exist_ok=True)
     desktop.mkdir(exist_ok=True)
-    manifest = dict(version=report['version'], bundle=str(installed),
+    manifest = dict(version=report['version'], bundle=str(installed), validation_scope=scope,
                     executable_sha256=report['executable_sha256'], validation=str(release / 'validation.json'),
                     validation_sha256=sha256(release / 'validation.json'))
     with tempfile.TemporaryDirectory(prefix='.vroom-launcher-', dir=applications) as temporary:
@@ -237,8 +273,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--validation', required=True, type=Path)
     parser.add_argument('--bundle', type=Path, default=ROOT / 'Saved/Packages/Mac/Vroom.app')
+    parser.add_argument('--validation-scope', choices=('full', 'targeted-gameplay'), default='full',
+                        help='Explicit targeted gameplay gate; full remains the default')
     args = parser.parse_args()
-    manifest = install_release(args.validation, args.bundle)
+    manifest = install_release(args.validation, args.bundle, scope=args.validation_scope)
     print(f"Installed Vroom {manifest['version']}: {Path.home() / 'Applications/Vroom.app'}\n"
           f"Desktop: {Path.home() / 'Desktop/Vroom.app'}\n"
           f"Manifest: {Path.home() / 'Library/Application Support/Vroom/active.json'}")

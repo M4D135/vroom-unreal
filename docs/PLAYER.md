@@ -4,9 +4,9 @@ Cette version propose trois formats de course, des commandes configurables et de
 
 ## Lancer la version installée
 
-La nouvelle version Mac se lance par **`~/Desktop/Vroom 0.35.app`** ou **`~/Applications/Vroom 0.35.app`**. Elle a été vérifiée par des essais fonctionnels ciblés et garde un rapport distinct des anciennes mesures de cadence.
+Sur Mac, **`~/Applications/Vroom.app`**, **`~/Desktop/Vroom.app`** et **`~/Desktop/Vroom.command`** ouvrent tous la **0.35**. Le lanceur vérifie l’identité du binaire et son rapport. Compiler une nouvelle version ne remplace pas automatiquement celle à laquelle on joue.
 
-Pour revenir à la 0.34 sur le Mac, ouvrir **`~/Applications/Vroom.app`** ou double-cliquer **`~/Desktop/Vroom.command`**. Ces deux entrées utilisent la version explicitement installée après validation. Compiler une nouvelle version ne remplace plus automatiquement celle à laquelle on joue.
+L’ancienne 0.34 et les anciens lanceurs restent conservés pour retour arrière ; la procédure se trouve dans [le bilan de livraison](FINALISATION_035.md#installation-et-retour-arrière). Les essais de la 0.35 sont fonctionnels et ciblés, distincts des anciennes mesures de cadence.
 
 Le menu se parcourt avec la souris, les flèches ou la croix directionnelle d'une manette. Entrée ou **A** valide l'élément souligné ; Échap ou **B** revient en arrière. Les noms A/B/X/Y employés ici suivent la disposition Xbox reconnue par Unreal. Les correspondances et la détection d'une manette physique restent à vérifier sur le matériel utilisé ; la présence de ces commandes dans le programme ne signifie pas qu'un essai complet avec chaque manette a été réalisé.
 

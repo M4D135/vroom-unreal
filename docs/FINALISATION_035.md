@@ -40,7 +40,27 @@ Le contrôle d’application Windows a refusé le petit bootstrap auxiliaire ave
 
 ZIP livré : `Vroom-0.35.0-Windows.zip`, SHA256 `9e97195e0d9ba83241471bbe28a32a212b250ec426b19c06341365b982b8cb5d`. Une copie est placée dans Downloads sur le Mac.
 
-**Mac** : les raccourcis `~/Desktop/Vroom 0.35.app` et `~/Applications/Vroom 0.35.app` pointent vers un lanceur avec l’icône rouge. Version installée : `0.35.0-71e19423eb0f-preview`, manifeste `~/Library/Application Support/Vroom/active-preview-035.json`. Le lanceur passe `-LLM`, comme le lanceur normal, pour éviter le défaut d’initialisation Cocoa du moteur. L’ancien raccourci `Vroom.app` et son manifeste `active.json` conservent la 0.34. Cette installation d’aperçu dispose d’une validation ciblée ; elle ne prétend pas satisfaire la campagne complète exigée par l’installateur historique.
+**Mac** : les raccourcis habituels `~/Desktop/Vroom.app`, `~/Applications/Vroom.app` et `~/Desktop/Vroom.command` ouvrent maintenant la **0.35**. Release : `0.35.0-24903f5acf0f`, manifeste `~/Library/Application Support/Vroom/active.json`. Le lanceur conserve l’icône rouge et passe `-LLM` pour l’initialisation Cocoa du moteur.
+
+L’installateur accepte désormais une portée fonctionnelle explicite. Le mode historique complet reste le défaut. Le mode ciblé exige les onze scénarios uniques, réussis, visibles au premier plan, le bon binaire et toutes les empreintes des données. Il refuse de réutiliser des mesures FPS historiques. Réinstaller exactement le package validé :
+
+```sh
+python3 Tools/install_mac.py --validation docs/validation-035-mac.json --validation-scope targeted-gameplay
+```
+
+La 0.34 est conservée dans `~/Library/Application Support/Vroom/Releases/0.34.0-c8a4441fbfd4/`. Pour la réactiver sans supprimer la 0.35 :
+
+```sh
+python3 Tools/install_mac.py \
+  --validation "$HOME/Library/Application Support/Vroom/Releases/0.34.0-c8a4441fbfd4/validation.json" \
+  --bundle "$HOME/Library/Application Support/Vroom/Releases/0.34.0-c8a4441fbfd4/Vroom.app"
+```
+
+Les **50 tests de l’installateur** passent, dont activation ciblée, refus des données modifiées, rollback et restauration après publication interrompue. Le lancement normal de la version active a été vérifié visible au premier plan. [Reçu de déploiement](deployment-035.json).
+
+Les raccourcis d’aperçu ont été rangés dans `Launchers/20261004-preview-shortcuts`, sans supprimer leur release. Les manifestes et les anciens raccourcis sont sauvegardés sous `~/Library/Application Support/Vroom/Launchers/`. L’aperçu 0.35 reste conservé dans Releases.
+
+**Linux** : la sonde du 4 octobre constate un timeout SSH vers l’ancien hôte configuré `david-pc` à 192.168.1.136. Le Windows joignable n’a pas les composants Linux optionnels d’Unreal ni la toolchain croisée. UE 5.8.3 y déclare `v26_clang-20.1.8-rockylinux8`, conformément aux [prérequis Linux Epic](https://dev.epicgames.com/documentation/unreal-engine/linux-development-requirements-for-unreal-engine?lang=en-US). Une cible Linux x86_64 joignable reste nécessaire pour les essais visibles. [Constat de préparation](linux-readiness-035.json) ; aucune compatibilité native revendiquée.
 
 Un essai Mac initial a échoué avant création du journal à cause de l’oubli de `-LLM` dans le petit harnais de test : pile `FLLMTracker::PopTag`. Le harnais a été corrigé et le scénario a ensuite passé. Aucun changement de moteur ni de modèle de langage.
 

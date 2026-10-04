@@ -1,0 +1,38 @@
+{
+  "checked_at": "2026-10-04T17:21:03.984467+00:00",
+  "version": "0.35.0",
+  "game_source_commit": "7e0182888e60fc6dcc9e04bced2f6cfec60289c0",
+  "installation_tests": {
+    "total": 50,
+    "passed": 50,
+    "scope": "portable fixtures; no new FPS campaign"
+  },
+  "mac": {
+    "manifest": {
+      "version": "0.35.0",
+      "bundle": "/Users/david/Library/Application Support/Vroom/Releases/0.35.0-24903f5acf0f/Vroom.app",
+      "validation_scope": "targeted-gameplay",
+      "executable_sha256": "71e19423eb0ff56d32a60f7112b1bbbb9ea18699bfa72d771ad4efa5733a796e",
+      "validation": "/Users/david/Library/Application Support/Vroom/Releases/0.35.0-24903f5acf0f/validation.json",
+      "validation_sha256": "0ad59b015a27ea51d0bb2f7cf590d3c93d3d37e1eab1269f6ad3aabc6bd4a119"
+    },
+    "pid": 27073,
+    "command": "27073 /Users/david/Library/Application Support/Vroom/Releases/0.35.0-24903f5acf0f/Vroom.app/Contents/MacOS/Vroom -NoSplash -LLM -windowed -ResX=1440 -ResY=900 -abslog=/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-035-default-launch.log -VroomCapture=/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-035-default-menu.png -VroomCaptureAfter=2",
+    "activation": "foreground_before=0 foreground_after=1 locked=0\n",
+    "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-035-default-launch.log",
+    "capture": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-035-default-menu.png",
+    "normal_launch": true,
+    "autoquit": false
+  },
+  "windows": {
+    "target": "C:\\Vroom-Build-20260923\\Packages\\Win64-035-final-20261004\\Windows\\Vroom\\Binaries\\Win64\\Vroom.exe",
+    "arguments": "-NoSplash -SaveToUserDir -d3d12 -windowed -ResX=1920 -ResY=1080",
+    "working_directory": "C:\\Vroom-Build-20260923\\Packages\\Win64-035-final-20261004\\Windows\\Vroom\\Binaries\\Win64",
+    "icon": "C:\\Vroom-Build-20260923\\Branding\\Vroom-racing-20260923.ico,0",
+    "executable_sha256": "1b7821f06aedc4d838da4b8df0d20c4e035470b5726893bc21cc12e83498647d",
+    "zip_sha256": "9e97195e0d9ba83241471bbe28a32a212b250ec426b19c06341365b982b8cb5d",
+    "validation_task_enabled": false
+  },
+  "linux": "Not compiled or run; see linux-readiness-035.json",
+  "preview_shortcuts_backup": "/Users/david/Library/Application Support/Vroom/Launchers/20261004-preview-shortcuts"
+}

@@ -29,6 +29,8 @@ Les mesures historiques de la 0.30 restent documentées dans [VALIDATION.md](doc
 
 Le [mode d'emploi](docs/PLAYER.md) décrit les commandes, les règles exactes et les sauvegardes. Les fonctionnalités annoncées ici sont celles du code de cette branche ; [VALIDATION.md](docs/VALIDATION.md) distingue les essais réellement réalisés et leurs limites. **La 0.35 Windows est testée ; DLSS et l’essai d’une manette physique restent à valider.**
 
+Sur Mac, les raccourcis habituels **Vroom.app** et **Vroom.command** ouvrent désormais la **0.35** ; l’ancienne version est conservée. [Installation ciblée et retour arrière](docs/FINALISATION_035.md#installation-et-retour-arrière).
+
 Le [guide Windows](docs/WINDOWS.md) décrit les prérequis, la compilation et le ZIP Development. La 0.35 est compilée et testée sur RTX 5060 Laptop ; les [contrôles RTX 5090](docs/RTX5090.md) restent distincts.
 
 ## Jouer sur le Mac

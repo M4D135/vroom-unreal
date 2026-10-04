@@ -1,0 +1,29 @@
+{
+  "checked_at": "2026-10-04",
+  "linux_native_host": {
+    "alias": "david-pc",
+    "address": "192.168.1.136",
+    "ssh_result": "timeout on port 22",
+    "verified": false
+  },
+  "windows_build_host": {
+    "address": "192.168.1.173",
+    "reachable": true,
+    "engine": "5.8.3",
+    "required_toolchain": "v26_clang-20.1.8-rockylinux8",
+    "linux_multiarch_root": null,
+    "linux_precompiled_game_present": false,
+    "linux_target_platform_dll_present": false
+  },
+  "compiled": false,
+  "native_tested": false,
+  "blockers": [
+    "No reachable Linux x86_64 target for visible testing",
+    "Windows Unreal Linux optional platform binaries and cross compiler not installed"
+  ],
+  "next_steps": [
+    "Install Linux support for UE 5.8.3 and the exact v26 toolchain on Windows, or provide UE 5.8.3 on reachable Linux x86_64",
+    "Build from the common source commit",
+    "Run visible gameplay checks on Linux before activation"
+  ]
+}

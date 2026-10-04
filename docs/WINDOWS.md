@@ -1,4 +1,4 @@
-# Construire Vroom 0.34 sur Windows
+# Construire Vroom sur Windows
 
 ## Livraison 0.35 — 4 octobre 2026
 
@@ -34,15 +34,15 @@ Après réussite effective, les sorties attendues sont :
 |---|---|
 | `Saved/Packages/Win64/` | Application Windows et fichiers nécessaires à son lancement |
 | `Saved/Packages/Win64/vroom-build.json` | Manifeste versionné par schéma, identité du binaire, des sources et du contenu empaqueté |
-| `dist/Vroom-0.34.0-Win64-Development.zip` | Archive transportable du package Development |
-| `dist/Vroom-0.34.0-Win64-Development.zip.sha256` | Empreinte SHA-256 du ZIP pour contrôler son transfert |
+| `dist/Vroom-0.35.0-Win64-Development.zip` | Archive transportable du package Development |
+| `dist/Vroom-0.35.0-Win64-Development.zip.sha256` | Empreinte SHA-256 du ZIP pour contrôler son transfert |
 
 Le manifeste de schéma 2 porte les empreintes de tous les fichiers du package, en plus du binaire et des sources. Le ZIP contient `vroom-build.json` à sa racine et le dossier `Windows/`, avec `Jouer.cmd`, `LISEZ-MOI.txt`, le jeu, ses données, les prérequis Visual C++ et `Licences/`. Le script fournit explicitement ce sous-dossier à AutomationTool : UE 5.8 n’ajoute pas automatiquement `Windows/` lorsqu’un autre composant du chemin commence déjà par `Win64` ou `Windows`. Les chemins du tableau sont les sorties par défaut ; une compilation avec des chemins explicites, comme celle du 23 septembre, produit les mêmes éléments aux emplacements demandés.
 
 Le dossier d’archivage doit être vide et un ZIP existant n’est jamais écrasé. Pour reconstruire en conservant un package précédent, choisir deux nouveaux chemins :
 
 ```powershell
-.\Tools\build_windows.ps1 -Configuration Development -ArchiveDirectory 'Saved\Packages\Win64-r2' -CreateZip -ZipPath 'dist\Vroom-0.34.0-Win64-Development-r2.zip'
+.\Tools\build_windows.ps1 -Configuration Development -ArchiveDirectory 'Saved\Packages\Win64-r2' -CreateZip -ZipPath 'dist\Vroom-0.35.0-Win64-Development-r2.zip'
 ```
 
 Ajouter le même `-ArchiveDirectory` aux commandes de lancement et de vérification pour cibler cette nouvelle construction.
@@ -54,7 +54,7 @@ Ajouter le même `-ArchiveDirectory` aux commandes de lancement et de vérificat
 Depuis le clone ayant construit le package :
 
 ```powershell
-.\Tools\run_windows.ps1 -ExpectedVersion 0.34.0 -Windowed -Width 1920 -Height 1080
+.\Tools\run_windows.ps1 -ExpectedVersion 0.35.0 -Windowed -Width 1920 -Height 1080
 ```
 
 Le lanceur recherche le binaire natif, vérifie sa version et l’intégrité de tout le package, puis démarre le jeu en DirectX 12 sans reconstruire. Pour utiliser le ZIP sur un autre PC, extraire **toute l’archive**, puis ouvrir **`Windows\Jouer.cmd`** (ou `WindowsNoEditor\Jouer.cmd`). Ce lanceur ouvre une fenêtre 1920 × 1080 en DirectX 12 et utilise le dossier utilisateur pour les sauvegardes. Unreal Engine, Visual Studio et Python ne sont pas nécessaires pour jouer au package.
@@ -63,18 +63,20 @@ Sans préférences déjà enregistrées, le profil Windows démarre désormais e
 
 Si le runtime Visual C++ manque, lancer `Engine\Extras\Redist\en-us\vc_redist.x64.exe` depuis le dossier de jeu extrait, puis réessayer. UE 5.8 fournit aussi le redistribuable ARM64 ; la cible de ce jeu est x64. Le seul `.exe`, séparé de ses données, ne suffit pas. L’ouverture de `Jouer.cmd` ne remplace pas les contrôles d’intégrité et de comportement du vérificateur.
 
+Pour la validation ciblée 0.35, utiliser le [harnais des onze scénarios](../Tools/diagnostics/20261004/README.md). Les commandes complètes ci-dessous restent disponibles pour une nouvelle campagne explicitement souhaitée ; elles ne sont pas nécessaires pour réinstaller le package déjà validé.
+
 Sur le PC avec le clone et un bureau Windows interactif, régler d’abord les graphismes et le plafond dans le jeu, puis lancer :
 
 ```powershell
-.\Tools\verify_windows.ps1 -ExpectedVersion 0.34.0 -Profile -Soak -TargetFPS 60
+.\Tools\verify_windows.ps1 -ExpectedVersion 0.35.0 -Profile -Soak -TargetFPS 60
 ```
 
-Le défaut attend une **RTX 5090** ; pour une autre carte, fournir son nom attendu avec `-ExpectedGPU`. `-TargetFPS` choisit les seuils d’acceptation, sans modifier les options graphiques. Les captures sont visibles ; les rapports, journaux et CSV sont enregistrés dans `Saved/Validation/v0.34.0/<date>-windows/`. Les critères 60/120 Hz et le contrôle DLSS sont décrits dans [RTX5090.md](RTX5090.md).
+Le défaut attend une **RTX 5090** ; pour une autre carte, fournir son nom attendu avec `-ExpectedGPU`. `-TargetFPS` choisit les seuils d’acceptation, sans modifier les options graphiques. Les captures sont visibles ; les rapports, journaux et CSV sont enregistrés dans `Saved/Validation/v0.35.0/<date>-windows/`. Les critères 60/120 Hz et le contrôle DLSS sont décrits dans [RTX5090.md](RTX5090.md).
 
 Pour un essai reproductible sur le PC RTX 5060, `-GraphicsPreset 3` applique temporairement le profil **Ultra**, avec antialiasing natif et plafond de **60 FPS**, sans sauvegarder les préférences graphiques du joueur :
 
 ```powershell
-.\Tools\verify_windows.ps1 -ExpectedVersion 0.34.0 -ExpectedGPU 'NVIDIA GeForce RTX 5060 Laptop GPU' -GraphicsPreset 3 -Width 1920 -Height 1080 -Profile -Soak -TargetFPS 60
+.\Tools\verify_windows.ps1 -ExpectedVersion 0.35.0 -ExpectedGPU 'NVIDIA GeForce RTX 5060 Laptop GPU' -GraphicsPreset 3 -Width 1920 -Height 1080 -Profile -Soak -TargetFPS 60
 ```
 
 Ajouter `-ArchiveDirectory` pour désigner le package effectivement construit. L’option est transmise au jeu sous la forme `-VroomGraphicsPreset=3`. Sans `-GraphicsPreset`, les choix graphiques sauvegardés restent utilisés. Le plafond demandé et `-TargetFPS 60` ne constituent pas une mesure de cadence obtenue.

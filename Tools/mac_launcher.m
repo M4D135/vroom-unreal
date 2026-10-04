@@ -47,7 +47,7 @@ int main(int argc, const char *argv[]) {
             [report[@"editor"] isEqual:@YES] || (failures && (![failures isKindOfClass:NSArray.class] || [failures count])) ||
             ![report[@"version"] isEqual:manifest[@"version"]] ||
             ![report[@"executable_sha256"] isEqual:expected])
-            return Fail(@"Cette version ne dispose pas d'une validation complète. Réinstaller une version validée.");
+            return Fail(@"Le rapport de validation de cette version est incohérent. Réinstaller une version validée.");
         NSString *executable = [bundle stringByAppendingPathComponent:@"Contents/MacOS/Vroom"];
         NSString *hash = FileHash(executable);
         if (!hash) return Fail(@"Le package validé est absent ou illisible. Réinstaller cette version.");
