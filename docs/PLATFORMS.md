@@ -4,7 +4,15 @@ Les améliorations du jeu doivent être reprises sur **Mac et Windows**, puis su
 
 Les profils graphiques restent distincts lorsque le matériel ou le moteur le justifient : Metal sur Mac, DirectX 12 sur Windows, Vulkan sur Linux. Résolution, antialiasing, ombres et budget GPU peuvent différer ; chaque différence doit être expliquée et mesurée sur la plateforme concernée. Un réglage ou un résultat Windows ne constitue pas une validation Mac ou Linux.
 
-## État de reprise au 23 septembre 2026
+## État au 4 octobre 2026 — 0.35
+
+- **Mac** : compilé sous UE 5.8.3, onze scénarios ciblés visibles réussis. Raccourci `Vroom 0.35.app` installé avec son icône ; l’ancien `Vroom.app` ouvre encore la 0.34. Le lancement normal passe bien `-LLM`, requis pendant l’initialisation Cocoa. Aucun nouvel essai FPS prolongé.
+- **Windows** : même code de jeu, onze scénarios visibles réussis sur RTX 5060 Laptop / DirectX 12, session console 1. Le raccourci habituel est remplacé par celui de la 0.35, ancienne version conservée. Il vise l’exécutable natif testé ; Windows refuse le petit bootstrap auxiliaire avec l’erreur 4551. Aucune stratégie de sécurité n’a été modifiée.
+- **Linux** : code commun prêt, aucun build ni essai natif de la 0.35.
+
+Les 198 fichiers du manifeste de sources, de configuration et d’assets Windows correspondent aux fichiers Mac. Les binaires restent propres à leur plateforme. Voir [le bilan](FINALISATION_035.md), [les preuves Mac](validation-035-mac.json) et [Windows](validation-035-windows.json). Ces contrôles de gameplay ne réattribuent pas les anciennes mesures de performance aux nouveaux binaires.
+
+## Historique — état de reprise au 23 septembre 2026
 
 | Plateforme | Sources communes | Compilation | Tests natifs | Installation |
 |---|---|---|---|---|

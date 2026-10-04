@@ -1,12 +1,20 @@
-# Vroom 0.34 — course 3D sous Unreal Engine 5.8
+# Vroom 0.35 — course 3D sous Unreal Engine 5.8
 
-## État de la version 0.34
+## Nouveautés 0.35
+
+Le drift s’amorce uniquement dans un virage, en braquant dans son sens. Le contre-braquage maintient la glisse et charge le turbo ; la ligne droite ne permet ni déclenchement ni charge. La courte fenêtre de sortie récompense un lâcher au bon moment. Le clavier reste jouable en maintenant le contre-braquage, avec une charge plus rapide quand il est dosé.
+
+Les impacts endommagent l’avant, l’arrière et les côtés des deux voitures. L’aileron du joueur et les carrosseries adverses se déforment ; les effets sur la tenue de route restent limités pour pouvoir repartir. Les stands réparent complètement. L’accélération et la pointe des rivaux sont rapprochées de celles du joueur. La caméra descend de 3 cm, le tableau de bord reçoit des détails en relief, et les gants blancs approuvés restent inchangés. Le signal de départ est plus bref et plus net.
+
+Sur Mac, le raccourci **Vroom 0.35.app** ouvre cette version ; l’ancien raccourci **Vroom.app** conserve la 0.34. La 0.35 a passé **34 suites portables et 11 scénarios natifs visibles**. Ces essais ciblés ne sont pas une nouvelle campagne FPS : [preuves Mac](docs/validation-035-mac.json). Sur Windows, **le raccourci habituel Vroom ouvre la 0.35** après onze contrôles visibles sur RTX 5060 Laptop / DirectX 12 : [preuves Windows](docs/validation-035-windows.json). Les **198 fichiers de sources, de configuration et d’assets** comparés sont identiques entre les deux builds. Linux conserve les mêmes sources, sans nouveau build natif. [Bilan 0.35](docs/FINALISATION_035.md).
+
+## Historique validé 0.34
 
 La 0.34 reprend désormais la **photo de cockpit F1 fournie par David** : yeux plus bas, carrosserie rouge et vrais pneus visibles, volant classique compact à trois branches, sans halo, prise à neuf heures et trois heures et gants blancs conservés. Les rétroviseurs allongés reposent sur des bras rouges, derrière les pneus dans la géométrie de la voiture. Cette nouvelle référence remplace la contrainte précédente de cadrage strictement Amiga.
 
 Les adversaires anticipent leur freinage et s’engagent dans un dépassement avant de se rabattre. Le drift compte trois niveaux de turbo, un bonus de lâcher précis et des étincelles bleues, ambre puis violettes. Le décor reçoit des bosquets plus variés, des panneaux rythmés et des portiques supplémentaires. Un cinquième profil **Photoréalisme** privilégie éclairage et ombres avec une cible de 30 images/s sur Mac ; Performance conserve sa cible de 60 images/s.
 
-**Version installée : `0.34.0-c8a4441fbfd4`.** David a approuvé visuellement la prise du pouce autour de la jante circulaire. Les **31 suites portables**, dont les 10 contrôles des gants, et les **47 contrôles de la série visible `20260919-231125-package` passent**. En Photoréalisme, les huit mesures couvrent deux définitions et les six circuits complets : **29,996–30,000 images/s**, avec un maximum de **39,573 ms par image**, après préparation. Les empreintes du binaire, des données et du rapport installé sont vérifiées ; la version 0.33 est conservée pour retour arrière. Les captures [neutre](docs/images/cockpit-034-neutral.png), [droite](docs/images/cockpit-034-right.png) et [gauche](docs/images/cockpit-034-left.png) montrent ce package avec la pose approuvée. Le [rapport](docs/validation-results.json) et le [bilan 0.34](docs/FINALISATION_034.md) détaillent ces preuves et leurs limites. L’état Git est consultable dans le dépôt ci-dessous.
+**Ancienne version conservée : `0.34.0-c8a4441fbfd4`.** David a approuvé visuellement la prise du pouce autour de la jante circulaire. Les **31 suites portables**, dont les 10 contrôles des gants, et les **47 contrôles de la série visible `20260919-231125-package` passent**. En Photoréalisme, les huit mesures couvrent deux définitions et les six circuits complets : **29,996–30,000 images/s**, avec un maximum de **39,573 ms par image**, après préparation. Les empreintes du binaire, des données et du rapport installé sont vérifiées ; la version 0.33 est conservée pour retour arrière. Les captures [neutre](docs/images/cockpit-034-neutral.png), [droite](docs/images/cockpit-034-right.png) et [gauche](docs/images/cockpit-034-left.png) montrent ce package avec la pose approuvée. Le [rapport](docs/validation-results.json) et le [bilan 0.34](docs/FINALISATION_034.md) détaillent ces preuves et leurs limites. L’état Git est consultable dans le dépôt ci-dessous.
 
 Dépôt : [vroom-unreal](https://git.estrasse.fr/david/vroom-unreal).
 
@@ -19,9 +27,9 @@ Le bandeau translucide de 84 pixels conserve les informations de course et ajout
 Les mesures historiques de la 0.30 restent documentées dans [VALIDATION.md](docs/VALIDATION.md). Les [preuves 0.33](docs/FINALISATION_033.md) et [0.34](docs/FINALISATION_034.md) restent séparées : une ancienne mesure ne certifie pas un nouveau package. Les scénarios se suivent à l’écran avec `python3 Tools/verify_mac.py --visible --graphics-preset photorealism --profile --soak`.
 
 
-Le [mode d'emploi](docs/PLAYER.md) décrit les commandes, les règles exactes et les sauvegardes. Les fonctionnalités annoncées ici sont celles du code de cette branche ; [VALIDATION.md](docs/VALIDATION.md) distingue les essais réellement réalisés et leurs limites. **Windows, DLSS et l'essai d'une manette physique restent à valider.**
+Le [mode d'emploi](docs/PLAYER.md) décrit les commandes, les règles exactes et les sauvegardes. Les fonctionnalités annoncées ici sont celles du code de cette branche ; [VALIDATION.md](docs/VALIDATION.md) distingue les essais réellement réalisés et leurs limites. **La 0.35 Windows est testée ; DLSS et l’essai d’une manette physique restent à valider.**
 
-Le [guide Windows 0.34](docs/WINDOWS.md) prépare les prérequis, la compilation et le ZIP Development. **Aucun exécutable Windows 0.34 n’a encore été produit ou testé** ; les [contrôles RTX 5090](docs/RTX5090.md) restent à exécuter sur un PC natif.
+Le [guide Windows](docs/WINDOWS.md) décrit les prérequis, la compilation et le ZIP Development. La 0.35 est compilée et testée sur RTX 5060 Laptop ; les [contrôles RTX 5090](docs/RTX5090.md) restent distincts.
 
 ## Jouer sur le Mac
 

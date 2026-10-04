@@ -1,5 +1,12 @@
 # Construire Vroom 0.34 sur Windows
 
+## Livraison 0.35 — 4 octobre 2026
+
+La 0.35 est compilée avec UE 5.8.3 et passe onze scénarios ciblés visibles sur le PC RTX 5060 Laptop : [rapport](validation-035-windows.json), [bilan commun](FINALISATION_035.md). Le raccourci bureau Vroom ouvre cette version. Le package actif se trouve dans `C:\Vroom-Build-20260923\Packages\Win64-035-final-20261004`.
+
+Utiliser le raccourci ou `Windows\Jouer.cmd` : ils appellent l’exécutable natif `Windows\Vroom\Binaries\Win64\Vroom.exe`, comme le vérificateur. Le petit bootstrap `Windows\Vroom.exe` a été refusé sur ce PC par le contrôle d’application Windows (4551). Les paramètres de sécurité n’ont pas été modifiés. Les anciens dossiers sont conservés ; les mesures 0.34 ci-dessous restent historiques.
+
+
 **État au 23 septembre 2026 : le build Windows `010` a réussi les 39 contrôles de la suite complète.** Unreal Engine 5.8.3 a compilé et empaqueté le jeu ; les essais visibles en DirectX 12 sur RTX 5060 Laptop GPU comprennent 32 scénarios fonctionnels, un profilage et six circuits en endurance. Le build `011` ajoute le masquage commun du démarrage et `-NoSplash` aux lanceurs : ses cinq contrôles ciblés et la revue des premières images passent également. Il est lancé en session interactive avec le raccourci bureau `Vroom`. Les six essais longs restent des mesures du binaire `010`, distinctes des tests ciblés de `011`.
 
 Une archive nommée **`Vroom-0.34.0-Windows-Sources-<commit>.zip` est un kit de compilation**, contenant les sources et assets du dépôt au commit indiqué. Elle doit être extraite puis compilée selon ce guide ; ce n’est pas le ZIP du jeu prêt à lancer.

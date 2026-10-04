@@ -1,0 +1,319 @@
+{
+  "version": "0.35.0",
+  "source_commit": "7e0182888e60fc6dcc9e04bced2f6cfec60289c0",
+  "platform": "Mac",
+  "scope": "targeted-gameplay",
+  "completed": true,
+  "failures": [],
+  "editor": false,
+  "forced": false,
+  "executable_sha256": "71e19423eb0ff56d32a60f7112b1bbbb9ea18699bfa72d771ad4efa5733a796e",
+  "cases": [
+    {
+      "name": "cockpit-final",
+      "status": "PASS",
+      "exit": 0,
+      "offscreen": false,
+      "foreground": true,
+      "capture": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-cockpit-final-184032/capture.png",
+      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-cockpit-final-184032/runtime.log",
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "mechanic_log": [
+        "[2026.10.04-16.40.44:587][  1]LogTemp: Display: VROOM: Startup cover released after HUD presentation frame=1",
+        "[2026.10.04-16.40.44:754][  6]LogTemp: Display: VROOM: Start lights columns=5 raceClock=0.008 signal=2",
+        "[2026.10.04-16.40.44:754][  6]LogTemp: Display: VROOM: Start beep signal=2 frequency=1320 duration=0.42 raceClock=0.033",
+        "[2026.10.04-16.40.45:120][ 17]LogTemp: Display: VROOM: Start lights columns=0 raceClock=0.400 signal=3"
+      ]
+    },
+    {
+      "name": "collision-crash",
+      "status": "PASS",
+      "exit": 0,
+      "offscreen": false,
+      "foreground": true,
+      "capture": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-collision-crash-183838/capture.png",
+      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-collision-crash-183838/runtime.log",
+      "checks": [
+        "VROOM: Verification PASS scenario=crash contacts=1 respawns=1 visibilityErrors=0"
+      ],
+      "mechanic_log": [
+        "[2026.10.04-16.38.50:307][  1]LogTemp: Display: VROOM: Startup cover released after HUD presentation frame=1",
+        "[2026.10.04-16.38.50:455][  6]LogTemp: Display: VROOM: Start lights columns=5 raceClock=0.008 signal=2",
+        "[2026.10.04-16.38.50:455][  6]LogTemp: Display: VROOM: Derby rival=0 damage=0.278 shove=4.00",
+        "[2026.10.04-16.38.50:455][  6]LogTemp: Display: VROOM: Derby contact zone=0 damage=0.278 rival=0",
+        "[2026.10.04-16.38.50:455][  6]LogTemp: Display: VROOM: Contact kind=2 relative=143.61 km/h speedAfter=111.65 km/h controlledHop=0 face=0",
+        "[2026.10.04-16.38.50:456][  6]LogTemp: Display: VROOM: Start beep signal=2 frequency=1320 duration=0.42 raceClock=0.033",
+        "[2026.10.04-16.38.50:822][ 17]LogTemp: Display: VROOM: Start lights columns=0 raceClock=0.400 signal=3",
+        "[2026.10.04-16.38.54:385][116]LogTemp: Display: VROOM: Control restored s=110.67 lateral=-2.14"
+      ]
+    },
+    {
+      "name": "drift-expert",
+      "status": "PASS",
+      "exit": 0,
+      "offscreen": false,
+      "foreground": true,
+      "capture": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-drift-expert-183626/capture.png",
+      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-drift-expert-183626/runtime.log",
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "mechanic_log": [
+        "[2026.10.04-16.36.35:484][  1]LogTemp: Display: VROOM: Kart test bend s=1510.0 curvature=0.00804 direction=+1",
+        "[2026.10.04-16.36.35:508][  1]LogTemp: Display: VROOM: Startup cover released after HUD presentation frame=1",
+        "[2026.10.04-16.36.35:617][  5]LogTemp: Display: VROOM: Start lights columns=5 raceClock=0.008 signal=2",
+        "[2026.10.04-16.36.35:618][  5]LogTemp: Display: VROOM: Start beep signal=2 frequency=1320 duration=0.42 raceClock=0.033",
+        "[2026.10.04-16.36.35:984][ 16]LogTemp: Display: VROOM: Start lights columns=0 raceClock=0.400 signal=3",
+        "[2026.10.04-16.36.38:184][ 82]LogTemp: Display: VROOM: Kart release tier=3 perfect=1 speed=41.69 lateral=0.04",
+        "[2026.10.04-16.36.40:361][140]LogTemp: Display: VROOM: Drift feedback PASS marks=1 smoke=1 boost=1",
+        "[2026.10.04-16.36.40:761][152]LogTemp: Display: VROOM: Kart drift PASS scenario=expert peak=3 released=3 expected=3"
+      ]
+    },
+    {
+      "name": "drift-keyboard",
+      "status": "PASS",
+      "exit": 0,
+      "offscreen": false,
+      "foreground": true,
+      "capture": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-drift-keyboard-183611/capture.png",
+      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-drift-keyboard-183611/runtime.log",
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "mechanic_log": [
+        "[2026.10.04-16.36.20:509][  1]LogTemp: Display: VROOM: Kart test bend s=1510.0 curvature=0.00804 direction=+1",
+        "[2026.10.04-16.36.20:532][  1]LogTemp: Display: VROOM: Startup cover released after HUD presentation frame=1",
+        "[2026.10.04-16.36.20:642][  5]LogTemp: Display: VROOM: Start lights columns=5 raceClock=0.008 signal=2",
+        "[2026.10.04-16.36.20:642][  5]LogTemp: Display: VROOM: Start beep signal=2 frequency=1320 duration=0.42 raceClock=0.033",
+        "[2026.10.04-16.36.21:009][ 16]LogTemp: Display: VROOM: Start lights columns=0 raceClock=0.400 signal=3",
+        "[2026.10.04-16.36.22:976][ 75]LogTemp: Display: VROOM: Kart release tier=2 perfect=0 speed=41.26 lateral=-1.71",
+        "[2026.10.04-16.36.23:965][ 98]LogTemp: Display: VROOM: Drift feedback PASS marks=1 smoke=1 boost=1",
+        "[2026.10.04-16.36.25:765][152]LogTemp: Display: VROOM: Kart drift PASS scenario=keyboard peak=2 released=2 expected=2"
+      ]
+    },
+    {
+      "name": "start-mute",
+      "status": "PASS",
+      "exit": 0,
+      "offscreen": false,
+      "foreground": true,
+      "capture": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-start-mute-184007/capture.png",
+      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-start-mute-184007/runtime.log",
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=1 respawns=0 visibilityErrors=0"
+      ],
+      "mechanic_log": [
+        "[2026.10.04-16.40.24:046][  1]LogTemp: Display: VROOM: Startup cover released after HUD presentation frame=1",
+        "[2026.10.04-16.40.24:226][  6]LogTemp: Display: VROOM: Start lights columns=2 raceClock=-2.992 signal=0",
+        "[2026.10.04-16.40.24:226][  6]LogTemp: Display: VROOM: Start beep signal=0 frequency=880 duration=0.18 raceClock=-2.967",
+        "[2026.10.04-16.40.25:193][ 35]LogTemp: Display: VROOM: Start lights columns=4 raceClock=-2.000 signal=1",
+        "[2026.10.04-16.40.25:193][ 35]LogTemp: Display: VROOM: Start beep signal=1 frequency=880 duration=0.18 raceClock=-2.000",
+        "[2026.10.04-16.40.27:193][ 95]LogTemp: Display: VROOM: Start lights columns=5 raceClock=0.000 signal=2",
+        "[2026.10.04-16.40.27:194][ 95]LogTemp: Display: VROOM: Start beep signal=2 frequency=1320 duration=0.42 raceClock=0.000",
+        "[2026.10.04-16.40.27:593][107]LogTemp: Display: VROOM: Start lights columns=0 raceClock=0.400 signal=3",
+        "[2026.10.04-16.40.29:492][151]LogTemp: Display: VROOM: Derby rival=1 damage=0.118 shove=-2.94",
+        "[2026.10.04-16.40.29:492][151]LogTemp: Display: VROOM: Derby contact zone=0 damage=0.118 rival=1",
+        "[2026.10.04-16.40.29:492][151]LogTemp: Display: VROOM: Contact kind=1 relative=47.25 km/h speedAfter=111.88 km/h controlledHop=0 face=0",
+        "[2026.10.04-16.40.32:393][229]LogTemp: Display: VROOM: Start integration PASS stationary=1 raceClock=5.03 progress=195.35"
+      ]
+    },
+    {
+      "name": "start-pause",
+      "status": "PASS",
+      "exit": 0,
+      "offscreen": false,
+      "foreground": true,
+      "capture": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-start-pause-183940/capture.png",
+      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-start-pause-183940/runtime.log",
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=1 respawns=0 visibilityErrors=0"
+      ],
+      "mechanic_log": [
+        "[2026.10.04-16.39.57:605][  1]LogTemp: Display: VROOM: Startup cover released after HUD presentation frame=1",
+        "[2026.10.04-16.39.57:802][  6]LogTemp: Display: VROOM: Start lights columns=2 raceClock=-2.992 signal=0",
+        "[2026.10.04-16.39.57:802][  6]LogTemp: Display: VROOM: Start beep signal=0 frequency=880 duration=0.18 raceClock=-2.967",
+        "[2026.10.04-16.39.58:769][ 35]LogTemp: Display: VROOM: Start lights columns=4 raceClock=-2.000 signal=1",
+        "[2026.10.04-16.39.58:769][ 35]LogTemp: Display: VROOM: Start beep signal=1 frequency=880 duration=0.18 raceClock=-2.000",
+        "[2026.10.04-16.40.00:035][ 73]LogTemp: Display: VROOM: Start test resumed after pause",
+        "[2026.10.04-16.40.01:502][117]LogTemp: Display: VROOM: Start lights columns=5 raceClock=0.000 signal=2",
+        "[2026.10.04-16.40.01:502][117]LogTemp: Display: VROOM: Start beep signal=2 frequency=1320 duration=0.42 raceClock=0.000",
+        "[2026.10.04-16.40.01:902][129]LogTemp: Display: VROOM: Start lights columns=0 raceClock=0.400 signal=3",
+        "[2026.10.04-16.40.03:783][179]LogTemp: Display: VROOM: Derby rival=1 damage=0.118 shove=-2.94",
+        "[2026.10.04-16.40.03:783][179]LogTemp: Display: VROOM: Derby contact zone=0 damage=0.118 rival=1",
+        "[2026.10.04-16.40.03:783][179]LogTemp: Display: VROOM: Contact kind=1 relative=47.25 km/h speedAfter=111.88 km/h controlledHop=0 face=0",
+        "[2026.10.04-16.40.06:656][264]LogTemp: Display: VROOM: Start integration PASS stationary=1 raceClock=5.00 progress=193.82"
+      ]
+    },
+    {
+      "name": "pit-service",
+      "status": "PASS",
+      "exit": 0,
+      "offscreen": false,
+      "foreground": true,
+      "capture": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-pit-service-183818/capture.png",
+      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-pit-service-183818/runtime.log",
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "mechanic_log": [
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=9 mesh=Cube material=M_Dark instance=25 center=X=8677.869 Y=5585.230 Z=89.828 extent=X=287.500 Y=5.000 Z=157.500 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=11 mesh=Cube material=M_Dark instance=27 center=X=8680.554 Y=5576.639 Z=564.828 extent=X=8.000 Y=206.000 Z=56.000 rotation=P=-0.000000 Y=-72.640943 R=-0.000000",
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=428 mesh=Cube material=M_White instance=103 center=X=8203.399 Y=5429.322 Z=105.995 extent=X=11.500 Y=11.000 Z=180.000 rotation=P=0.000000 Y=17.517079 R=-0.000000",
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=429 mesh=Cube material=M_White instance=104 center=X=8263.960 Y=5320.504 Z=-62.005 extent=X=17.000 Y=17.000 Z=12.000 rotation=P=0.000000 Y=17.517079 R=-0.000000",
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=434 mesh=Cube material=M_White instance=109 center=X=8137.899 Y=5407.600 Z=380.995 extent=X=3.250 Y=3.250 Z=61.000 rotation=P=0.000000 Y=17.517079 R=-0.000000",
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=438 mesh=Cube material=M_White instance=113 center=X=8388.849 Y=5487.549 Z=99.828 extent=X=11.500 Y=11.000 Z=180.000 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=439 mesh=Cube material=M_White instance=114 center=X=8401.387 Y=5363.647 Z=-68.172 extent=X=17.000 Y=17.000 Z=12.000 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=442 mesh=Cube material=M_White instance=117 center=X=8455.004 Y=5507.181 Z=374.828 extent=X=3.250 Y=3.250 Z=61.000 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=443 mesh=Cube material=M_White instance=118 center=X=8567.630 Y=5542.388 Z=374.828 extent=X=3.250 Y=3.250 Z=61.000 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=444 mesh=Cube material=M_White instance=119 center=X=8680.255 Y=5577.594 Z=374.828 extent=X=3.250 Y=3.250 Z=61.000 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=445 mesh=Cube material=M_White instance=120 center=X=8792.881 Y=5612.800 Z=374.828 extent=X=3.250 Y=3.250 Z=61.000 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=447 mesh=Cube material=M_White instance=122 center=X=8679.957 Y=5578.548 Z=312.828 extent=X=300.000 Y=4.500 Z=4.000 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:430][  0]LogTemp: Display: VROOM-PIT-HAZARD index=448 mesh=Cube material=M_White instance=123 center=X=8679.957 Y=5578.548 Z=436.828 extent=X=300.000 Y=4.500 Z=4.000 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:431][  0]LogTemp: Display: VROOM-PIT-HAZARD index=911 mesh=Cube material=M_Red instance=8 center=X=8723.518 Y=5439.198 Z=295.828 extent=X=360.000 Y=4.500 Z=12.500 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:431][  0]LogTemp: Display: VROOM-PIT-HAZARD index=912 mesh=Cube material=M_Red instance=9 center=X=8682.046 Y=5571.867 Z=489.828 extent=X=397.500 Y=9.000 Z=19.000 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:431][  0]LogTemp: Display: VROOM-PIT-HAZARD index=1047 mesh=Cube material=M_Metal instance=56 center=X=8245.148 Y=5380.106 Z=265.995 extent=X=65.622 Y=3.250 Z=3.250 rotation=P=-17.744672 Y=107.517079 R=-24.044416",
+        "[2026.10.04-16.38.28:431][  0]LogTemp: Display: VROOM-PIT-HAZARD index=1055 mesh=Cube material=M_Metal instance=78 center=X=8382.740 Y=5423.300 Z=259.828 extent=X=65.622 Y=3.250 Z=3.250 rotation=P=-17.744672 Y=107.359057 R=-23.977018",
+        "[2026.10.04-16.38.28:431][  0]LogTemp: Display: VROOM-PIT-HAZARD index=1057 mesh=Cube material=M_Metal instance=80 center=X=8698.455 Y=5519.372 Z=296.828 extent=X=357.500 Y=82.500 Z=6.000 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:431][  0]LogTemp: Display: VROOM-PIT-HAZARD index=1058 mesh=Cube material=M_Metal instance=86 center=X=8683.836 Y=5566.140 Z=514.828 extent=X=200.000 Y=3.250 Z=3.250 rotation=P=0.000000 Y=-162.640943 R=-0.000000",
+        "[2026.10.04-16.38.28:431][  0]LogTemp: Display: VROOM-PIT-HAZARD index=1059 mesh=Cube material=M_Metal instance=87 center=X=8683.836 Y=5566.140 Z=614.828 extent=X=200.000 Y=3.250 Z=3.250 rotation=P=0.000000 Y=-162.640943 R=-0.000000",
+        "[2026.10.04-16.38.28:431][  0]LogTemp: Display: VROOM-PIT-HAZARD index=1061 mesh=Cube material=M_Metal instance=89 center=X=8492.945 Y=5506.469 Z=564.828 extent=X=50.000 Y=3.250 Z=3.250 rotation=P=90.000000 Y=0.000000 R=0.000000",
+        "[2026.10.04-16.38.28:431][  0]LogTemp: Display: VROOM-PIT-HAZARD index=1062 mesh=Cube material=M_Metal instance=90 center=X=8551.703 Y=5536.361 Z=517.328 extent=X=32.500 Y=3.250 Z=3.250 rotation=P=90.000000 Y=0.000000 R=0.000000",
+        "[2026.10.04-16.38.28:431][  0]LogTemp: Display: VROOM-PIT-HAZARD index=1063 mesh=Cube material=M_Metal instance=91 center=X=8809.405 Y=5616.918 Z=517.328 extent=X=32.500 Y=3.250 Z=3.250 rotation=P=90.000000 Y=0.000000 R=0.000000",
+        "[2026.10.04-16.38.28:431][  0]LogTemp: Display: VROOM-PIT-HAZARD index=1895 mesh=Cylinder material=M_Metal instance=5 center=X=8263.960 Y=5320.504 Z=110.995 extent=X=5.500 Y=5.500 Z=185.000 rotation=P=0.000000 Y=0.000000 R=-0.000000",
+        "[2026.10.04-16.38.28:431][  0]LogTemp: Display: VROOM-PIT-HAZARD index=1896 mesh=Cylinder material=M_Metal instance=6 center=X=8401.387 Y=5363.647 Z=104.828 extent=X=5.500 Y=5.500 Z=185.000 rotation=P=0.000000 Y=0.000000 R=-0.000000",
+        "[2026.10.04-16.38.28:432][  0]LogTemp: Display: VROOM-PIT-HAZARD index=2042 mesh=Cube material=M_CockpitSlate instance=3 center=X=8678.615 Y=5582.843 Z=374.828 extent=X=295.000 Y=2.500 Z=60.000 rotation=P=0.000000 Y=17.359057 R=-0.000000",
+        "[2026.10.04-16.38.28:730][  1]LogTemp: Display: VROOM: Startup cover released after HUD presentation frame=1",
+        "[2026.10.04-16.38.28:878][  6]LogTemp: Display: VROOM: Start lights columns=5 raceClock=0.008 signal=2",
+        "[2026.10.04-16.38.28:879][  6]LogTemp: Display: VROOM: Start beep signal=2 frequency=1320 duration=0.42 raceClock=0.033",
+        "[2026.10.04-16.38.29:245][ 17]LogTemp: Display: VROOM: Start lights columns=0 raceClock=0.400 signal=3",
+        "[2026.10.04-16.38.35:872][215]LogTemp: Display: VROOM: Derby repaired at completed pit service",
+        "[2026.10.04-16.38.38:069][273]LogTemp: Display: VROOM-PIT stationary=1 completed=1 servicing=0 fuel=0.9997 tyres=2048.0 speed=6.83 s=108.75 clock=9.03 opponentProgress=442.52 damage=0.000"
+      ]
+    },
+    {
+      "name": "collision-rub",
+      "status": "PASS",
+      "exit": 0,
+      "offscreen": false,
+      "foreground": true,
+      "capture": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-collision-rub-183859/capture.png",
+      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-collision-rub-183859/runtime.log",
+      "checks": [
+        "VROOM: Verification PASS scenario=rub contacts=1 respawns=0 visibilityErrors=0"
+      ],
+      "mechanic_log": [
+        "[2026.10.04-16.39.09:239][  1]LogTemp: Display: VROOM: Startup cover released after HUD presentation frame=1",
+        "[2026.10.04-16.39.09:374][  6]LogTemp: Display: VROOM: Start lights columns=5 raceClock=0.008 signal=2",
+        "[2026.10.04-16.39.09:375][  6]LogTemp: Display: VROOM: Start beep signal=2 frequency=1320 duration=0.42 raceClock=0.033",
+        "[2026.10.04-16.39.09:440][  8]LogTemp: Display: VROOM: Derby rival=0 damage=0.007 shove=0.37",
+        "[2026.10.04-16.39.09:440][  8]LogTemp: Display: VROOM: Derby contact zone=0 damage=0.007 rival=0",
+        "[2026.10.04-16.39.09:440][  8]LogTemp: Display: VROOM: Contact kind=3 relative=11.39 km/h speedAfter=123.73 km/h controlledHop=1 face=0",
+        "[2026.10.04-16.39.09:917][ 15]LogTemp: Display: VROOM: Start lights columns=0 raceClock=0.400 signal=3"
+      ]
+    },
+    {
+      "name": "start-sequence",
+      "status": "PASS",
+      "exit": 0,
+      "offscreen": false,
+      "foreground": true,
+      "capture": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-start-sequence-183915/capture.png",
+      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-start-sequence-183915/runtime.log",
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=1 respawns=0 visibilityErrors=0"
+      ],
+      "mechanic_log": [
+        "[2026.10.04-16.39.33:622][  1]LogTemp: Display: VROOM: Startup cover released after HUD presentation frame=1",
+        "[2026.10.04-16.39.33:828][  6]LogTemp: Display: VROOM: Start lights columns=2 raceClock=-2.992 signal=0",
+        "[2026.10.04-16.39.33:828][  6]LogTemp: Display: VROOM: Start beep signal=0 frequency=880 duration=0.18 raceClock=-2.967",
+        "[2026.10.04-16.39.34:795][ 35]LogTemp: Display: VROOM: Start lights columns=4 raceClock=-2.000 signal=1",
+        "[2026.10.04-16.39.34:795][ 35]LogTemp: Display: VROOM: Start beep signal=1 frequency=880 duration=0.18 raceClock=-2.000",
+        "[2026.10.04-16.39.37:025][ 93]LogTemp: Display: VROOM: Start lights columns=5 raceClock=0.000 signal=2",
+        "[2026.10.04-16.39.37:026][ 93]LogTemp: Display: VROOM: Start beep signal=2 frequency=1320 duration=0.42 raceClock=0.008",
+        "[2026.10.04-16.39.37:425][105]LogTemp: Display: VROOM: Start lights columns=0 raceClock=0.400 signal=3",
+        "[2026.10.04-16.39.39:159][157]LogTemp: Display: VROOM: Derby rival=1 damage=0.118 shove=-2.94",
+        "[2026.10.04-16.39.39:160][157]LogTemp: Display: VROOM: Derby contact zone=0 damage=0.118 rival=1",
+        "[2026.10.04-16.39.39:160][157]LogTemp: Display: VROOM: Contact kind=1 relative=47.25 km/h speedAfter=111.88 km/h controlledHop=0 face=0",
+        "[2026.10.04-16.39.40:026][183]LogTemp: Display: VROOM: Start integration PASS stationary=1 raceClock=3.01 progress=88.39"
+      ]
+    },
+    {
+      "name": "drift-straight",
+      "status": "PASS",
+      "exit": 0,
+      "offscreen": false,
+      "foreground": true,
+      "capture": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-drift-straight-183550/capture.png",
+      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-drift-straight-183550/runtime.log",
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "mechanic_log": [
+        "[2026.10.04-16.36.05:582][  1]LogTemp: Display: VROOM: Startup cover released after HUD presentation frame=1",
+        "[2026.10.04-16.36.05:721][  6]LogTemp: Display: VROOM: Start lights columns=5 raceClock=0.008 signal=2",
+        "[2026.10.04-16.36.05:722][  6]LogTemp: Display: VROOM: Start beep signal=2 frequency=1320 duration=0.42 raceClock=0.033",
+        "[2026.10.04-16.36.06:088][ 17]LogTemp: Display: VROOM: Start lights columns=0 raceClock=0.400 signal=3",
+        "[2026.10.04-16.36.09:194][ 99]LogTemp: Display: VROOM: Drift feedback PASS marks=0 smoke=0 boost=0",
+        "[2026.10.04-16.36.10:994][153]LogTemp: Display: VROOM: Kart drift PASS scenario=straight peak=0 released=0 expected=0"
+      ]
+    },
+    {
+      "name": "traffic-overtake",
+      "status": "PASS",
+      "exit": 0,
+      "offscreen": false,
+      "foreground": true,
+      "capture": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-traffic-overtake-183641/capture.png",
+      "log": "/Users/david/Library/Containers/com.YourCompany.Vroom/Data/Documents/VroomVerification/20261004-kart-traffic-overtake-183641/runtime.log",
+      "checks": [
+        "VROOM: Verification PASS scenario= contacts=0 respawns=0 visibilityErrors=0"
+      ],
+      "mechanic_log": [
+        "[2026.10.04-16.36.50:235][  1]LogTemp: Display: VROOM: Startup cover released after HUD presentation frame=1",
+        "[2026.10.04-16.36.50:343][  5]LogTemp: Display: VROOM: Start lights columns=5 raceClock=0.008 signal=2",
+        "[2026.10.04-16.36.50:343][  5]LogTemp: Display: VROOM: Start beep signal=2 frequency=1320 duration=0.42 raceClock=0.033",
+        "[2026.10.04-16.36.50:710][ 16]LogTemp: Display: VROOM: Start lights columns=0 raceClock=0.400 signal=3",
+        "[2026.10.04-16.37.05:498][453]LogTemp: Display: VROOM: Traffic overtake PASS committed=1 braked=1 alongside=1 clear=1 completed=1"
+      ]
+    }
+  ],
+  "portable_suites": "34/34 PASS; rival eligibility assertions rerun PASS",
+  "performance_retested": false,
+  "assets_regenerated": false,
+  "limitations": [
+    "No new FPS profile or six-circuit soak requested.",
+    "No physical gamepad test."
+  ],
+  "package_data_sha256": {
+    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.pak": "f0191d8308f0c2342919601b6e84c529303b688a9ce6f674889f1cf2b7ef226f",
+    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.ucas": "e97e5454e1d4758b9696aff1aecd9012e67be9680e17c6ddf1d44e36560166e8",
+    "Contents/UE/Vroom/Content/Paks/Vroom-Mac.utoc": "12cb55eb1526d4827def3eb67733caf24a7d74df504411402ca85768d930df4c",
+    "Contents/UE/Vroom/Content/Paks/global.ucas": "8104ce6cf21149a30750afa3b4b759f3a55fa365e673cfd7afab14ad261c762c",
+    "Contents/UE/Vroom/Content/Paks/global.utoc": "73fdacd01d37a492d71f2bc56eadb388c048394138852ea617f017c69886f0dc",
+    "Contents/UE/Vroom/Content/Data/tracks.json": "4bb70d72a523399950ea21bb1649e76e071722a52e45da9f5004806d9e10d83b",
+    "Contents/UE/Vroom/Content/Data/amiga_sound.bin": "dceb608931b6368917db94a96660634fbb3fc8142e7f8996c0a50fda5a10ad03",
+    "Contents/UE/Vroom/Content/Data/gloves.json": "f342faa13e3c64a1883f2b2683ccc6b3e43edf2a565dc2a1cde2c7b06ea68908",
+    "Contents/UE/Vroom/Content/Data/hud/map_suede.png": "fe0ed4c640f468c3412bf13803c105663c6816217ce06f47a16cca3ea84bced0",
+    "Contents/UE/Vroom/Content/Data/hud/banner_france.png": "36aacabfed258c505dbe7d8d86bcba138f4484a2119da53fe528a805daada824",
+    "Contents/UE/Vroom/Content/Data/hud/banner_royaume-uni.png": "60672dce911dbf26cdd5e657aa805cbcb2a36f1500039615f4652d74ad7fbbca",
+    "Contents/UE/Vroom/Content/Data/hud/title_royaume-uni.png": "ef7dd940ed05cd151607173327cb91f2fb4534367df7944b06ffc755f5d86dea",
+    "Contents/UE/Vroom/Content/Data/hud/car_green.png": "cf57d07031dbfd061fe5756d7cac64a807d1f014d457aeab295b7615e80493ce",
+    "Contents/UE/Vroom/Content/Data/hud/banner_autriche.png": "b6e5620d3994ac77a3a4fa48ad470dcdc926a2c7b2bed8f4155f2beb0e3bd082",
+    "Contents/UE/Vroom/Content/Data/hud/map_royaume-uni.png": "476d9f3595eaace29869b29a519209bd0e86851e003663efafe46ff6b452db88",
+    "Contents/UE/Vroom/Content/Data/hud/banner_suede.png": "04311980d70a98b5d5994dc5afd9135c9e28bbd8f7e16ec15fbe8414f53ecf2e",
+    "Contents/UE/Vroom/Content/Data/hud/title_suede.png": "2a8873414ec2ec7d99f952c095b8a6772bc55f69a441636a6470ba33ed5d44f6",
+    "Contents/UE/Vroom/Content/Data/hud/title_france.png": "3f3f88d7edd7f4a47634617b3bfcbf2f7e47ea065d6e8e7401e3ef9c193969ee",
+    "Contents/UE/Vroom/Content/Data/hud/map_france.png": "a2501e3a838e952e0a845630b4e75f22ecfbcaacb3a9711e5252e308e61a5d88",
+    "Contents/UE/Vroom/Content/Data/hud/map_japon.png": "39df0b96ce5c8a74c468f8195be023aa0531b0194870f6063e348217e67fde41",
+    "Contents/UE/Vroom/Content/Data/hud/banner_usa.png": "9cb0bb5f22c3517b7c0cc086a2d56b30330ef901d4d553ab4ed1ff0245297a16",
+    "Contents/UE/Vroom/Content/Data/hud/car_red.png": "58f0ee539ef0dd162c82383b1baedfbf5302370e140f18829e900f8d688d8154",
+    "Contents/UE/Vroom/Content/Data/hud/map_usa.png": "45e814c5f13c88c7d005be1a1a772733c5662d87e1077ecd0bec7a4816d5d9f6",
+    "Contents/UE/Vroom/Content/Data/hud/title_autriche.png": "53e0ea74b8dcc1714df9cf25a84d8861a9cd2435561b8a1f09c0b00d43e05b7d",
+    "Contents/UE/Vroom/Content/Data/hud/banner_japon.png": "1d95a9dbec380b2e511292e422cf07068b1d9e21be1cb60027fbf6724e0cfa50",
+    "Contents/UE/Vroom/Content/Data/hud/map_autriche.png": "5f8986eedcae702ac599f96e5d70232ab91c65be5e0fba19e63202d6ea834dc1",
+    "Contents/UE/Vroom/Content/Data/hud/title_japon.png": "ceebfd2761d4787f04a2660278dc1834845c3a816b3c12e0d58fc9ebeed3fd0e",
+    "Contents/UE/Vroom/Content/Data/hud/title_usa.png": "6241a511b0a6ee07f27328b029720a7f8e4846121e97c0e16e2043c53467b1be"
+  }
+}

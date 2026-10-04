@@ -1,16 +1,20 @@
-# Jouer à Vroom 0.34
+# Jouer à Vroom 0.35
 
 Cette version propose trois formats de course, des commandes configurables et des records locaux. Les règles ajoutées sont des adaptations du prototype inspiré de Vroom ; elles ne constituent pas une restitution intégrale des règles Amiga.
 
 ## Lancer la version installée
 
-Sur le Mac, ouvrir **`~/Applications/Vroom.app`** ou double-cliquer **`~/Desktop/Vroom.command`**. Ces deux entrées utilisent la version explicitement installée après validation. Compiler une nouvelle version ne remplace plus automatiquement celle à laquelle on joue.
+La nouvelle version Mac se lance par **`~/Desktop/Vroom 0.35.app`** ou **`~/Applications/Vroom 0.35.app`**. Elle a été vérifiée par des essais fonctionnels ciblés et garde un rapport distinct des anciennes mesures de cadence.
+
+Pour revenir à la 0.34 sur le Mac, ouvrir **`~/Applications/Vroom.app`** ou double-cliquer **`~/Desktop/Vroom.command`**. Ces deux entrées utilisent la version explicitement installée après validation. Compiler une nouvelle version ne remplace plus automatiquement celle à laquelle on joue.
 
 Le menu se parcourt avec la souris, les flèches ou la croix directionnelle d'une manette. Entrée ou **A** valide l'élément souligné ; Échap ou **B** revient en arrière. Les noms A/B/X/Y employés ici suivent la disposition Xbox reconnue par Unreal. Les correspondances et la détection d'une manette physique restent à vérifier sur le matériel utilisé ; la présence de ces commandes dans le programme ne signifie pas qu'un essai complet avec chaque manette a été réalisé.
 
 Choisir un mode, une difficulté et un circuit, puis **Rouler**. Les touches F1 à F6 sélectionnent directement les six circuits ; sur certains claviers Mac, maintenir `fn` pour accéder aux touches de fonction. Les pages **Graphismes** et **Commandes et son** sont accessibles depuis le menu. En course, les raccourcis correspondants sont O/F7 et F8.
 
 L'écran **PRÉPARATION DU CIRCUIT** peut apparaître au chargement, au début d'une séance et après les graphismes. Le jeu prépare alors le rendu de la piste et de l'interface ; sa durée dépend des travaux à terminer. Le chrono reste arrêté et les commandes attendent la fin de cette préparation.
+
+Sur le PC, le raccourci bureau **Vroom** lance maintenant la **0.35** via son exécutable natif. L’ancienne 0.34 et son raccourci sauvegardé restent disponibles pour retour arrière. Le dossier de jeu conserve ses fichiers ; les sauvegardes utilisateur restent séparées.
 
 ## Les trois modes
 
@@ -87,11 +91,11 @@ Dans la page des commandes, Entrée lance la saisie d'une touche lorsque la sél
 
 **Graphismes** propose Performance, Équilibré, Élevé, Ultra et le nouveau **Photoréalisme**. Performance conserve l’objectif de **60 images/s**. Photoréalisme privilégie l’éclairage Lumen, les reflets et les ombres proches des arbres, avec TSR à 80 % et une cible de **30 images/s sur Mac**. Revenir à un autre profil rétablit le plafond normal de 60 images/s.
 
-Le package installé a réussi les huit mesures en Photoréalisme, couvrant les sorties 1440 × 900 et 2560 × 1664 et les six circuits complets : **29,996–30,000 images/s**, avec un maximum de **39,573 ms par image**, après préparation. Ces résultats à 30 images/s ne valident pas la cible de 60 images/s de Performance sur ce package. Le nom Photoréalisme ne garantit pas une scène entièrement photoréaliste. Choisir le profil selon la priorité souhaitée entre précision de l’éclairage et cadence de conduite ; le [bilan 0.34](FINALISATION_034.md) conserve les mesures et les échecs intermédiaires.
+Le package **0.34 conservé** a réussi les huit mesures en Photoréalisme, couvrant les sorties 1440 × 900 et 2560 × 1664 et les six circuits complets : **29,996–30,000 images/s**, avec un maximum de **39,573 ms par image**, après préparation. Ces résultats à 30 images/s ne valident pas la cible de 60 images/s de Performance sur ce package. Le nom Photoréalisme ne garantit pas une scène entièrement photoréaliste. Choisir le profil selon la priorité souhaitée entre précision de l’éclairage et cadence de conduite ; le [bilan 0.34](FINALISATION_034.md) conserve les mesures et les échecs intermédiaires.
 
 ## Déraper, passer au stand et récupérer après un choc
 
-À plus d’environ **44 km/h** sur la route, appuyer sur **Maj** ou **LB/RB** en braquant dans le sens du virage. Garder le bouton enfoncé, puis **contre-braquer modérément** pour tenir la glisse. Au clavier, alterner de brèves pressions sur la direction opposée et de courts relâchements ; à la manette, doser le stick. Le retour à l’écran indique la charge réellement gagnée par ce contrôle.
+À plus d’environ **44 km/h** sur la route, appuyer sur **Maj** ou **LB/RB** en braquant dans le sens du virage. Garder le bouton enfoncé, puis **contre-braquer modérément** pour tenir la glisse. Au clavier, la direction opposée peut maintenant être maintenue ; des corrections dosées chargent plus vite. À la manette, doser le stick. Le retour à l’écran indique la charge réellement gagnée par ce contrôle.
 
 La glisse gagne maintenant **trois niveaux**, visibles sur la barre et dans les étincelles :
 
@@ -162,4 +166,10 @@ La **prise du pouce de la 0.34 est approuvée visuellement par David**, avec le 
 
 Les mesures historiques du package Mac 0.30, datées du **13 septembre 2026**, restent disponibles : 31 cas, huit profils, six circuits complets et 21 contrôles portables. Le profil Performance à 70 % interne atteignait environ 59,98–59,99 images/s sur le Mac Apple M5 24 Go, avec un maximum mesuré de 22,83 ms par image. Ces mesures sous verrouillage du Mac ne certifient ni la version 0.33 ni une session de jeu interactive.
 
-Les essais et mesures réellement effectués sont consignés dans [VALIDATION.md](VALIDATION.md). Une vérification d'actions et de rectangles ne remplace pas un essai matériel de manette ou une session de jeu complète avec chaque périphérique. **Le build Windows et l'activation DLSS sur une carte NVIDIA restent non validés.** Le Mac utilise Metal et ne propose pas le DLSS. Les circuits et leurs décors restent des interprétations ; le prototype ne revendique pas une copie intégrale de Vroom.
+Les essais et mesures réellement effectués sont consignés dans [VALIDATION.md](VALIDATION.md). Une vérification d'actions et de rectangles ne remplace pas un essai matériel de manette ou une session de jeu complète avec chaque périphérique. **La 0.35 Windows passe onze contrôles natifs visibles sur RTX 5060 Laptop ; l’activation DLSS reste non validée pour cette version.** Le Mac utilise Metal et ne propose pas le DLSS. Les circuits et leurs décors restent des interprétations ; le prototype ne revendique pas une copie intégrale de Vroom.
+
+## Carrosserie et contacts — 0.35
+
+Les chocs marquent progressivement l’avant, l’arrière et les côtés. L’aileron avant se déforme ; les adversaires encaissent aussi les coups et une poussée latérale. Un indicateur de carrosserie apparaît en bas à gauche après un dommage. La voiture peut tirer légèrement du côté touché et perdre de l’adhérence, tout en restant conduisible. Après un gros accident, la remise en piste apporte une réparation de secours ; terminer un service au stand remet la carrosserie à neuf.
+
+Le drift de la 0.35 se déclenche uniquement dans une vraie courbe, avec un braquage dans son sens. Une ligne droite ne déclenche ni bond de drift ni charge de turbo. À la sortie du virage, une fenêtre de 0,18 s permet de relâcher et de conserver le bonus gagné ; maintenir le bouton au-delà interrompt la glisse sans turbo automatique.

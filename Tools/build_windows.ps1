@@ -143,7 +143,10 @@ try {
             $SourceFiles += @{ path = 'Vroom.uproject'; sha256 = (Get-FileHash -LiteralPath $ProjectFile -Algorithm SHA256).Hash.ToLowerInvariant() }
             $PackageRoot = $Native[0].Split('\')[0]
             $PackageDirectory = Join-Path $ArchiveDirectory $PackageRoot
-            $Launcher = "@echo off`r`nsetlocal`r`nstart `"`" /wait `"%~dp0Vroom.exe`" -NoSplash -SaveToUserDir -d3d12 -windowed -ResX=1920 -ResY=1080`r`nexit /b %errorlevel%`r`n"
+            # Use the same native entry point as run_windows.ps1 and validation.
+            # The small optional UE bootstrap can be rejected by app control
+            # even when the compiled game itself is accepted by Windows.
+            $Launcher = "@echo off`r`nsetlocal`r`nstart `"`" /D `"%~dp0Vroom\Binaries\Win64`" /wait `"%~dp0Vroom\Binaries\Win64\$NativeName`" -NoSplash -SaveToUserDir -d3d12 -windowed -ResX=1920 -ResY=1080`r`nexit /b %errorlevel%`r`n"
             [IO.File]::WriteAllText((Join-Path $PackageDirectory 'Jouer.cmd'), $Launcher, [Text.Encoding]::ASCII)
             $Readme = @'
 VROOM - WINDOWS X64
