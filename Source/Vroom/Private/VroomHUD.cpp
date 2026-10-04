@@ -616,6 +616,14 @@ void AVroomHUD::DrawHUD()
     }
 
     // Lap timing remains useful in free practice, outside the original band.
+    const double BodyDamage = Car->Drive.Damage.State.Total();
+    if (BodyDamage > .005)
+    {
+        const FLinearColor Colour = BodyDamage > .4 ? RacingRed : FLinearColor(.97f, .73f, .32f, 1);
+        Text(FString::Printf(TEXT("CARROSSERIE  %d %%"), FMath::RoundToInt((1 - BodyDamage) * 100)),
+            24, H - 162, 12, Colour);
+        Fill(24, H - 141, 150, 4, static_cast<float>(1 - BodyDamage), Colour);
+    }
     Text(LapTime(FMath::Max(0.0, Circuit->RaceClock - Car->LapStart)), 24, H - 65, 23);
     const double Best=Record.Best;
     Text(Best>0?FString::Printf(TEXT("RECORD  %s"),*LapTime(Best)):TEXT("PREMIER TOUR"),24,H-35,12,Muted);

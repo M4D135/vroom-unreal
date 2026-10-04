@@ -13,7 +13,7 @@ struct Driver {
     Vroom::DriveModel Model;
     double Filtered = 0, MaxLateral = 0, MaxYawAcceleration = 0, PreviousYaw = 0, PreviousYawRate = 0;
     explicit Driver(double speed = 40) { Model.State.SpeedMps = speed; Model.State.Gear = 4; }
-    void Run(double seconds, double steer, bool drift, double curvature = 0, double filterRate = 0,
+    void Run(double seconds, double steer, bool drift, double curvature = .003, double filterRate = 0,
              double cadence = 120, double halfWidth = 4.75, double throttle = .6, double brake = 0) {
         const double dt = 1.0 / cadence;
         for (int frame = 0; frame < std::lround(seconds * cadence); ++frame) {
@@ -33,14 +33,14 @@ int main() {
     // Actual physical road width plus both conservative and current Car filters.
     for (double filter : {20.0, 45.0}) for (double sign : {-1.0, 1.0}) {
         Driver d;
-        d.Run(.3, .8 * sign, true, 0, filter);
+        d.Run(.3, .8 * sign, true, .003 * sign, filter);
         Check(d.Model.Drifting && d.Model.HopHeightM >= 0 && d.Model.DriftDirection == sign,
               "button and filtered steering arm the chosen slide on the physical road");
-        d.Run(1.3, -.45 * sign, true, 0, filter);
+        d.Run(1.3, -.45 * sign, true, .003 * sign, filter);
         Check(d.Model.DriftCharge >= 1 && d.Model.DriftControl > .9 && d.Model.DriftDirection == sign,
               "filtered countersteering charges tier two while preserving entry direction");
         Check(d.Model.VisualHeading() * sign > .18, "countersteering preserves the original visible slide angle");
-        d.Run(.10, 0, false, 0, filter);
+        d.Run(.10, 0, false, .003 * sign, filter);
         Check(d.Model.BoostTier == 2 && d.Model.BoostRemaining > .9 && d.Model.DriftDirection == 0,
               "clean release grants super boost and clears public drift direction");
         Check(d.MaxLateral < 4.5, "runtime drift sequence stays on the 4.75m half-width road");
@@ -51,35 +51,35 @@ int main() {
     }
     for (double cadence : {30.0, 60.0, 120.0}) {
         Driver basic;
-        basic.Run(.3, 1, true, 0, 0, cadence);
-        basic.Run(.7, -1, true, 0, 0, cadence);
-        basic.Run(1.0 / cadence, 0, false, 0, 0, cadence);
+        basic.Run(.3, 1, true, .003, 0, cadence);
+        basic.Run(.7, -1, true, .003, 0, cadence);
+        basic.Run(1.0 / cadence, 0, false, .003, 0, cadence);
         Check(basic.Model.BoostTier == 1, "timed full digital countersteer earns the basic tier without an analog stick");
 
         Driver keyboard;
-        keyboard.Run(.3, 1, true, 0, 20, cadence);
+        keyboard.Run(.3, 1, true, .003, 20, cadence);
         for (int pulse = 0; pulse < 8; ++pulse) {
-            keyboard.Run(.20, -1, true, 0, 20, cadence);
-            keyboard.Run(.10, 0, true, 0, 20, cadence);
+            keyboard.Run(.20, -1, true, .003, 20, cadence);
+            keyboard.Run(.10, 0, true, .003, 20, cadence);
         }
-        keyboard.Run(1.0 / cadence, 0, false, 0, 20, cadence);
+        keyboard.Run(1.0 / cadence, 0, false, .003, 20, cadence);
         Check(keyboard.Model.BoostTier == 3, "modulated keyboard countersteer can reach the expert tier at every cadence");
         Check(keyboard.MaxLateral < 4.5, "modulated keyboard drift stays on the physical road");
 
         Driver uncontrolled;
-        uncontrolled.Run(1.5, .8, true, 0, 0, cadence);
-        uncontrolled.Run(.1, 0, false, 0, 0, cadence);
+        uncontrolled.Run(1.5, .8, true, .003, 0, cadence);
+        uncontrolled.Run(.1, 0, false, .003, 0, cadence);
         Check(!uncontrolled.Model.Drifting && uncontrolled.Model.DriftCharge == 0 && uncontrolled.Model.BoostTier == 0,
               "holding the entry direction cannot farm a release boost");
         Driver excess;
-        excess.Run(.3, 1, true, 0, 0, cadence);
-        excess.Run(1.5, -1, true, 0, 0, cadence);
-        excess.Run(.1, 0, false, 0, 0, cadence);
-        Check(excess.Model.BoostTier == 0, "unmodulated opposite full lock eventually loses the slide and its charge");
+        excess.Run(.3, 1, true, .003, 0, cadence);
+        excess.Run(1.5, -1, true, .003, 0, cadence);
+        excess.Run(.1, 0, false, .003, 0, cadence);
+        Check(excess.Model.BoostTier >= 2, "sustained keyboard countersteer holds a usable slide and earns its charge");
         Driver early;
-        early.Run(.2, .8, true, 0, 0, cadence);
-        early.Run(.2, -.45, true, 0, 0, cadence);
-        early.Run(.1, 0, false, 0, 0, cadence);
+        early.Run(.2, .8, true, .003, 0, cadence);
+        early.Run(.2, -.45, true, .003, 0, cadence);
+        early.Run(.1, 0, false, .003, 0, cadence);
         Check(early.Model.BoostTier == 0, "an early release never produces an unearned boost");
     }
     Driver grace;
@@ -105,7 +105,7 @@ int main() {
         d.Model.State.LateralM = 0; d.Model.Fuel = 1;
         d.Run(.3, .8, true);
         Check(!d.Model.Drifting, "a cancelled slide does not restart while its button remains held");
-        d.Run(.3, 0, false); d.Run(.1, -.8, true);
+        d.Run(.3, 0, false); d.Run(.1, -.8, true, -.003);
         Check(d.Model.Drifting && d.Model.DriftDirection == -1 && d.Model.DriftCharge == 0,
               "releasing and rearming starts a fresh opposite slide without old charge");
     }
@@ -118,7 +118,7 @@ int main() {
     }
     Check(starts == 1, "rapid represses cannot repeatedly hop before the rearm delay");
     Driver braking;
-    braking.Run(.5, .8, false, 0, 0, 120, 4.75, .6, .7);
+    braking.Run(.5, .8, false, .003, 0, 120, 4.75, .6, .7);
     Check(!braking.Model.Drifting && braking.Model.HopHeightM == 0,
           "ordinary braking and cornering never engage the drift feature");
     for (bool boost : {false, true}) {
@@ -167,7 +167,7 @@ int main() {
     double expertMaxLateral = 0;
     for (double cadence : {30.0, 60.0, 120.0}) for (double filter : {20.0, 45.0})
         for (double speed : {30.0, 40.0, 50.0})
-            for (double curvature : {-.018, -.010, -.003, 0.0, .003, .010, .018}) {
+            for (double curvature : {-.018, -.010, -.003, .0015, .003, .010, .018}) {
         const double sign = curvature < 0 ? -1 : 1;
         Driver d(speed);
         d.Run(.3, .8 * sign, true, curvature, filter, cadence);
@@ -191,14 +191,14 @@ int main() {
     // Reproducible runtime input sequence: .3 s right +2.05 s countersteer,
     // then release. It leaves time to display the III cue before the release.
     Driver scripted;
-    scripted.Run(.3, .8, true, 0, 45);
-    scripted.Run(2.05, -.45, true, 0, 45);
+    scripted.Run(.3, .8, true, .003, 45);
+    scripted.Run(2.05, -.45, true, .003, 45);
     Check(scripted.Model.DriftChargeTier() == 3 && scripted.Model.DriftPerfectWindowRemaining > .08,
           "visible expert scenario reaches tier three before releasing");
     auto delayed = scripted;
-    scripted.Run(1.0 / 120, 0, false, 0, 45);
-    delayed.Run(.3, -.45, true, 0, 45);
-    delayed.Run(1.0 / 120, 0, false, 0, 45);
+    scripted.Run(1.0 / 120, 0, false, .003, 45);
+    delayed.Run(.3, -.45, true, .003, 45);
+    delayed.Run(1.0 / 120, 0, false, .003, 45);
     Check(scripted.Model.BoostPerfect && delayed.Model.BoostTier == 3 && !delayed.Model.BoostPerfect,
           "a late release keeps the earned third turbo but misses its timing bonus");
     Check(std::abs(scripted.Model.BoostRemaining - delayed.Model.BoostRemaining -
@@ -231,7 +231,7 @@ int main() {
     }
     Check(peakAssist > 25.9 && peakAssist < 26.1 && largestAssistStep < 3.3 && previousAssist == 0,
           "expert turbo reaches full power and fades out without a sudden acceleration cut");
-    scripted.Run(3, 0, false, 0, 45);
+    scripted.Run(3, 0, false, .003, 45);
     Check(scripted.Model.BoostTier == 0 && !scripted.Model.BoostPerfect && scripted.Model.BoostRemaining == 0,
           "all expert feedback clears naturally when the turbo expires");
 

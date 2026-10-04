@@ -6,11 +6,14 @@
 #include "VroomRaceRules.h"
 #include "VroomSession.h"
 #include "VroomTrackLayout.h"
+#include "VroomDamageModel.h"
 
 namespace Vroom
 {
 struct TrafficCar
 {
+    DamageModel Damage;
+    double ImpactLateralVelocity = 0;
     double Distance = 0, Lateral = 0, Speed = 0;
     double TargetLane = 0, LaneVelocity = 0, DecisionDelay = 0, DamageDelay = 0;
     // -2: no pass, -1: player, otherwise the stable traffic slot. A chosen
@@ -37,7 +40,7 @@ inline double TrafficGap(double Ahead, double Behind, double Length)
 }
 inline double TrafficPace(RaceDifficulty Difficulty)
 {
-    return Difficulty == RaceDifficulty::Easy ? .83 : Difficulty == RaceDifficulty::Hard ? 1.07 : .96;
+    return Difficulty == RaceDifficulty::Easy ? .90 : Difficulty == RaceDifficulty::Hard ? 1.05 : .98;
 }
 
 inline double PitAlong(double Distance, double Length)
@@ -70,12 +73,20 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
         const double Consistency = std::clamp(Pers.Consistency, 0.5, 1.4);
         Car.DecisionDelay = std::max(0.0, Car.DecisionDelay - Dt * Reaction);
         Car.DamageDelay = std::max(0.0, Car.DamageDelay - Dt);
+        Car.ImpactLateralVelocity *= std::exp(-Dt / .35);
         Car.OvertakeHold = std::max(0.0, Car.OvertakeHold - Dt);
 
         const double Along = PitAlong(Old.Distance, Length);
-        const double Grip = 0.65 + 0.35 * std::clamp(Old.TyreHealth / 2048.0, 0.0, 1.0);
-        const double Pace = TrafficPace(Difficulty) * std::clamp(Pers.Pace, 0.85, 1.12);
-        const double TopSpeed = (69.0 + (I % 5) * 1.5) * Pace * Grip;
+        const double Grip = (0.65 + 0.35 * std::clamp(Old.TyreHealth / 2048.0, 0.0, 1.0)) * Old.Damage.GripModifier();
+        double PackAssist = 0;
+        if (Player && Player->Speed > 12 && Player->Fuel > .12 && !Player->Pitting && !Player->PitCommitted
+            && !Player->PitExiting && std::abs(Player->Lateral) < HalfWidth)
+            PackAssist = std::clamp(TrafficGap(Player->Distance, Old.Distance, Length) / 300.0, -.02, .04);
+        const double Pace = TrafficPace(Difficulty) * std::clamp(Pers.Pace, .97, 1.03) * (1 + PackAssist);
+        const double TopSpeed = (92.0 + (I % 3) * 1.0) * Pace * Grip / std::sqrt(Old.Damage.DragModifier());
+        // Matches the player's launch and rolling acceleration without copying
+        // its instantaneous speed or position. Torque fades near maximum speed.
+        const double MotorAcceleration = 28.0 * std::max(.025, 1.0 - Old.Speed / TopSpeed);
         const double Brake = 18.0 * Grip;
         const double PlanningBrake = 11.5 * Grip / std::sqrt(Caution);
         // A distance-based braking envelope anticipates hairpins before they
@@ -90,7 +101,7 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
             Curves[Sample] = std::isfinite(RawCurve) ? RawCurve : 0.0;
             const double AbsCurve = std::abs(Curves[Sample]);
             const double CornerSpeed = std::min(TopSpeed,
-                std::clamp(std::sqrt(16.0 / std::max(AbsCurve, .001)), 14.0, 100.0) * Pace * Grip);
+                std::clamp(std::sqrt(22.0 / std::max(AbsCurve, .001)), 14.0, 100.0) * Pace * Grip);
             const double BrakeDistance = std::max(0.0, Lookahead[Sample] - 18.0 - Old.Speed * .18 / Reaction);
             Desired = std::min(Desired, std::sqrt(CornerSpeed * CornerSpeed + 2.0 * PlanningBrake * BrakeDistance));
             if (Sample <= 4 && AbsCurve > Peak) { Peak = AbsCurve; PeakSigned = Curves[Sample]; }
@@ -109,9 +120,10 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
         const double TyresForLap = Car.TyreWearPerMetre * Length * 1.15;
         const double ToEntry = Along <= 20.0 ? 102.0 - Along : Length - Along + 102.0;
         const double RequiredLaps = 1.0 + ToEntry / Length;
-        const bool NeedPit = (Car.Fuel < std::max(.18, FuelForLap * RequiredLaps)
+        const bool NeedBodyRepair = Car.Damage.State.Total() > .48;
+        const bool NeedPit = ((Car.Fuel < std::max(.18, FuelForLap * RequiredLaps)
             || Car.TyreHealth < std::max(420.0, TyresForLap * RequiredLaps))
-            && (Car.Fuel < .85 || Car.TyreHealth < 2048.0 * .85);
+            && (Car.Fuel < .85 || Car.TyreHealth < 2048.0 * .85)) || NeedBodyRepair;
         if (NeedPit && !Car.Pitting && !Car.PitExiting && (Along <= 20.0 || Along >= Length - 180.0))
             Car.PitCommitted = true;
         const double PitApproach = Along >= Length - 180.0 ? Along - Length : Along;
@@ -134,6 +146,8 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
                 Car.PitTimer = 0.0;
                 Car.Fuel = 1.0;
                 Car.TyreHealth = 2048.0;
+                Car.Damage.Repair();
+                Car.ImpactLateralVelocity = 0;
                 Car.PitCommitted = false;
                 Car.PitExiting = true;
             }
@@ -160,7 +174,7 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
             continue;
         }
 
-        if (Car.DamageDelay > 0) Desired *= .50;
+        if (Car.DamageDelay > 0) Desired *= 1 - .25 * std::clamp(Car.DamageDelay / 1.2, 0.0, 1.0);
         // Management is expressed as driving effort, never free resources.
         Desired *= 1.0 - std::clamp(1.0 - Pers.FuelManagement, 0.0, .3) * .12;
         if (K > .003) Desired *= 1.0 - std::clamp(1.0 - Pers.TyreManagement, 0.0, .3) * .16;
@@ -307,7 +321,7 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
             if (Ahead < Headway)
                 Desired = std::min(Desired, std::max(0.0, AheadSpeed + (Ahead - Headway) * .9));
         }
-        const double MaxDelta = (Desired < Old.Speed ? Brake : 5.0) * Dt;
+        const double MaxDelta = (Desired < Old.Speed ? Brake : MotorAcceleration) * Dt;
         Car.Speed = std::max(0.0, Old.Speed + std::clamp(Desired - Old.Speed, -MaxDelta, MaxDelta));
         if (Car.PitCommitted)
             Car.Speed = std::min(Car.Speed, std::max(0.0, 102.0 - PitApproach) / Dt);
@@ -326,7 +340,7 @@ void StepTraffic(std::vector<TrafficCar>& Cars, double Dt, double Length, double
         double LatMax = HalfWidth - 1.2;
         if (InPitWindow && (Car.PitCommitted || Car.PitExiting || Old.Lateral > 6.0 || Car.TargetLane > 6.0))
             LatMax = 14.5;
-        Car.Lateral = std::clamp(Old.Lateral + LaneStep, LatMin, LatMax);
+        Car.Lateral = std::clamp(Old.Lateral + LaneStep + Car.ImpactLateralVelocity * Dt, LatMin, LatMax);
         VisitOthers([&](const TrafficCar& Other, double)
         {
             const double Gap = TrafficGap(Other.Distance, Old.Distance, Length);

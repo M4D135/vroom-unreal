@@ -9,8 +9,10 @@ The same artwork supplies every platform:
 - Windows: `Build/Windows/Application.ico` (16, 24, 32, 48, 64, 128, 256 px).
   Unreal uses this path for newly packaged executable icons. Existing desktop
   shortcuts can also reference a separately installed copy of this ICO.
-- Mac: `Build/Mac/Application.icns` (up to 1024 px). Unreal packages this icon;
-  `Tools/install_mac.py` also embeds it in the desktop launcher bundle.
+- Mac: `Build/Mac/Application.icns` (up to 1024 px), embedded in the desktop
+  launcher by `Tools/install_mac.py`. Unreal 5.8 modern Xcode packaging reads
+  `Build/Mac/Resources/Assets.xcassets` instead; it is generated from the same
+  artwork with the ten macOS logical-size/scale combinations.
 - Linux: `Build/Linux/Vroom.png` (512 px), ready for the future desktop launcher.
   A Linux installation has not yet been validated.
 

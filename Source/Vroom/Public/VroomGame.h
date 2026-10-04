@@ -5,7 +5,7 @@
 // Version affichee dans le HUD et le journal : le seul temoin de build fiable.
 namespace Vroom
 {
-inline constexpr const TCHAR* AppVersion = TEXT("0.34");
+inline constexpr const TCHAR* AppVersion = TEXT("0.35");
 }
 #include "GameFramework/Pawn.h"
 #include "GameFramework/HUD.h"
@@ -104,7 +104,7 @@ public:
     Vroom::RaceDifficulty Difficulty = Vroom::RaceDifficulty::Normal;
     bool ReactiveTraffic = true, OpponentsVisible = true, ArcadeTraffic = false, TrafficPlayerActive = false;
     void ConfigureTraffic(bool Visible, bool Arcade, Vroom::RaceDifficulty Level);
-    void HitOpponent(int32 Index, double RelativeSpeed);
+    void HitOpponent(int32 Index, const Vroom::ContactResult& Hit);
     TArray<FVroomHazard> Hazards;
 private:
     TMap<FIntPoint, TArray<int32>> HazardCells;
@@ -285,6 +285,8 @@ public:
     bool TrafficTestAlongside = false, TrafficTestClear = true, TrafficTestCompleted = false;
     double PitTestOpponentStart = 0;
     int32 TestContacts = 0;
+    int32 TestDriftPeakTier = 0, TestDriftReleasedTier = 0;
+    double DriftTestDirection = 1;
     int32 TestRespawns = 0;
     int32 TestVisibilityErrors = 0;
     int32 TestControlledLandings = 0;

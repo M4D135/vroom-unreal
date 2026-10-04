@@ -117,11 +117,11 @@ inline StartBeep BeepFor(StartSignal Signal)
 {
     switch (Signal)
     {
-    // Two equal preparation calls, then a longer fifth above: a restrained
-    // arcade starting signal, not a claim about real F1 or the original PCM.
-    case StartSignal::Red: return {392.0, 0.24, 0.76};
-    case StartSignal::Orange: return {392.0, 0.24, 0.76};
-    case StartSignal::Green: return {588.0, 0.48, 1.0};
+    // Original electronic grid cue: two firm preparation calls and a longer
+    // higher launch signal. This is synthesis, not an official race recording.
+    case StartSignal::Red: return {880.0, 0.18, 0.85};
+    case StartSignal::Orange: return {880.0, 0.18, 0.85};
+    case StartSignal::Green: return {1320.0, 0.42, 1.0};
     default: return {};
     }
 }
@@ -148,8 +148,8 @@ struct StartToneVoice
     {
         if (Sample >= SampleCount) return 0;
         constexpr double Tau = 6.28318530717958647692;
-        const double Attack = std::clamp(Sample / 264.0, 0.0, 1.0); // 5.5 ms
-        const double Release = std::clamp((SampleCount - 1 - Sample) / 3360.0, 0.0, 1.0); // 70 ms
+        const double Attack = std::clamp(Sample / 120.0, 0.0, 1.0); // 2.5 ms
+        const double Release = std::clamp((SampleCount - 1 - Sample) / 1920.0, 0.0, 1.0); // 40 ms
         const auto Smooth = [](double X) { return X * X * (3.0 - 2.0 * X); };
         const double Age = double(Sample) / SampleRate;
         // A short resonant onset settles to a firm body, with no siren sweep
@@ -157,11 +157,10 @@ struct StartToneVoice
         // to one, so the voice is bounded by Beep.Volume without clipping.
         const double Body = .96 + .04 * std::max(0.0, 1.0 - Age / .055);
         const double S = std::sin(Phase), C = std::cos(Phase), S2 = S * S;
-        const double Fundamental = .50 * S;
-        const double Harmonics = .27 * (2.0 * S * C)
-            + .14 * (3.0 * S - 4.0 * S * S2)
-            + .065 * (4.0 * S * C * (1.0 - 2.0 * S2))
-            + .025 * (S * (5.0 - 20.0 * S2 + 16.0 * S2 * S2));
+        const double Fundamental = .54 * S;
+        const double Harmonics = .28 * (2.0 * S * C)
+            + .12 * (3.0 * S - 4.0 * S * S2)
+            + .06 * (4.0 * S * C * (1.0 - 2.0 * S2));
         const double Raw = Fundamental + Harmonics;
         // Gentle presence shaping: monotonic on [-1,1], fixes both endpoints,
         // and stays in [-1,1]. It adds body without a limiter or hard clipping.

@@ -111,6 +111,8 @@ REQUIRED_MARKERS = {
     'drift-feedback': ['Drift feedback PASS'],
     'drift-unskilled': ['Drift feedback PASS', 'Drift skill denied PASS'],
     'drift-expert': ['Drift feedback PASS', 'Expert drift PASS'],
+    'drift-straight': ['Drift feedback PASS', 'Kart drift PASS scenario=straight peak=0 released=0 expected=0'],
+    'drift-keyboard': ['Drift feedback PASS', 'Kart drift PASS scenario=keyboard peak=2 released=2 expected=2'],
     'traffic-overtake': ['Traffic overtake PASS'],
     'collision-rub': ['Controlled landing quality='],
     'options': ['Graphics preview PASS'],
@@ -532,6 +534,10 @@ def main():
         gate('drift-feedback', [] if 'Drift feedback PASS' in drift_log.read_text(errors='replace') else ['Missing drift feedback pass'])
         run('drift-unskilled', ['-VroomDriftTest', '-VroomDriftScenario=unskilled', '-VroomChaseCamera',
                                '-VroomStartDistance=350', '-VroomStartSpeed=40'], capture_after=1.45)
+        run('drift-straight', ['-VroomDriftTest', '-VroomDriftScenario=straight',
+                             '-VroomStartDistance=350', '-VroomStartSpeed=40'], seconds=5, capture_after=1.45)
+        run('drift-keyboard', ['-VroomDriftTest', '-VroomDriftScenario=keyboard',
+                             '-VroomStartSpeed=40'], seconds=5, capture_after=2.45)
         run('drift-expert', ['-VroomDriftTest', '-VroomDriftScenario=expert', '-VroomChaseCamera',
                             '-VroomStartDistance=350', '-VroomStartSpeed=40'], seconds=7, capture_after=2.75)
         for scenario in ['slow', 'crash', 'tyre', 'scenery', 'rub', 'rear']:

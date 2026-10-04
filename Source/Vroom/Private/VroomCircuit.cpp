@@ -1501,14 +1501,21 @@ void AVroomCircuit::ConfigureTraffic(bool Visible, bool Arcade, Vroom::RaceDiffi
     for (auto Mesh : OpponentMeshes) if (Mesh) Mesh->SetVisibility(Visible);
 }
 
-void AVroomCircuit::HitOpponent(int32 Index, double RelativeSpeed)
+void AVroomCircuit::HitOpponent(int32 Index, const Vroom::ContactResult& Hit)
 {
-    if (!ReactiveTraffic || !OpponentSpeeds.IsValidIndex(Index)) return;
+    if (!OpponentSpeeds.IsValidIndex(Index)) return;
+    const double RelativeSpeed = Hit.RelativeSpeedMps;
     OpponentSpeeds[Index] = FMath::Max(0.0, OpponentSpeeds[Index] - FMath::Clamp(RelativeSpeed * .35, 2.0, 15.0));
     if (Index < static_cast<int32>(Traffic.size()))
     {
         Traffic[Index].Speed = OpponentSpeeds[Index];
-        Traffic[Index].DamageDelay = FMath::Clamp(RelativeSpeed * .12, .5, 3.0);
+        Traffic[Index].DamageDelay = Hit.ControlledTyreHop ? .25 : FMath::Clamp(RelativeSpeed * .12, .5, 3.0);
+        auto& Rival = Traffic[Index];
+        Rival.Damage.ApplyImpact(Vroom::DamageModel::Opposite(Vroom::DamageModel::Zone(Hit.Face, Hit.ImpactSide)),
+            RelativeSpeed, Hit.ControlledTyreHop);
+        Rival.ImpactLateralVelocity = FMath::Clamp(Rival.ImpactLateralVelocity - Hit.LateralShoveMps * .65, -4.0, 4.0);
+        UE_LOG(LogTemp, Display, TEXT("VROOM: Derby rival=%d damage=%.3f shove=%.2f"),
+            Index, Rival.Damage.State.Total(), Rival.ImpactLateralVelocity);
     }
 }
 
@@ -1555,13 +1562,15 @@ void AVroomCircuit::AdvanceRace(float H)
             {
                 Agent.Distance = TrafficPlayer.Distance + 230 + I * 24;
                 Agent.Lateral = Agent.TargetLane = I % 2 ? 2.4 : -2.4;
-                Agent.Speed = FMath::Max(20.0, TrafficPlayer.Speed * .72);
+                Agent.Speed = FMath::Clamp(TrafficPlayer.Speed * .98, 25.0, 90.0);
                 Agent.Pitting = Agent.PitCommitted = Agent.PitExiting = false;
                 Agent.PitTimer = 0;
                 Agent.OvertakeTarget = -2;
                 Agent.OvertakeHold = Agent.LaneVelocity = Agent.DecisionDelay = 0;
                 Agent.Fuel = 1.0;
                 Agent.TyreHealth = 2048.0;
+                Agent.Damage.Reset();
+                Agent.DamageDelay = Agent.ImpactLateralVelocity = 0;
                 PreviousOpponentS[I] = Agent.Distance;
                 PreviousOpponentLanes[I] = Agent.Lateral;
                 OpponentRecycled[I] = true;
@@ -1659,8 +1668,17 @@ void AVroomCircuit::RenderOpponents(float Alpha)
         // The asphalt ribbon is four centimetres above the spline. Wheel
         // centres equal their radii, so lift only the visual car onto it.
         const FTransform Base(Facing, Position(Distance, Lane) + FVector(0, 0, 4));
+        FTransform Body = Base;
+        if (I < static_cast<int32>(Traffic.size()))
+        {
+            const auto& Damage = Traffic[I].Damage.State;
+            // Body groups share a mild crush; wheels retain their physical
+            // footprint. Rebuild from Base, never from last frame's transform.
+            Body.SetScale3D(FVector(1 - .08 * Damage.Front - .05 * Damage.Rear,
+                1 - .035 * FMath::Max(Damage.Left, Damage.Right), 1 - .035 * Damage.Total()));
+        }
         for (int32 Group = 0; Group < 3; ++Group)
-            NextOpponentTransforms[Group].Add(Base);
+            NextOpponentTransforms[Group].Add(Body);
         const auto& Wheels = OpponentWheelVisuals[I];
         const FQuat Steering(FVector::UpVector, OpponentWheelSteering[I]);
         const FQuat FrontRotation = Steering * FQuat(FVector::RightVector, Wheels.FrontRollRad);

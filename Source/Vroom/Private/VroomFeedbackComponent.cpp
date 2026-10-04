@@ -107,7 +107,9 @@ void UVroomFeedbackComponent::TickComponent(float Dt, ELevelTick Type, FActorCom
     {
         ReportedTest = true;
         const bool Unskilled = DriftScenario == TEXT("unskilled");
-        const bool Passed = SeenMarks && SeenSmoke && (SeenBoost != Unskilled) && Marks->GetMaterial(0) && Smoke->GetMaterial(0);
+        const bool Straight = DriftScenario == TEXT("straight");
+        const bool Passed = Straight ? !SeenMarks && !SeenSmoke && !SeenBoost
+            : SeenMarks && SeenSmoke && (SeenBoost != Unskilled) && Marks->GetMaterial(0) && Smoke->GetMaterial(0);
         UE_LOG(LogTemp, Display, TEXT("VROOM: Drift feedback %s marks=%d smoke=%d boost=%d"),
             Passed ? TEXT("PASS") : TEXT("FAIL"), SeenMarks, SeenSmoke, SeenBoost);
         if (Unskilled)
@@ -290,7 +292,7 @@ void UVroomFeedbackComponent::UpdateRaceSound()
         NoisePhase += (Noise - NoisePhase) * .12;
         CuePhase = FMath::Fmod(CuePhase + (Tier >= 3 ? 1760 : Tier == 2 ? 1320 : 880) * UE_TWO_PI / 48000, UE_TWO_PI);
         const double Effects = NoisePhase * Surface + Noise * ShiftEnvelope * .13
-            + std::sin(CuePhase) * CueEnvelope * .07 + StartTone.NextSample() * .45;
+            + std::sin(CuePhase) * CueEnvelope * .07 + StartTone.NextSample() * .58;
         ShiftEnvelope *= .9975; CueEnvelope *= .9994;
         Samples[Frame * 2] = int16(FMath::Clamp((Left + Effects) * 24000, -30000.0, 30000.0));
         Samples[Frame * 2 + 1] = int16(FMath::Clamp((Right + Effects) * 24000, -30000.0, 30000.0));

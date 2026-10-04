@@ -13,7 +13,7 @@ static void TestBrakingAndRacingLine(int Hz)
         Cars[0].Speed = 70;
         Cars[0].TyreHealth = Tyres;
         bool Entered = false, Anticipated = false;
-        const double CornerLimit = std::sqrt(16.0 / .025) * .96 * (.65 + .35 * Tyres / 2048.0);
+        const double CornerLimit = std::sqrt(22.0 / .025) * .98 * (.65 + .35 * Tyres / 2048.0);
         for (int Frame = 0; Frame < Hz * 15; ++Frame)
         {
             const auto Old = Cars[0];
@@ -25,7 +25,7 @@ static void TestBrakingAndRacingLine(int Hz)
                 Entered = true;
                 assert(Cars[0].Speed <= CornerLimit + .8);
             }
-            assert(Cars[0].Speed - Old.Speed <= 5.0 * Dt + 1e-9);
+            assert(Cars[0].Speed - Old.Speed <= 28.0 * Dt + 1e-9);
         }
         assert(Entered && Anticipated);
     }

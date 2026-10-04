@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include "VroomDamageModel.h"
 
 // Portable prototype, deliberately independent of Unreal's frame rate and physics.
 // Source-derived engine parameters and approximations are detailed in docs/DRIVING.md.
@@ -27,6 +28,9 @@ class DriveModel
 {
 public:
     DriveState State;
+    DamageModel Damage;
+    // Road-relative tyre velocity, separate from short collision impulses.
+    double LateralVelocityMps = 0;
     bool Automatic = true;
     // TIRUSE 2048..0 (vr2.asm). Fresh tyres raise the skid threshold (LIMCRI).
     double TyreHealth = 2048;
@@ -138,6 +142,7 @@ public:
     inline static constexpr double DriftEntrySpeedMps = 12.2;
     inline static constexpr double DriftEntryBrake = 0.34;
     inline static constexpr double DriftEntrySteer = 0.22;
+    inline static constexpr double DriftEntryCurvature = .0015;
     inline static constexpr double DriftChargeBoost01 = 0.42;
     inline static constexpr double DriftChargeBoost02 = 1.00;
     inline static constexpr double DriftChargeBoost03 = 1.80;
@@ -153,7 +158,6 @@ public:
     inline static constexpr double DriftBlendOutSeconds = 0.16;
     inline static constexpr double DriftSettleSeconds = 0.24;
     inline static constexpr double DriftControlGraceSeconds = 0.38;
-    inline static constexpr double DriftFullCounterLimitSeconds = 0.90;
     inline static constexpr double DriftRearmSeconds = 0.24;
     // Chassis yaw has inertia independently of the immediate lateral controls.
     // Keep room for the road tangent's own angular acceleration in a bend.
@@ -205,8 +209,9 @@ public:
         DriftCharge = DriftBlend = DriftTractionControl = 0;
         DriftDirection = 0;
         DriftSlideDirection = 0;
-        DriftControl = DriftAge = DriftLostControl = DriftFullCounter = DriftReleaseAge = DriftArmAge = 0;
+        DriftControl = DriftAge = DriftLostControl = DriftReleaseAge = DriftArmAge = 0;
         DriftPerfectWindowRemaining = 0;
+        DriftCornerGrace = 0;
         DriftHighestTier = 0;
         DriftNeedsRelease = true;
         BoostRemaining = BoostElapsed = 0;
@@ -222,6 +227,8 @@ public:
     void Reset()
     {
         State = DriveState{};
+        Damage.Reset();
+        LateralVelocityMps = 0;
         ShiftDelay = 0;
         ChassisSlip = 0;
         ChassisSlipRate = 0;
@@ -234,10 +241,11 @@ public:
         DriftCharge = 0;
         DriftDirection = 0;
         DriftSlideDirection = 0;
-        DriftControl = DriftAge = DriftLostControl = DriftFullCounter = DriftArmAge = 0;
+        DriftControl = DriftAge = DriftLostControl = DriftArmAge = 0;
         DriftPerfectWindowRemaining = 0;
         DriftHighestTier = 0;
         DriftReleaseAge = DriftRearmSeconds;
+        DriftCornerGrace = 0;
         DriftBlend = 0;
         DriftTractionControl = 0;
         DriftNeedsRelease = false;
@@ -314,11 +322,12 @@ private:
     double DriftBlend = 0;
     double DriftTractionControl = 0;
     bool DriftNeedsRelease = false;
-    double DriftAge = 0, DriftLostControl = 0, DriftFullCounter = 0;
+    double DriftAge = 0, DriftLostControl = 0;
     double DriftArmAge = 0;
     int DriftSlideDirection = 0;
     int DriftHighestTier = 0;
     double DriftReleaseAge = DriftRearmSeconds;
+    double DriftCornerGrace = 0;
     double BoostElapsed = 0;
 
     static double FiniteClamp(double value, double low, double high, double fallback)
@@ -336,6 +345,8 @@ private:
 
     void SanitizeState()
     {
+        Damage.Sanitize();
+        LateralVelocityMps = FiniteClamp(LateralVelocityMps, -30, 30, 0);
         State.SpeedMps = FiniteClamp(State.SpeedMps, 0, 120, 0);
         State.DistanceM = FiniteClamp(State.DistanceM, 0, 1e12, 0);
         State.LateralM = FiniteClamp(State.LateralM, -10000, 10000, 0);
@@ -395,11 +406,11 @@ private:
         const double responseTime = returning ? SteeringReturnSeconds : SteeringResponseSeconds * speedScaled;
         State.Steering += (input.Steer - State.Steering) * (1.0 - std::exp(-h / responseTime));
         const double speed = State.SpeedMps;
-        const double grip = TyreGrip();
+        const double grip = TyreGrip() * Damage.GripModifier();
 
         // Lock the initial slide, then reward balancing it with countersteer.
-        // A short neutral crossing is allowed; holding either full lock forever
-        // cannot farm charge. Keyboard pulses have time to cross that window.
+        // A short neutral crossing is allowed. Full opposite lock charges more
+        // slowly than precise control; the entry direction never earns charge.
         const double edgeBlend = std::clamp((std::abs(State.LateralM) + 0.8 - roadHalfWidth) / 1.6, 0.0, 1.0);
         const bool driftCommand = input.Drift;
         const bool driftRoadValid = std::abs(State.LateralM) <= roadHalfWidth - 0.25 && !airborne;
@@ -412,11 +423,16 @@ private:
         }
         if (Drifting)
         {
+            const bool inCorner = std::abs(curvature) >= DriftEntryCurvature
+                && curvature * DriftDirection > 0;
+            // A short exit window permits a deliberate release at the end of
+            // the bend. Straight road cannot start or charge a drift.
+            DriftCornerGrace = inCorner ? .18 : std::max(0.0, DriftCornerGrace - h);
             DriftAge += h;
             DriftPerfectWindowRemaining = std::max(0.0, DriftPerfectWindowRemaining - h);
             const double counter = -State.Steering * DriftDirection;
-            // Moderate opposite lock gives full control. Full digital lock is
-            // useful briefly, but must be relaxed before its .90 s limit.
+            // Full keyboard countersteer remains playable. Precise analog or
+            // tapped control charges faster; holding the entry direction fails.
             const double target = std::clamp(.48 - std::abs(curvature) * 10.0, .28, .48);
             DriftControl = counter <= .12 ? 0.0 : std::clamp((counter - .12) / (target - .12), 0.0, 1.0)
                 * (1.0 - .32 * std::clamp((counter - .75) / .25, 0.0, 1.0));
@@ -424,8 +440,7 @@ private:
             {
                 DriftLostControl = DriftControl >= .30 ? std::max(0.0, DriftLostControl - 2.0 * h)
                     : DriftLostControl + h;
-                DriftFullCounter = counter > .90 ? DriftFullCounter + h : std::max(0.0, DriftFullCounter - 3.0 * h);
-                if (DriftControl >= .30 && driftSurfaceValid)
+                if (DriftControl >= .30 && driftSurfaceValid && inCorner)
                     DriftCharge = std::min(DriftMaxCharge, DriftCharge + h * DriftControl);
                 else
                     DriftCharge = std::max(0.0, DriftCharge - .18 * h);
@@ -435,8 +450,7 @@ private:
                     DriftPerfectWindowRemaining = DriftPerfectReleaseWindowSeconds;
                 }
             }
-            const bool controlled = DriftLostControl < DriftControlGraceSeconds &&
-                DriftFullCounter < DriftFullCounterLimitSeconds;
+            const bool controlled = DriftLostControl < DriftControlGraceSeconds && DriftCornerGrace > 0;
             if (!driftCommand || !driftSurfaceValid || !controlled)
             {
                 // Centering while releasing is fine: recent control survives
@@ -468,15 +482,17 @@ private:
         {
             DriftArmAge += h;
             if (std::abs(input.Steer) >= DriftEntrySteer && driftSurfaceValid &&
-                DriftReleaseAge >= DriftRearmSeconds && BoostRemaining <= 0)
+                DriftReleaseAge >= DriftRearmSeconds && BoostRemaining <= 0 &&
+                std::abs(curvature) >= DriftEntryCurvature && input.Steer * curvature > 0)
             {
                 StartHop(0.42, 0.26);
                 Drifting = true;
                 DriftDirection = DriftSlideDirection = input.Steer > 0 ? 1 : -1;
-                DriftCharge = DriftControl = DriftAge = DriftLostControl = DriftFullCounter = 0;
+                DriftCharge = DriftControl = DriftAge = DriftLostControl = 0;
                 DriftPerfectWindowRemaining = 0;
                 DriftHighestTier = 0;
                 DriftReleaseAge = 0;
+                DriftCornerGrace = .18;
             }
             else if (DriftArmAge >= .16 || !driftSurfaceValid ||
                 DriftReleaseAge < DriftRearmSeconds || BoostRemaining > 0)
@@ -546,7 +562,7 @@ private:
         if (Skidding && !airborne)
             rollingMoment += 320.0 - 180.0 * DriftBlend;
         const double airMoment = internalSpeed * internalSpeed / (airborne ? 780.0 : 468.0)
-            * (1.0 - 0.30 * std::clamp(Slipstream, 0.0, 1.0));
+            * (1.0 - 0.30 * std::clamp(Slipstream, 0.0, 1.0)) * Damage.DragModifier();
         const double brakePedal = input.Brake * (1.0 - 0.78 * DriftBlend);
         const double brakeMoment = std::pow(94.0 * brakePedal, 2) / 16.0 * grip;
         const double torque = (ShiftDelay > 0 || wheelRpm >= MaxRpm) ? 0.0 : TorqueAt(State.Rpm) * input.Throttle;
@@ -582,14 +598,21 @@ private:
         State.SpeedMps = std::clamp(State.SpeedMps + acceleration * h, 0.0, 120.0);
 
         ExtraLatVel *= std::exp(-h / 0.16);
-        double steerLat = ArcadeSteerLatMps(State.Steering, State.SpeedMps) * grip;
+        const double steering = std::clamp(State.Steering + Damage.SteeringBias() * CornerLoad(speed), -1.0, 1.0);
+        double steerLat = ArcadeSteerLatMps(steering, State.SpeedMps) * grip;
         if (edgeBlend > 0 && !airborne)
             steerLat *= 1.0 - 0.5 * edgeBlend * CornerLoad(speed);
         if (airborne)
             steerLat *= 0.88;
-        double latVel = steerLat * (1.0 - .70 * DriftBlend) - wash + ExtraLatVel;
-        latVel += DriftBlend * DriftSlideDirection * std::min(State.SpeedMps, 54.0) * DriftLatGain
+        double targetLat = steerLat * (1.0 - .70 * DriftBlend) - wash;
+        targetLat += DriftBlend * DriftSlideDirection * std::min(State.SpeedMps, 54.0) * DriftLatGain
             * (1.0 - 0.25 * DriftTractionControl);
+        // A short tyre response gives the rear weight without delaying the
+        // steering wheel. Opposite corrections bite sooner; release settles.
+        const double response = targetLat * LateralVelocityMps < 0 ? .025 : .025 + .065 * DriftBlend;
+        LateralVelocityMps += (targetLat - LateralVelocityMps) * (1.0 - std::exp(-h / response));
+        if (State.SpeedMps < .05) LateralVelocityMps = 0;
+        const double latVel = LateralVelocityMps + ExtraLatVel;
         const double metric = std::clamp(1.0 - curvature * State.LateralM, 0.3, 3.0);
         const double progress = State.SpeedMps / metric;
         VelocityHeadingRad = 0;

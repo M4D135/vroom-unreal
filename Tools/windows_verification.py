@@ -307,6 +307,10 @@ def main(argv=None):
         flags=['-VroomDriftTest','-VroomChaseCamera','-VroomStartDistance=350','-VroomStartSpeed=40']
         if scenario:flags.append('-VroomDriftScenario='+scenario)
         run(name,flags,seconds=seconds,capture_after=capture_after)
+    if version_tuple(a.expected_version) >= (0,35,0):
+        for scenario, capture_after in [('straight',1.5), ('keyboard',2.45)]:
+            run('drift-'+scenario,['-VroomDriftTest','-VroomDriftScenario='+scenario,
+                '-VroomStartDistance=350','-VroomStartSpeed=40'],seconds=5,capture_after=capture_after)
     for scenario in ('slow','crash','tyre','scenery','rub','rear'):
         run('collision-'+scenario,['-VroomCollisionTest='+scenario,'-VroomChaseCamera'],seconds=8)
     profile_dirs={root/'Saved/Profiling/CSV',executable.parents[2]/'Saved/Profiling/CSV',

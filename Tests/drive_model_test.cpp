@@ -280,13 +280,13 @@ int main(int argc, char** argv)
     Vroom::DriveModel drift;
     drift.State.SpeedMps = 40;
     drift.State.Gear = 4;
-    Run(drift, 0.12, driftHeld);
+    Run(drift, 0.12, driftHeld, .003);
     Check(drift.Drifting && drift.Skidding && drift.HopHeightM > 0.05,
           "drift button plus steer at speed starts a hop-drift");
-    Run(drift, 0.18, driftHeld);
+    Run(drift, 0.18, driftHeld, .003);
     Check(std::abs(drift.VisualHeading()) > 0.04,
           "a drift shows a readable chassis angle within 0.30 seconds while retaining yaw inertia");
-    Run(drift, 0.65, counterHeld);
+    Run(drift, 0.65, counterHeld, .003);
     Check(drift.DriftCharge > 0.4 && drift.DriftDirection == 1 && drift.DriftControl > .9,
           "countersteering charges the initial slide without reversing it");
     const double beforeBoost = drift.State.SpeedMps;
@@ -306,8 +306,8 @@ int main(int argc, char** argv)
     Vroom::DriveModel chargedDrift;
     chargedDrift.State.SpeedMps = 40;
     chargedDrift.State.Gear = 4;
-    Run(chargedDrift, .3, driftHeld, 0, 100);
-    Run(chargedDrift, 1.2, counterHeld, 0, 100);
+    Run(chargedDrift, .3, driftHeld, .003, 100);
+    Run(chargedDrift, 1.2, counterHeld, .003, 100);
     Check(chargedDrift.Drifting && chargedDrift.DriftCharge >= 1,
           "sustained moderate countersteer builds the second charge tier");
     Vroom::DriveModel strongBoost = chargedDrift;
@@ -323,8 +323,8 @@ int main(int argc, char** argv)
     Vroom::DriveModel shortDrift;
     shortDrift.State.SpeedMps = 40;
     shortDrift.State.Gear = 4;
-    Run(shortDrift, 0.2, driftHeld, 0, 100);
-    Run(shortDrift, 0.2, counterHeld, 0, 100);
+    Run(shortDrift, 0.2, driftHeld, .003, 100);
+    Run(shortDrift, 0.2, counterHeld, .003, 100);
     shortDrift.Step(full, 1.0 / 120, 0, 100);
     Check(shortDrift.BoostTier == 0, "a drift below the first charge threshold cannot claim a turbo");
 
@@ -344,11 +344,11 @@ int main(int argc, char** argv)
               "grass, insufficient speed, a jump or prolonged loss of countersteer forfeits the charge");
         aborted.State.LateralM = 0;
         aborted.State.SpeedMps = 40;
-        Run(aborted, 0.1, driftHeld, 0, 100);
+        Run(aborted, 0.1, driftHeld, .003, 100);
         Check(!aborted.Drifting && aborted.BoostTier == 0,
               "an aborted held drift cannot silently restart after returning to the road");
-        Run(aborted, .3, full, 0, 100);
-        aborted.Step(driftHeld, 1.0 / 120, 0, 100);
+        Run(aborted, .3, full, .003, 100);
+        aborted.Step(driftHeld, 1.0 / 120, .003, 100);
         Check(aborted.Drifting && aborted.DriftCharge < 0.02,
               "release then press after the rearm window starts a fresh uncharged drift");
     }
@@ -370,10 +370,10 @@ int main(int argc, char** argv)
     for (int phase = 0; phase < 3; ++phase)
     {
         const auto& input = phases[phase];
-        Run(drift30, durations[phase], input, 0, 100, 1.0 / 30);
-        Run(drift60, durations[phase], input, 0, 100, 1.0 / 60);
-        Run(drift120, durations[phase], input, 0, 100, 1.0 / 120);
-        Run(drift240, durations[phase], input, 0, 100, 1.0 / 240);
+        Run(drift30, durations[phase], input, .003, 100, 1.0 / 30);
+        Run(drift60, durations[phase], input, .003, 100, 1.0 / 60);
+        Run(drift120, durations[phase], input, .003, 100, 1.0 / 120);
+        Run(drift240, durations[phase], input, .003, 100, 1.0 / 240);
         for (const auto* model : {&drift30, &drift60})
             Check(std::abs(model->State.HeadingRad - drift120.State.HeadingRad) < 1e-12 &&
                   std::abs(model->State.LateralM - drift120.State.LateralM) < 1e-10 &&
@@ -391,7 +391,7 @@ int main(int argc, char** argv)
     for (int i = 0; i < 240; ++i)
     {
         const double before = smoothDrift.VisualHeading();
-        smoothDrift.Step(i < 120 ? fullLockDrift : full, 1.0 / 120, 0, 100);
+        smoothDrift.Step(i < 120 ? fullLockDrift : full, 1.0 / 120, .003, 100);
         largestYawStep = std::max(largestYawStep, std::abs(smoothDrift.VisualHeading() - before));
         Check(std::abs(smoothDrift.VisualHeading() - smoothDrift.State.HeadingRad) < 1e-12,
               "rendered chassis yaw follows the simulated yaw throughout a drift");
@@ -426,7 +426,7 @@ int main(int argc, char** argv)
                 held.Steer = ((frame / (cadence / 10)) % 2) ? -0.8 : 0.8;
                 held.Brake = ((frame / (cadence / 10)) % 2) ? 0 : 0.6;
             }
-            probe.Step(held, dt, 0, 100);
+            probe.Step(held, dt, .003, 100);
             const double yaw = probe.VisualHeading();
             const double rate = (yaw - previousYaw) / dt;
             maxAcceleration = std::max(maxAcceleration, std::abs(rate - previousRate) / dt);
@@ -468,7 +468,7 @@ int main(int argc, char** argv)
           "new chassis inertia converges at 240 Hz");
     Vroom::DriveModel cancelledInertia;
     cancelledInertia.State.SpeedMps = 40;
-    Run(cancelledInertia, .3, fullLockDrift, 0, 100);
+    Run(cancelledInertia, .3, fullLockDrift, .003, 100);
     const double cancelledAngle = cancelledInertia.VisualHeading();
     cancelledInertia.CancelArcadeEffects();
     Check(cancelledInertia.VisualHeading() == cancelledAngle,
@@ -489,14 +489,14 @@ int main(int argc, char** argv)
     Vroom::DriveModel shove;
     Vroom::DriveModel wreckDrift;
     wreckDrift.State.SpeedMps = 35;
-    Run(wreckDrift, .1, fullLockDrift, 0, 100);
+    Run(wreckDrift, .1, fullLockDrift, .003, 100);
     Check(wreckDrift.HopHeightM > 0 && wreckDrift.Drifting, "crash regression starts during an active drift hop");
     const double WreckDistance = wreckDrift.State.DistanceM;
     wreckDrift.CancelArcadeEffects();
     Check(wreckDrift.HopHeightM == 0 && !wreckDrift.Drifting && wreckDrift.DriftCharge == 0 &&
         wreckDrift.BoostRemaining == 0 && wreckDrift.State.DistanceM == WreckDistance,
         "a crash cancels arcade effects without teleporting or resetting the race");
-    Run(wreckDrift, .1, fullLockDrift, 0, 100);
+    Run(wreckDrift, .1, fullLockDrift, .003, 100);
     Check(!wreckDrift.Drifting && wreckDrift.HopHeightM == 0, "holding drift across a crash cannot resume its old hop or charge");
     shove.State.SpeedMps = 30;
     shove.State.Gear = 3;

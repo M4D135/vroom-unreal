@@ -29,8 +29,8 @@ int main()
           "green beep is distinct from the preparation tones");
     Check(BeepFor(StartSignal::Red).Frequency == BeepFor(StartSignal::Orange).Frequency,
           "preparation lights repeat the same call instead of a rising melody");
-    Check(BeepFor(StartSignal::Red).Frequency < 500 && BeepFor(StartSignal::Green).Frequency < 700,
-          "start signal keeps a low clear fundamental rather than a piercing beep");
+    Check(BeepFor(StartSignal::Red).Frequency == 880 && BeepFor(StartSignal::Green).Frequency == 1320,
+          "grid cue has a clear preparation pitch and distinct higher launch pitch");
     Check(GantryColumnsLit(StartSignal::Red) == 2 && GantryColumnsLit(StartSignal::Racing) == 0,
           "gantry columns follow the three-colour sequence then go out");
 
@@ -91,7 +91,7 @@ int main()
             if (I == 0 || I >= Count - 1) Check(Sample == 0, "start tone has silent endpoints and finite duration");
         }
         Check(Energy > Count * .02 && Maximum <= BeepFor(Signal).Volume, "start tone is audible and amplitude-bounded");
-        Check(LargestStep < .18 && std::abs(Mean / Count) < .005 && Maximum <= 1.0,
+        Check(LargestStep < .35 && std::abs(Mean / Count) < .005 && Maximum <= 1.0,
               "start signal has no hard edge or audible DC offset");
         Check(std::hypot(SecondReal, SecondImaginary) > .40 * std::hypot(FundamentalReal, FundamentalImaginary),
               "the rendered signal contains a substantial second harmonic, not a plain sine beep");

@@ -712,6 +712,10 @@ void AVroomCar::BuildCockpit()
     // Recessed LCD gasket and a small rain lip, like a separate period instrument.
     InstrumentTrim.Panel(FVector(-.76,0,0),7.55,3.18,.22,.40);
     InstrumentTrim.Panel(FVector(-.85,0,4.65),12.2,.32,.7,.22);
+    // A matte hood has depth at the leading edge, with a curved outer lip.
+    Bezel.Panel(FVector(-1.55,0,5.25),14.4,.34,2.4,.25);
+    InstrumentTrim.Tube({{-2.6,-14.4,4.6},{-2.8,-13.6,5.35},{-2.8,13.6,5.35},{-2.6,14.4,4.6}},
+        {.10,.12,.12,.10},FVector::ForwardVector,12,3);
     InstrumentTrim.Commit(DashMesh,3,TEXT("M_WheelMetal"));
     Bezel.Commit(DashMesh,0,TEXT("M_Dashboard"));
     Faces.Panel(FVector(-.92,0,0),7.2,2.85,.12,.35);
@@ -728,6 +732,13 @@ void AVroomCar::BuildCockpit()
         InstrumentMetal.Tube({{-1.0,Side*11.8,-.5},{-1.8,Side*11.8,.25}},
             {.12,.16},FVector::RightVector,10,1);
         Markings.Line(FVector(-.95,Side*11.8-1.0,1.1),FVector(-.95,Side*11.8+1.0,1.1),.10);
+        // Recessed lenses and machined collars, kept dark instead of showing
+        // permanent warning lamps for systems the game does not simulate.
+        for (double Y : {8.8, 10.7})
+        {
+            InstrumentMetal.Disc(FVector(-.83,Side*Y,3.05),.43,.16,20);
+            Faces.Disc(FVector(-.95,Side*Y,3.05),.30,.13,20);
+        }
     }
     DrawText3D(Markings,TEXT("KMH"),FVector(-1.95,.1,-1.35),.60);
     Markings.Line(FVector(-1.95,-2.9,-1.9),FVector(-1.95,-2.9,1.9),.07);
@@ -764,6 +775,10 @@ void AVroomCar::BuildCockpit()
         Carbon.CockpitShoulder(Side);
         Coaming.Face({{-55,Side*31,42},{59,Side*22.5,53},{55,Side*22,35},{-55,Side*31,26}}, FVector(0,-Side,0));
         Fasteners.Disc(FVector(60.5,Side*19.7,52.8),.19,.1,12);
+        // Inset padded seams follow the cockpit opening; no hand or steering
+        // geometry is moved. The black piping stops below the windscreen.
+        Trim.Tube({{-42,Side*30.5,43.8},{-15,Side*29,47},{25,Side*26,51},{52,Side*23.7,53.6}},
+            {.26,.26,.22,.16},FVector::UpVector,12,6);
     }
     Carbon.Commit(SurroundMesh, 0, TEXT("M_F1Paint")); Trim.Commit(SurroundMesh, 1, TEXT("M_Dashboard"));
     Coaming.Commit(SurroundMesh, 2, TEXT("M_F1Carbon")); Fasteners.Commit(SurroundMesh, 3, TEXT("M_BrushedMetal"));

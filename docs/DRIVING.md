@@ -72,7 +72,7 @@ La référence photographique guide les proportions et les appuis visibles, sans
 
 Appuyer sur **Maj** ou un bouton d’épaule de manette en braquant d’au moins **22 %** déclenche la glisse à partir de **12,2 m/s (43,92 km/h)** sur la route, avec du carburant et sans frein. Le sens de glisse est fixé à l’entrée. La glisse ajoute un déplacement latéral et du lacet visuel ; son entrée et sa sortie sont progressives, sur 0,10 et 0,16 s. Un petit saut visuel accompagne son déclenchement. **Le frein seul, même en virage, ne déclenche pas ce mode.**
 
-Garder le bouton appuyé et **contre-braquer modérément** permet de charger la poussée. Le contrôle est évalué après une mise en place de **0,24 s** ; la charge progresse selon sa qualité, pas simplement selon la durée du bouton maintenu. La cible de contre-braquage varie entre 28 % et 48 % selon la courbure. De courts passages au neutre sont tolérés pour permettre les corrections. Au clavier, des pressions brèves sur la direction opposée alternées avec des relâchements permettent d’atteindre les **trois niveaux** ; maintenir le braquage d’entrée ne charge pas. Un contre-braquage supérieur à 90 % tenu environ 0,90 s sans le moduler finit par annuler la glisse.
+Garder le bouton appuyé et **contre-braquer modérément** permet de charger la poussée. Le contrôle est évalué après une mise en place de **0,24 s** ; la charge progresse selon sa qualité, pas simplement selon la durée du bouton maintenu. La cible de contre-braquage varie entre 28 % et 48 % selon la courbure. De courts passages au neutre sont tolérés pour permettre les corrections. Au clavier, des pressions brèves sur la direction opposée alternées avec des relâchements permettent d’atteindre les **trois niveaux** ; maintenir le braquage d’entrée ne charge pas. Depuis la 0.35, le contre-braquage plein au clavier peut être maintenu : il charge à 68 % de la qualité optimale. Le dosage précis charge plus vite ; maintenir le braquage d’entrée ne récompense toujours pas le joueur.
 
 La **0.34** récompense aussi les glisses longues et le bon moment pour relâcher. Un relâchement volontaire sur la route, avec un contrôle récent, libère le niveau atteint :
 
@@ -141,3 +141,17 @@ Banc `--handling-benchmark` exécuté à 120 Hz, sans Unreal. La réponse de com
 | 288 km/h | 11,963 m/s | 0,258 m |
 
 Ces résultats décrivent un déplacement latéral arcade. Ils ne doivent pas être présentés comme des rayons de virage : les anciennes mesures de rayon reposaient sur le modèle de cap désormais supprimé. Une comparaison de commandes enregistrées avec **Vroom Amiga**, édition choisie comme référence, reste nécessaire pour mesurer la fidélité de la conduite.
+
+## Conduite kart et dégâts — 0.35
+
+La vitesse latérale des pneus possède une courte inertie : réponse de 25 ms en adhérence, jusqu’à 90 ms en glisse, et 25 ms pour une correction opposée. Le volant garde sa réponse existante. Le relâchement reprend rapidement de l’adhérence ; aucun gain moteur supplémentaire n’est ajouté au départ. Les impulsions de collision restent séparées.
+
+Les dégâts avant/arrière/gauche/droite viennent des contacts acceptés par le modèle de collision. Ils réduisent l’adhérence au maximum de 18 %, augmentent la traînée au maximum de 24 % et peuvent ajouter un léger tirage de direction (3,5 % maximum). Ces bornes concernent la carrosserie ; l’usure des pneus conserve son effet distinct. À l’arrêt, le tirage est nul. La récupération limite chaque zone à 45 % de dégâts, sans remise à neuf ; un service stand terminé répare entièrement la carrosserie.
+
+Le drift de la 0.35 se déclenche uniquement dans une vraie courbe, avec un braquage dans son sens. Une ligne droite ne déclenche ni bond de drift ni charge de turbo. À la sortie du virage, une fenêtre de 0,18 s permet de relâcher et de conserver le bonus gagné ; maintenir le bouton au-delà interrompt la glisse sans turbo automatique.
+
+### Rythme des adversaires (0.35)
+
+Le moteur des rivaux accélère fortement au départ puis réduit progressivement son effort à l’approche de la pointe. Les personnalités gardent leurs différences de prudence, trajectoire et dépassement ; leur multiplicateur de vitesse est resserré entre 0,97 et 1,03. Une assistance de peloton bornée à −2 % / +4 % selon l’écart intervient seulement quand le joueur roule sur la piste avec du carburant, hors stands. Elle ne copie ni sa vitesse instantanée ni sa position. Les règles d’évitement et de freinage restent actives.
+
+`rival_pace_test.cpp` compare douze départs individuels au joueur à 1, 2, 6 et 20 secondes ; `traffic_model_test.cpp` vérifie aussi freinage anticipé, dépassement, séparation des voitures et trois courses complètes à douze concurrents avec arrêts aux stands.
