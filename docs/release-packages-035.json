@@ -1,0 +1,41 @@
+{
+  "version": "0.35.0",
+  "release_tag": "v0.35.0",
+  "checked_on": "2026-10-20",
+  "game_configuration": "Development",
+  "game_source_commit": "7e0182888e60fc6dcc9e04bced2f6cfec60289c0",
+  "mac": {
+    "filename": "Vroom-0.35.0-macOS-AppleSilicon.zip",
+    "bytes": 474260960,
+    "sha256": "68c298c34ef03fdbd893afbfba5dfb35fb420ca6f587d514e88af213b079b6d3",
+    "packaged_files_checked": 69,
+    "architecture": "arm64",
+    "declared_minimum_macos": "14.0",
+    "tested_macos": "26.4",
+    "signature": "ad-hoc, deep strict verification PASS",
+    "notarized": false,
+    "gatekeeper_assessment": "rejected; first-open approval documented",
+    "visible_startup_after_relocation": true,
+    "checks": [
+      "Extracted ZIP signature and all file hashes PASS",
+      "Portable app opened via LaunchServices from path containing spaces",
+      "Nested game binary 0.35 reached prepared menu visibly",
+      "Verification PASS and automatic test-only shutdown"
+    ]
+  },
+  "windows": {
+    "filename": "Vroom-0.35.0-Windows.zip",
+    "bytes": 557350306,
+    "sha256": "9e97195e0d9ba83241471bbe28a32a212b250ec426b19c06341365b982b8cb5d",
+    "packaged_files_checked": 77,
+    "architecture": "x64",
+    "visible_startup_after_relocation": true,
+    "checks": [
+      "ZIP and all 77 packaged file hashes match",
+      "Actual Jouer.cmd launches native exe from a relocated path containing spaces",
+      "Interactive game window and version 0.35 menu preparation confirmed",
+      "Test game closed normally; no unrelated process stopped"
+    ]
+  },
+  "new_fps_campaign": false
+}

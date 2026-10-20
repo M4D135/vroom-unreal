@@ -65,3 +65,13 @@ Les raccourcis d’aperçu ont été rangés dans `Launchers/20261004-preview-sh
 Un essai Mac initial a échoué avant création du journal à cause de l’oubli de `-LLM` dans le petit harnais de test : pile `FLLMTracker::PopTag`. Le harnais a été corrigé et le scénario a ensuite passé. Aucun changement de moteur ni de modèle de langage.
 
 ![Cockpit 0.35 sur Windows](images/cockpit-035-windows.png)
+
+
+## Archives prêtes à jouer — 20 octobre 2026
+
+La [release GitHub v0.35.0](https://github.com/M4D135/vroom-unreal/releases/tag/v0.35.0) fournit les deux ZIP compilés, leurs instructions, les licences et `SHA256SUMS.txt`. [Reçu des contrôles de distribution](release-packages-035.json).
+
+- Mac : `Vroom-0.35.0-macOS-AppleSilicon.zip`, application autonome avec icône et jeu embarqué. Le nouveau `Tools/mac_portable_launcher.m` résout son jeu depuis son propre bundle et préserve `-LLM` ; il ne dépend d’aucun manifeste dans le compte utilisateur. Test effectué après extraction dans un autre dossier contenant des espaces, ouverture par LaunchServices, fenêtre au premier plan, menu et capture vérifiés. Les 69 fichiers du paquet correspondent au manifeste ; signature locale vérifiée. Aucun certificat Developer ID disponible, donc pas de notarisation Apple : l’évaluation Gatekeeper rejette le paquet, et la première ouverture doit être autorisée par l’utilisateur selon le guide inclus.
+- Windows : ZIP existant inchangé, 77 fichiers comparés au manifeste, puis extraction neuve sur le PC et lancement réel de `Windows/Jouer.cmd` dans un chemin contenant des espaces. Fenêtre interactive, menu 0.35 prêt et fermeture normale confirmés. Les prérequis Visual C++ et les licences sont inclus.
+
+Ce sont les binaires **Development UE 5.8.3** validés le 4 octobre, livrés sans dépendance à un environnement de développement. Aucune nouvelle construction Shipping, modification du gameplay ou campagne FPS n’est revendiquée. Le test ponctuel Windows est terminé et désactivé ; aucune autre partie n’a été arrêtée.

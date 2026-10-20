@@ -18,6 +18,8 @@ Les adversaires anticipent leur freinage et s’engagent dans un dépassement av
 
 Dépôt principal privé : [M4D135/vroom-unreal](https://github.com/M4D135/vroom-unreal). Migration depuis Forgejo le 20 octobre 2026, historique et branche de sauvegarde conservés. Le remote `origin` désigne GitHub ; `forgejo` conserve l’ancienne destination comme secours.
 
+**Jeu prêt à jouer : [télécharger les ZIP macOS Apple Silicon et Windows x64](https://github.com/M4D135/vroom-unreal/releases/tag/v0.35.0).** Extraire toute l’archive puis ouvrir `Vroom.app` sur Mac ou `Windows/Jouer.cmd` sur Windows. Aucun moteur Unreal à installer. Le paquet Mac n’est pas notarié par Apple ; son fichier `LISEZ-MOI.txt` explique la première ouverture.
+
 Prototype personnel consacré au Vroom de Lankhor de 1991 : une monoplace, six silhouettes de circuits issues des petites cartes Atari ST, une conduite jouable et un habillage 3D Unreal. L'objectif est de disposer d'une base mesurable pour retrouver progressivement le jeu d'époque. **La fidélité intégrale et le photoréalisme ne sont pas encore réalisés.**
 
 Le jeu propose **Arcade, Grand Prix avec qualification et Chrono**, douze adversaires capables de freiner derrière un véhicule et de choisir une voie de dépassement, trois difficultés et un enchaînement des six étapes. Le Grand Prix conserve un classement général des treize pilotes et désigne le champion ; les adversaires encore en course sont classés à l’arrivée du joueur selon leur avancement. Les stands imposent une immobilisation pour changer les pneus ou ravitailler. Les records par circuit/mode, les derniers tours, le delta et un fantôme enregistré donnent un objectif au Chrono.
