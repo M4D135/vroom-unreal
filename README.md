@@ -16,7 +16,7 @@ Les adversaires anticipent leur freinage et s’engagent dans un dépassement av
 
 **Ancienne version conservée : `0.34.0-c8a4441fbfd4`.** David a approuvé visuellement la prise du pouce autour de la jante circulaire. Les **31 suites portables**, dont les 10 contrôles des gants, et les **47 contrôles de la série visible `20260919-231125-package` passent**. En Photoréalisme, les huit mesures couvrent deux définitions et les six circuits complets : **29,996–30,000 images/s**, avec un maximum de **39,573 ms par image**, après préparation. Les empreintes du binaire, des données et du rapport installé sont vérifiées ; la version 0.33 est conservée pour retour arrière. Les captures [neutre](docs/images/cockpit-034-neutral.png), [droite](docs/images/cockpit-034-right.png) et [gauche](docs/images/cockpit-034-left.png) montrent ce package avec la pose approuvée. Le [rapport](docs/validation-results.json) et le [bilan 0.34](docs/FINALISATION_034.md) détaillent ces preuves et leurs limites. L’état Git est consultable dans le dépôt ci-dessous.
 
-Dépôt : [vroom-unreal](https://git.estrasse.fr/david/vroom-unreal).
+Dépôt principal privé : [M4D135/vroom-unreal](https://github.com/M4D135/vroom-unreal). Migration depuis Forgejo le 20 octobre 2026, historique et branche de sauvegarde conservés. Le remote `origin` désigne GitHub ; `forgejo` conserve l’ancienne destination comme secours.
 
 Prototype personnel consacré au Vroom de Lankhor de 1991 : une monoplace, six silhouettes de circuits issues des petites cartes Atari ST, une conduite jouable et un habillage 3D Unreal. L'objectif est de disposer d'une base mesurable pour retrouver progressivement le jeu d'époque. **La fidélité intégrale et le photoréalisme ne sont pas encore réalisés.**
 

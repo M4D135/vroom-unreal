@@ -18,7 +18,7 @@ Une archive nommée **`Vroom-0.34.0-Windows-Sources-<commit>.zip` est un kit de 
 - Installer un **Windows SDK 10.0.22621.0 ou ultérieur**. Epic recommande 10.0.26100 ou plus récent ; suivre sa [configuration officielle de Visual Studio pour UE 5.8](https://dev.epicgames.com/documentation/en-us/unreal-engine/setting-up-visual-studio-development-environment-for-cplusplus-projects-in-unreal-engine) pour les composants complémentaires.
 - Installer Git pour récupérer le dépôt. **Python 3.10+** sert aux contrôles automatisés ; il n’est pas nécessaire au simple lancement du jeu empaqueté.
 
-Cloner le [dépôt](https://git.estrasse.fr/david/vroom-unreal), avec ses fichiers `Content` versionnés, dans un chemin simple tel que `C:\Dev\vroom-unreal`. Ouvrir PowerShell dans ce dossier. Les scripts n’installent pas ces outils et ne configurent aucun service distant.
+Cloner le [dépôt](https://github.com/M4D135/vroom-unreal), avec ses fichiers `Content` versionnés, dans un chemin simple tel que `C:\Dev\vroom-unreal`. Ouvrir PowerShell dans ce dossier. Les scripts n’installent pas ces outils et ne configurent aucun service distant.
 
 ## Compiler et créer le ZIP
 
