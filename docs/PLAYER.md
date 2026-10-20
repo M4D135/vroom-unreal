@@ -131,7 +131,7 @@ En Chrono, le meilleur tour propre est enregistré puis rejoué par une voiture 
 
 Le delta compare le temps courant au temps de référence à la même distance sur le circuit : **négatif signifie de l'avance, positif du retard**. Un delta n'est affiché que lorsqu'une référence existe à cet endroit et que le tour courant reste propre.
 
-Les fichiers sont locaux et ne sont pas transférés à Forgejo :
+Les fichiers sont locaux et ne sont pas transférés à GitHub :
 
 | Donnée | Emplacement relatif au dossier `Saved` du jeu |
 |---|---|
